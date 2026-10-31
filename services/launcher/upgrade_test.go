@@ -143,6 +143,30 @@ func TestUpgradeKeepsTheProgramWhenTheChecksumDiffers(t *testing.T) {
 	}
 }
 
+func TestUpgradeLeavesAProgramOfWingetToWingetWithoutAsking(t *testing.T) {
+	program := `C:\Users\me\AppData\Local\Microsoft\WinGet\Packages\mkorun.hadley__DefaultSource\hadley.exe`
+	// a source without a client: any request would panic
+	err := upgrade(source{}, program, t.TempDir(), running)
+	if err == nil || !strings.Contains(err.Error(), "winget upgrade mkorun.hadley") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestUnderWingetIsTheFolderOfItsPackages(t *testing.T) {
+	for program, want := range map[string]bool{
+		`C:\Users\me\AppData\Local\Microsoft\WinGet\Packages\mkorun.hadley__DefaultSource\hadley.exe`:     true,
+		`C:\Program Files\WinGet\Packages\mkorun.hadley_Microsoft.Winget.Source_8wekyb3d8bbwe\hadley.exe`: true,
+		`c:\users\me\appdata\local\microsoft\winget\packages\x\hadley.exe`:                                true,
+		`C:\Users\me\Downloads\winget\hadley.exe`:                                                         false,
+		`C:\Users\me\Packages\hadley.exe`:                                                                 false,
+		`/home/me/.local/bin/hadley`:                                                                      false,
+	} {
+		if got := underWinget(program); got != want {
+			t.Errorf("%s: got %v", program, got)
+		}
+	}
+}
+
 func TestUpgradeLeavesAVersionAsNewAsTheLatestOrNewerAlone(t *testing.T) {
 	for _, current := range []string{"2.0.0", "3.0.0"} {
 		version = current

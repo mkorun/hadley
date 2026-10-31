@@ -21,6 +21,7 @@ import (
 const (
 	releasesURL = "https://api.github.com/repos/mkorun/hadley/releases?per_page=100"
 	downloadURL = "https://github.com/mkorun/hadley/releases/download"
+	wingetID    = "mkorun.hadley"
 	// Far more than a program, and a limit on what a wrong answer can fill the memory with.
 	maxDownload    = 512 << 20
 	upgradeTimeout = 15 * time.Minute
@@ -148,9 +149,18 @@ func programName(version string) string {
 	return name
 }
 
+// underWinget says whether winget put program in place: a user's install and a machine's both end in this folder, and
+// winget would go on listing the version it installed.
+func underWinget(program string) bool {
+	return strings.Contains(strings.ToLower(program), `\winget\packages\`)
+}
+
 // upgrade puts the program of the latest release in the place of program, once its checksum fits, and deletes what
 // older versions unpacked below cache; running is what this one unpacked.
 func upgrade(from source, program, cache, running string) error {
+	if underWinget(program) {
+		return fmt.Errorf("winget installed this program; update it with: winget upgrade %s", wingetID)
+	}
 	list, err := from.fetch(from.releases)
 	if err != nil {
 		return err

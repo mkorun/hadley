@@ -6,6 +6,10 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ## [Unreleased]
 
+### Changed
+
+- `hadley upgrade` leaves a program winget installed to winget, and names the command.
+
 ## [0.1.0-rc.3] — 2026-10-31
 
 The third preview: what security reviews of hadley and its four libraries found, and `hadley upgrade`. A program of
