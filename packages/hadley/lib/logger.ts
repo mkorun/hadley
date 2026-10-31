@@ -38,6 +38,11 @@ const sep = () => c.dim + '─'.repeat(SEP_WIDTH) + c.reset
 
 export const formatMs = (ms: number) => (ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(2)} s`)
 
+/** Clears what a terminal shows and keeps its history, which `console.clear()` erases too on Bun. */
+export function clearScreen(out: { isTTY?: boolean; write(text: string): unknown } = process.stdout): void {
+  if (out.isTTY) out.write('\x1b[H\x1b[J')
+}
+
 let buildStart = 0
 // the step under way, which a failure marks
 let running: { label: string; t0: number } | undefined

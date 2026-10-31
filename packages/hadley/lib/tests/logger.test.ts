@@ -3,7 +3,24 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { failureText, withoutVerbose } from '../logger.ts'
+import { clearScreen, failureText, withoutVerbose } from '../logger.ts'
+
+// `hadley dev` on Bun erased the terminal's history (console.clear() sends ESC[3J there).
+describe('clearing the terminal', () => {
+  const written = (isTTY: boolean) => {
+    let text = ''
+    clearScreen({ isTTY, write: (more) => (text += more) })
+    return text
+  }
+
+  it('clears the screen and leaves the history', () => {
+    assert.equal(written(true), '\x1b[H\x1b[J')
+  })
+
+  it('writes nothing into a file or a pipe', () => {
+    assert.equal(written(false), '')
+  })
+})
 
 // review 2026-10-28 (C.5): a failure showed hadley's own source and stack around the message, and the site's paths
 // absolute. Not on a terminal, failureText writes no colour.

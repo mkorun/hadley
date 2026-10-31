@@ -10,7 +10,7 @@ import { networkUrls, qrCode, wslNetworking } from './dev-addresses.ts'
 import { commentsPort, localOrigin, portInUse, siteEditor, type DevOptions } from './dev-options.ts'
 import { refusal } from './dev-guard.ts'
 import { devCertificate } from './dev-https.ts'
-import { logger } from './logger.ts'
+import { clearScreen, logger } from './logger.ts'
 import { isSystemFile } from './platform.ts'
 import { FORMS_PROGRAM, formsDataDir, formsProgram } from './forms-service.ts'
 import { siteLabel } from './site-root.ts'
@@ -68,7 +68,6 @@ export async function startDevServer({
   }
 
   const hasKeyboard = process.stdin.isTTY === true
-  console.clear()
   devLog(hasKeyboard ? 'r = rebuild · q = quit' : '(no keyboard: not a terminal)')
 
   const userConfig = await readUserConfig()
@@ -339,7 +338,7 @@ export async function startDevServer({
       return
     }
     buildRunning = true
-    if (lastBuildOk) console.clear()
+    if (lastBuildOk) clearScreen()
     devLog(`Rebuilding (${reason})...`)
     try {
       const built = await build(siteDir, outputMode, {

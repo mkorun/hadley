@@ -15,6 +15,8 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 ### Fixed
 
 - A build stopped when the theme was reached through a symbolic link.
+- `hadley dev` erased the terminal's history on Bun. It leaves the terminal as it is when it starts, and clears only
+  the screen before a rebuild.
 
 ## [0.1.0-rc.1] — 2026-10-31
 
