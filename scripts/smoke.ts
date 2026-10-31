@@ -6,11 +6,13 @@
  * <site>` beside it, and checks that each build exits 0 and writes the files a reader gets; in between it starts
  * `hadley dev` in the site's directory and loads what a browser loads first. It does so four times: with hadley from
  * the clone on Bun and on Node.js, and with the package scripts/pack.ts builds, packed and installed with npm into a
- * project of its own, on Node.js and on Bun. Needs `node` and `npm` on the PATH, and the npm registry.
+ * project of its own, on Node.js and on Bun. Needs `node` and `npm` on the PATH, and the npm registry. With --binary it
+ * does so once and with nothing else: with a program scripts/build-binary.ts built.
  *
- *   bun scripts/smoke.ts [--keep]
+ *   bun scripts/smoke.ts [--keep] [--binary <program>]
  *
- * --keep  keep the temporary directory and print its path
+ * --keep    keep the temporary directory and print its path
+ * --binary  try this program of a release instead of the clone and the package
  *
  * Uncommitted changes are not in a fresh clone, so they are not tested. Exit status: 0 the site builds, 1 a step
  * failed, 2 usage error.
@@ -18,9 +20,9 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 
-const USAGE = 'usage: bun scripts/smoke.ts [--keep]'
+const USAGE = 'usage: bun scripts/smoke.ts [--keep] [--binary <program>]'
 
 // a PNG of one pixel, so that the image pipeline (sharp) runs without a file of the repository
 const PIXEL = Buffer.from(
@@ -129,7 +131,7 @@ class SmokeFailure extends Error {}
  */
 async function serve(hadley: Hadley, site: string): Promise<void> {
   const started = performance.now()
-  const server = spawn(hadley.command, [hadley.entry, 'dev', '--port', String(PORT)], { cwd: site, env })
+  const server = spawn(hadley.command, [...hadley.args, 'dev', '--port', String(PORT)], { cwd: site, env })
   let log = ''
   server.stdout.on('data', (chunk) => (log += chunk))
   server.stderr.on('data', (chunk) => (log += chunk))
@@ -149,7 +151,10 @@ async function serve(hadley: Hadley, site: string): Promise<void> {
       if (got !== status) wrong.push(`${path}: ${got}, not ${status}`)
     }
   } finally {
-    server.kill('SIGTERM')
+    // on Windows a program of a release is a process with hadley below it, and a signal reaches only the first
+    if (process.platform === 'win32')
+      spawnSync('taskkill', ['/pid', String(server.pid), '/t', '/f'], { timeout: 10_000 })
+    else server.kill('SIGTERM')
     const stopped = await Promise.race([
       exited.then(() => true),
       new Promise((wait) => setTimeout(wait, 10_000, false)),
@@ -164,15 +169,15 @@ async function serve(hadley: Hadley, site: string): Promise<void> {
   console.log(`✓ hadley dev serves ${SERVED.length} paths as expected (${ms} ms)`)
 }
 
-/** A way to run hadley: the runtime's program and the command line it runs. */
-type Hadley = { runtime: 'bun' | 'node'; command: string; entry: string }
+/** A way to run hadley: what it is, the program, and the arguments before hadley's own. */
+type Hadley = { name: string; command: string; args: string[] }
 
 /**
  * Makes the small site in `site` and builds it with `hadley`: `hadley dev --build` below the site's directory, the dev
  * server, `hadley deploy --build --root <site>` beside it; then checks the files a reader gets.
  */
 async function smokeSite(site: string, hadley: Hadley): Promise<void> {
-  console.log(`— ${hadley.entry.endsWith('.js') ? 'the package' : 'the clone'} on ${hadley.runtime}`)
+  console.log(`— ${hadley.name}`)
   for (const [path, text] of Object.entries(SITE)) {
     mkdirSync(dirname(join(site, path)), { recursive: true })
     writeFileSync(join(site, path), text)
@@ -181,7 +186,7 @@ async function smokeSite(site: string, hadley: Hadley): Promise<void> {
   run({
     name: 'hadley dev --build',
     command: hadley.command,
-    args: [hadley.entry, 'dev', '--build'],
+    args: [...hadley.args, 'dev', '--build'],
     cwd: join(site, 'content', 'articles'),
     timeout: 120_000,
   })
@@ -189,7 +194,7 @@ async function smokeSite(site: string, hadley: Hadley): Promise<void> {
   run({
     name: 'hadley deploy --build',
     command: hadley.command,
-    args: [hadley.entry, 'deploy', '--build', '--root', site],
+    args: [...hadley.args, 'deploy', '--build', '--root', site],
     cwd: dirname(site),
     timeout: 120_000,
   })
@@ -205,7 +210,9 @@ async function smokeSite(site: string, hadley: Hadley): Promise<void> {
 
 async function main(args: string[]): Promise<number> {
   const keep = args.includes('--keep')
-  if (args.some((arg) => arg !== '--keep')) {
+  const rest = args.filter((arg) => arg !== '--keep')
+  const binary = rest[0] === '--binary' && rest.length === 2 ? resolve(rest[1]!) : undefined
+  if (rest.length > 0 && !binary) {
     console.error(USAGE)
     return 2
   }
@@ -217,12 +224,17 @@ async function main(args: string[]): Promise<number> {
     console.error('smoke: this is no git repository')
     return 1
   }
-  if (git(['status', '--porcelain'])) console.log('(uncommitted changes are not in a fresh clone, so not tested)')
+  if (!binary && git(['status', '--porcelain']))
+    console.log('(uncommitted changes are not in a fresh clone, so not tested)')
 
   const root = mkdtempSync(join(tmpdir(), 'hadley-smoke-'))
   const clone = join(root, 'hadley')
   const bun = process.execPath
   try {
+    if (binary) {
+      await smokeSite(join(root, 'program'), { name: 'the program', command: binary, args: [] })
+      return 0
+    }
     run({
       name: `clone ${head.slice(0, 7)}`,
       command: 'git',
@@ -247,8 +259,8 @@ async function main(args: string[]): Promise<number> {
 
     // hadley from the clone, as a checkout runs it, on both runtimes (docs/adr/0001-runtimes.md)
     const source = join(clone, 'packages', 'hadley', 'hadley.ts')
-    await smokeSite(join(root, 'bun'), { runtime: 'bun', command: bun, entry: source })
-    await smokeSite(join(root, 'node'), { runtime: 'node', command: 'node', entry: source })
+    await smokeSite(join(root, 'bun'), { name: 'the clone on Bun', command: bun, args: [source] })
+    await smokeSite(join(root, 'node'), { name: 'the clone on Node.js', command: 'node', args: [source] })
 
     // hadley as a user installs it: the package scripts/pack.ts builds, packed and installed with npm
     run({ name: 'bun scripts/pack.ts', command: bun, args: ['scripts/pack.ts'], cwd: clone, timeout: 300_000 })
@@ -271,8 +283,8 @@ async function main(args: string[]): Promise<number> {
       timeout: 300_000,
     })
     const installed = join(project, 'node_modules', '@mkorun', 'hadley', 'hadley.js')
-    await smokeSite(join(root, 'package-node'), { runtime: 'node', command: 'node', entry: installed })
-    await smokeSite(join(root, 'package-bun'), { runtime: 'bun', command: bun, entry: installed })
+    await smokeSite(join(root, 'package-node'), { name: 'the package on Node.js', command: 'node', args: [installed] })
+    await smokeSite(join(root, 'package-bun'), { name: 'the package on Bun', command: bun, args: [installed] })
     return 0
   } catch (error) {
     if (error instanceof SmokeFailure) return 1

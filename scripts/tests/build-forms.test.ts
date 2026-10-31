@@ -2,7 +2,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { chmodSync, linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
@@ -86,6 +86,21 @@ describe('the release of the comments service', () => {
 
   // build-forms.ts makes the archives with GNU tar, so on Linux; the tar of macOS has no --mtime
   const GNU_TAR = { skip: process.platform !== 'linux' && 'the archives are made with GNU tar, on Linux' }
+  it('writes a file linked twice as two files', GNU_TAR, () => {
+    const root = mkdtempSync(join(tmpdir(), 'hadley-build-forms-'))
+    try {
+      writeFileSync(join(root, 'a'), 'same')
+      linkSync(join(root, 'a'), join(root, 'b'))
+      const tar = join(root, 'list.tar')
+      writeFileSync(tar, gunzipSync(archive(root, ['a', 'b'], '1800000000')))
+      const listing = spawnSync('tar', ['--list', '--verbose', `--file=${tar}`], { encoding: 'utf8', timeout: 10_000 })
+      assert.equal(listing.status, 0)
+      assert.doesNotMatch(listing.stdout, /link to/)
+    } finally {
+      rmSync(root, { recursive: true })
+    }
+  })
+
   it('makes the same archive of the same files, with their modes, no owner and the given time', GNU_TAR, () => {
     const root = mkdtempSync(join(tmpdir(), 'hadley-build-forms-'))
     try {

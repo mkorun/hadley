@@ -1,11 +1,12 @@
 # A release, started by pushing the tag v<version>, the version of packages/hadley/package.json; any other tag stops
-# it. The gate runs on three systems (check.yml); then one Linux job builds, without any write permission, the comments
-# service for Linux and macOS (scripts/build-forms.ts: archives and SHA256SUMS) and the npm package
-# (scripts/pack.ts: dist/). Two jobs publish them, each in the environment release, which waits for the human's
-# approval: the GitHub release of the tag, with the archives, SHA256SUMS and a build provenance attestation of the
-# archives; and the package on npm by trusted publishing (OIDC, no token; npm adds its own provenance, and needs
-# npm 11.5.1 and Node.js 22.14.0 or later, which Node.js 24.18.0 brings). A version with a `-` is a prerelease on
-# GitHub and goes to npm under the dist-tag next. Every action is pinned to a commit.
+# it. The gate runs on three systems, and the programs of hadley are built and tried on each system they are for
+# (check.yml); then one Linux job builds, without any write permission, the comments service for Linux and macOS
+# (scripts/build-forms.ts: archives and SHA256SUMS) and the npm package (scripts/pack.ts: dist/). Two jobs publish them,
+# each in the environment release, which waits for the human's approval: the GitHub release of the tag, with the
+# programs, install.sh, the archives, one SHA256SUMS over them and a build provenance attestation of them; and the
+# package on npm by trusted publishing (OIDC, no token; npm adds its own provenance, and needs npm 11.5.1 and Node.js
+# 22.14.0 or later, which Node.js 24.18.0 brings). A version with a `-` is a prerelease on GitHub and goes to npm under
+# the dist-tag next. Every action is pinned to a commit.
 name: release
 
 on:
@@ -94,18 +95,27 @@ jobs:
         with:
           name: forms
           path: forms
-      - run: sha256sum --check --strict SHA256SUMS
-        working-directory: forms
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        timeout-minutes: 5
+        with:
+          name: binaries
+          path: binaries
+      - run: |
+          (cd forms && sha256sum --check --strict SHA256SUMS)
+          (cd binaries && sha256sum --check --strict SHA256SUMS)
+          mkdir release
+          mv forms/*.tar.gz binaries/hadley-* binaries/install.sh binaries/THIRD_PARTY_LICENSES release/
+          sort -k 2 forms/SHA256SUMS binaries/SHA256SUMS > release/SHA256SUMS
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         timeout-minutes: 5
         with:
-          subject-path: forms/*.tar.gz
+          subject-path: release/*
       - run: |
           flags=()
           if [[ "$PRERELEASE" == true ]]; then flags+=(--prerelease); fi
           notes="The changes are in [CHANGELOG.md](https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/CHANGELOG.md).
-          An archive of the comments service is checked with \`gh attestation verify <archive> --repo $GITHUB_REPOSITORY\`."
-          gh release create "$GITHUB_REF_NAME" forms/* --repo "$GITHUB_REPOSITORY" --verify-tag \
+          A file of the release is checked with \`gh attestation verify <file> --repo $GITHUB_REPOSITORY\`."
+          gh release create "$GITHUB_REF_NAME" release/* --repo "$GITHUB_REPOSITORY" --verify-tag \
             --title "$GITHUB_REF_NAME" --notes "$notes" "${flags[@]}"
         timeout-minutes: 5
         env:

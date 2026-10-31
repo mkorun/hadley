@@ -68,10 +68,10 @@ export interface Licence {
   text: string
 }
 
-/** THIRD_PARTY_LICENSES: the licences of the code a program carries besides its own, Go's first. */
-export function thirdPartyLicences(licences: Licence[]): string {
+/** THIRD_PARTY_LICENSES: the licences of the code `program` carries besides its own. */
+export function thirdPartyLicences(licences: Licence[], program = 'hadley-forms'): string {
   const sections = licences.map(({ name, text }) => `## ${name}\n\n${text.trim()}\n`)
-  return `hadley-forms contains code of these projects, under these licences.\n\n${sections.join('\n')}`
+  return `${program} contains code of these projects, under these licences.\n\n${sections.join('\n')}`
 }
 
 /** Whether `path`, which need not exist yet, lies outside `checkout`, with the symbolic links on both ways followed. */
@@ -101,6 +101,8 @@ export function archive(dir: string, files: string[], time: string): Uint8Array 
       '--owner=0',
       '--group=0',
       '--numeric-owner',
+      // a file twice stays a file twice: how a package manager links its files is not part of the archive
+      '--hard-dereference',
       `--directory=${dir}`,
       '--',
       ...files,
@@ -122,7 +124,8 @@ function run(program: string, args: string[], options: { cwd?: string; env?: Nod
     cwd: options.cwd ?? repo,
     env: options.env ?? process.env,
     timeout: options.timeout,
-    maxBuffer: 64 * 1024 * 1024,
+    // the tar of a program's payload (scripts/build-binary.ts) comes through here
+    maxBuffer: 1024 * 1024 * 1024,
   })
   if (result.status !== 0) {
     const why = result.error?.message ?? (result.stderr.toString().trim() || `exit status ${result.status}`)

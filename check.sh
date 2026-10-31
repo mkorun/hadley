@@ -68,6 +68,27 @@ trap 'rm -rf "$test_tmp" "$go_bin"' EXIT
 )
 FORMS_SERVICE="$go_bin/hadley-forms" TMPDIR="$test_tmp" bun test services/forms/tests/
 
+# The program of a release (docs/adr/0005-release-program.md): the rules of the comments service, with its tools; it
+# has no dependencies for govulncheck to look at. A release runs on what it installs with, so shellcheck reads that too.
+(
+  cd services/launcher
+  go() { mise exec go -- go "$@"; }
+  unformatted=$(mise exec go -- gofmt -l .)
+  if [[ -n "$unformatted" ]]; then
+    printf 'gofmt would change: %s\n' "$unformatted" >&2
+    exit 1
+  fi
+  fixes=$(go fix -diff ./...)
+  if [[ -n "$fixes" ]]; then
+    printf 'go fix would change:\n%s\n' "$fixes" >&2
+    exit 1
+  fi
+  go vet ./...
+  go tool -modfile=../forms/tools.mod staticcheck ./...
+  TMPDIR="$test_tmp" go test -race -count=1 ./...
+)
+mise exec shellcheck@0.11.0 -- shellcheck install/install.sh
+
 leftover=$(find "$test_tmp" -mindepth 1 -print -quit)
 if [[ -n "$leftover" ]]; then
   printf 'the tests left files in TMPDIR: %s\n' "$leftover" >&2
