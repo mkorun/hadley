@@ -7,6 +7,7 @@ import { dirname, join, posix, relative } from 'node:path'
 import { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { close as closePagefind } from 'pagefind'
 import sharp from 'sharp'
 import { parseDocument } from '../../case/index.ts'
 import { build } from '../../index.ts'
@@ -285,6 +286,8 @@ before(async () => {
 })
 
 after(async () => {
+  // the Pagefind service a build started here keeps this directory as its own, which a later build needs
+  await closePagefind()
   process.chdir(cwd)
   await rm(dir, { recursive: true, force: true })
 })
