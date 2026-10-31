@@ -4,9 +4,10 @@
 # (scripts/build-forms.ts: archives and SHA256SUMS) and the npm package (scripts/pack.ts: dist/). Two jobs publish them,
 # each in the environment release, which waits for the human's approval: the GitHub release of the tag, with the
 # programs, install.sh, the archives, one SHA256SUMS over them and a build provenance attestation of them; and the
-# package on npm by trusted publishing (OIDC, no token; npm adds its own provenance, and needs npm 11.5.1 and Node.js
-# 22.14.0 or later, which Node.js 24.18.0 brings). A version with a `-` is a prerelease on GitHub and goes to npm under
-# the dist-tag next. Every action is pinned to a commit.
+# package staged on npm by trusted publishing (OIDC, no token; npm adds its own provenance, and needs npm 11.15 and
+# Node.js 22.14.0 or later, which Node.js 24.18.0 brings), where it is published when a maintainer approves it with 2FA.
+# A version with a `-` is a prerelease on GitHub and goes to npm under the dist-tag next, which staging fixes. Every
+# action is pinned to a commit.
 name: release
 
 on:
@@ -143,7 +144,7 @@ jobs:
           name: package
           path: dist
       - run: |
-          if [[ "$PRERELEASE" == true ]]; then npm publish --tag next; else npm publish; fi
+          if [[ "$PRERELEASE" == true ]]; then npm stage publish --tag next; else npm stage publish; fi
         working-directory: dist
         timeout-minutes: 5
         env:

@@ -47,19 +47,22 @@ compares every file. A difference that is meant is named in the commit message.
 ## Releasing
 
 A release comes from a tag; `.github/workflows/release.yml` says what happens then. It needs, once, the environment
-`release` on GitHub with its reviewer, and on npm a trusted publisher for that workflow and environment that may
-`npm publish`.
+`release` on GitHub with its reviewer, and on npm a trusted publisher for that workflow and environment. It may stage a
+version, not publish one: only a maintainer's 2FA does that.
 
 1. Set the version in `packages/hadley/package.json`, `README.md` and `docs/comments.md` (a test checks they agree), run
    `bun scripts/facts.ts`, and turn `[Unreleased]` in `CHANGELOG.md` into the version with its date.
 2. Push `main` and wait for `check`.
 3. Tag the commit `v<version>` and push the tag.
-4. When the run waits, approve it for the environment `release`. That publishes to GitHub and npm together.
-5. A prerelease goes to npm under `next` alone: `npm dist-tag add @mkorun/hadley@<version> latest`, while there is no
+4. When the run waits, approve it for the environment `release`. That publishes to GitHub and stages the package on npm.
+5. Approve the staged package with 2FA, on npmjs.com or with `npm stage list @mkorun/hadley` and
+   `npm stage approve <id>`.
+6. A prerelease goes to npm under `next` alone: `npm dist-tag add @mkorun/hadley@<version> latest`, while there is no
    release to keep `latest`.
-6. On hadley.sh, take `install.sh` from the GitHub release and move the documentation to the commit of the tag (its
+7. On hadley.sh, take `install.sh` from the GitHub release and move the documentation to the commit of the tag (its
    `DEPLOYING.md`). `curl -fsSL https://hadley.sh/install.sh | sh` serves the release only from then on.
-7. Check it from outside: a fresh install with `install.sh`, and `gh attestation verify <file> --repo mkorun/hadley`.
+8. Check it from outside: a fresh install with `install.sh`, `gh attestation verify <file> --repo mkorun/hadley`, and
+   `npm view @mkorun/hadley@<version> dist.attestations` for the provenance on npm.
 
 ## Pull requests
 
