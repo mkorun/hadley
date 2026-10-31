@@ -16,7 +16,7 @@
 
 import { parse as parseMarkanto010, semanticDocumentEquals } from '@markantolang/parser'
 import type { Document, DocumentBlock, ErrorBlock, FootnoteDefinition } from '@markantolang/parser'
-import { prepareDocument } from './prepare-document.ts'
+import { PARSE_OPTIONS, prepareDocument } from './prepare-document.ts'
 import type { CaseOptions } from './types.ts'
 
 /** File-absolute JS-string offsets — same convention as `BlockToken.start`/`.end`. */
@@ -50,7 +50,7 @@ interface NamedBlock {
  */
 function parsedBlocks(rawDoc: string, options: CaseOptions): NamedBlock[] | undefined {
   const { md, baseOffset } = prepareDocument(rawDoc, options)
-  const parsed = parseMarkanto010(md, { errorRecovery: true })
+  const parsed = parseMarkanto010(md, PARSE_OPTIONS)
   const tree = parsed.status === 'ok' ? parsed.document : parsed.status === 'invalid' ? parsed.recovery : undefined
   const annotations = parsed.status === 'ok' || parsed.status === 'invalid' ? parsed.annotations : undefined
   if (!tree || !annotations) return undefined

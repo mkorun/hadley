@@ -8,6 +8,9 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ### Security
 
+- Markanto 0.2.1: a line of forty open brackets in a page kept a build from ever ending.
+- A page cannot nest deeper than 128 levels: a list of 450 levels took 660 MB to parse, from a page of 200 KB.
+- Content cannot set `data-pagefind-*`, which would change what the site's search shows and filters.
 - Lima 0.7.1: a few KB of references in a page's front matter could fill the memory of a build before a limit stopped
   them. An invisible space after a date no longer moves the day.
 - galley 0.3.4: a value of a page could pass the check of URL attributes (`G5001`) with characters the render removed

@@ -5,6 +5,12 @@
 import { LimaError, parse as limaparse } from '@limaformat/lima'
 import type { CaseOptions, ParseErrorInfo } from './types.ts'
 
+/**
+ * How hadley parses content. No text nests this deep, and memory grows with the square of the depth: a list of 450
+ * levels took 660 MB, from a page of 200 KB. A page past it is a problem of the page.
+ */
+export const PARSE_OPTIONS = { errorRecovery: true, resourceBudget: { maxFrames: 128 } } as const
+
 export interface PreparedDocument {
   md: string
   metadata: Record<string, any>

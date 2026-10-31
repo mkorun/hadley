@@ -3,7 +3,7 @@
 
 import { parse as parseMarkanto, type ParseResult } from '@markantolang/parser'
 import { editorBlocks, renderMarkanto } from './markanto-native-renderer.ts'
-import { completeMetadata, prepareDocument } from './prepare-document.ts'
+import { completeMetadata, PARSE_OPTIONS, prepareDocument } from './prepare-document.ts'
 import { takeTitle } from './title.ts'
 import type { BlockToken, Built, CaseOptions, CaseResult, FileRequest, ParseErrorInfo, RenderOptions } from './types.ts'
 
@@ -28,7 +28,7 @@ export interface ParsedDocument {
 /** Reads the front matter and parses the content with the Markanto reference parser; render() turns it into HTML. */
 export function parseDocument(rawDoc: string, options: CaseOptions): ParsedDocument {
   const { md, metadata, baseOffset, frontMatterErrors } = prepareDocument(rawDoc, options)
-  const { parsed, title, subtitle, problems } = takeTitle(parseMarkanto(md, { errorRecovery: true }), metadata)
+  const { parsed, title, subtitle, problems } = takeTitle(parseMarkanto(md, PARSE_OPTIONS), metadata)
   if (title !== undefined) metadata.title = title
   if (subtitle !== undefined) metadata.subtitle = subtitle
   completeMetadata(metadata, options)

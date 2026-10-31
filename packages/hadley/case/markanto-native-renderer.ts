@@ -25,6 +25,7 @@ import {
 } from './destination.ts'
 
 // data-* names hadley writes itself; content cannot set them, so no element can carry one twice.
+// Nor any of Pagefind's, which would let a page change what the site's search shows and filters (isReserved)
 const RESERVED_DATA = new Set([
   'hadley-id',
   'sized',
@@ -36,6 +37,8 @@ const RESERVED_DATA = new Set([
   'row-span',
   'col-span',
 ])
+
+const isReserved = (key: string) => RESERVED_DATA.has(key) || key.startsWith('pagefind')
 
 const SIZING_DATA = new Set(['size', 'style'])
 
@@ -52,7 +55,7 @@ function contentData(
   const data: Record<string, string> = {}
   for (const [key, value] of Object.entries(attrs?.dataAttrs ?? {})) {
     if (omit.has(key)) continue
-    if (RESERVED_DATA.has(key)) {
+    if (isReserved(key)) {
       ctx.ignoredAttributes.push(`data-${key}`)
       continue
     }

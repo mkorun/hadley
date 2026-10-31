@@ -114,6 +114,12 @@ describe('the front matter of a page', () => {
     )
   })
 
+  it('fails a page that nests deeper than any text, without taking the memory of the build', async () => {
+    const deep = Array.from({ length: 200 }, (_, depth) => `${'  '.repeat(depth)}- x`).join('\n')
+    await site('deep', { 'articles/[a]/a.md': `${page('title: A\n')}\n${deep}\n` })
+    await assert.rejects(published('deep'), (error: Error) => error.message.includes('a.md'))
+  })
+
   it('stops at a status it does not know, in both builds', async () => {
     await site('status', { 'articles/[a]/a.md': page('title: A\nstatus: publshed\n') })
     await assert.rejects(

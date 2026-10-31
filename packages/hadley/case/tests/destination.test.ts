@@ -228,6 +228,11 @@ describe('renderer URL policy', () => {
     assert.deepEqual(refusedOf(result), ['javascript:x'])
   })
 
+  test("keeps Pagefind's attributes from content, as they steer the site's search", () => {
+    const result = rendered('<m data-pagefind-filter=x data-pagefind-meta=y data-label=kept>x</m>')
+    assert.equal(result.html, '<p><span data-label="kept">x</span></p>')
+  })
+
   test('reads a data attribute that ends in link as a destination too', () => {
     const result = rendered('<m data-link=javascript:x>x</m>')
     assert.equal(result.html, '<p><span>x</span></p>')
