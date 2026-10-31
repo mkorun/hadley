@@ -1,6 +1,6 @@
 # hadley
 
-> **Preview.** hadley is in preview before its first release: `0.1.0-rc.2` is on npm under the
+> **Preview.** hadley is in preview before its first release: `0.1.0-rc.3` is on npm under the
 > tag `next`. The tests pass on Linux, macOS and Windows; the [changelog](CHANGELOG.md) names what the preview leaves
 > open.
 

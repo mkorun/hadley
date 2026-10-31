@@ -6,6 +6,11 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ## [Unreleased]
 
+## [0.1.0-rc.3] — 2026-10-31
+
+The third preview: what security reviews of hadley and its four libraries found, and `hadley upgrade`. A program of
+0.1.0-rc.2 cannot replace itself yet: install this one the way you installed that one.
+
 ### Security
 
 - Markanto 0.2.1: a line of forty open brackets in a page kept a build from ever ending.
@@ -25,6 +30,7 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 ### Changed
 
 - A dev build writes `site.json` to `.hadley/`: in the output it was served with `--host`, to every device.
+- `hadley dev` says which step it waits at when Vite has not started after 15 s.
 
 ### Fixed
 
