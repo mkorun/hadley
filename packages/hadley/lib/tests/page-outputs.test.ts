@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
+import { stop as stopEsbuild } from 'esbuild'
 import { close as closePagefind } from 'pagefind'
 import sharp from 'sharp'
 import { build } from '../../index.ts'
@@ -117,8 +118,11 @@ before(async () => {
 after(async () => {
   // the Pagefind service a build started here keeps this directory as its own, which a later build needs
   await closePagefind()
+  // so does esbuild's when this file is the first to build in its process, as each is under node --test
+  await stopEsbuild()
   process.chdir(cwd)
-  await rm(dir, { recursive: true, force: true })
+  // a service ends in its own time after it is told to, and Windows removes no directory a process runs in
+  await rm(dir, { recursive: true, force: true, maxRetries: 10 })
 })
 
 describe('the outputs of a page in a publish build', () => {

@@ -18,6 +18,7 @@ import {
   targetOf,
   withoutLanguages,
 } from '../init.ts'
+import { slashed } from '../platform.ts'
 
 // hadley init (docs/init.md): a starter with a theme, in the languages named.
 
@@ -52,7 +53,7 @@ describe('the languages of hadley init', () => {
     for (const starter of starters) {
       const folders = new Set<string>()
       for (const path of await readdir(join(STARTERS, starter, 'content'), { recursive: true })) {
-        const segments = path.split('/')
+        const segments = slashed(path).split('/')
         const bundle = segments.findLastIndex((segment) => /^\[.+\]$/.test(segment))
         if (bundle !== -1 && segments.length === bundle + 3) folders.add(segments[bundle + 1]!)
       }

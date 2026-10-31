@@ -5,6 +5,7 @@ import { mkdtemp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { build } from '../../index.ts'
+import { slashed } from '../platform.ts'
 
 // Maintenance (config.md, deploy.md): a publish build makes the 503 page alone, at / too, with a mark for the server.
 
@@ -69,7 +70,7 @@ const quiet = async <T>(work: () => Promise<T>): Promise<T> => {
 const published = async (root: string) =>
   (await readdir(join(root, '.hadley', 'publish'), { recursive: true, withFileTypes: true }))
     .filter((entry) => entry.isFile())
-    .map((entry) => relative(join(root, '.hadley', 'publish'), join(entry.parentPath, entry.name)))
+    .map((entry) => slashed(relative(join(root, '.hadley', 'publish'), join(entry.parentPath, entry.name))))
     .sort()
 
 before(async () => {

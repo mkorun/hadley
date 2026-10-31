@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { adminTokenFor, archiveDirFor } from '../index.ts'
 
 // Where the moderation CLI finds its admin token and its archive (docs/comments.md).
@@ -32,8 +32,14 @@ describe('adminTokenFor', () => {
     mkdirSync(join(file, '..'), { recursive: true })
     writeFileSync(file, 'prod-token\n', { mode: 0o600 })
     assert.equal(await adminTokenFor(dir, false, 'example.org', env()), 'prod-token')
-    chmodSync(file, 0o644)
-    await assert.rejects(adminTokenFor(dir, false, 'example.org', env()), /can be read by others \(644\): chmod 600 it/)
+    // Windows keeps no mode that says who may read a file (lib/platform.ts, readableByOthers)
+    if (process.platform !== 'win32') {
+      chmodSync(file, 0o644)
+      await assert.rejects(
+        adminTokenFor(dir, false, 'example.org', env()),
+        /can be read by others \(644\): chmod 600 it/,
+      )
+    }
   })
 
   it('prefers HADLEY_COMMENTS_TOKEN', async () => {
@@ -43,8 +49,8 @@ describe('adminTokenFor', () => {
 
 describe('archiveDirFor', () => {
   it("is comments.archive, relative to the site, and the local service's own in dev", () => {
-    assert.equal(archiveDirFor('/site', '../private/comments', false), '/private/comments')
-    assert.equal(archiveDirFor('/site', undefined, true), '/site/.hadley/forms/archive')
+    assert.equal(archiveDirFor('/site', '../private/comments', false), resolve('/private/comments'))
+    assert.equal(archiveDirFor('/site', undefined, true), join('/site', '.hadley', 'forms', 'archive'))
     assert.throws(() => archiveDirFor('/site', undefined, false), /config\.lima: comments\.archive is missing/)
   })
 })

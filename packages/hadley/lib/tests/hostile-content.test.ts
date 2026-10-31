@@ -7,12 +7,14 @@ import { dirname, join, posix, relative } from 'node:path'
 import { Readable } from 'node:stream'
 import { fileURLToPath } from 'node:url'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { stop as stopEsbuild } from 'esbuild'
 import { close as closePagefind } from 'pagefind'
 import sharp from 'sharp'
 import { parseDocument } from '../../case/index.ts'
 import { build } from '../../index.ts'
 import { blockIdMap, handleGet } from '../../addons/editor/plugin.ts'
 import { registerPageBlocks } from '../../addons/editor/renderer.ts'
+import { slashed } from '../platform.ts'
 
 // The proof of the boundary in AGENTS.md (Security): hostile content goes through a whole publish build, from parsing
 // through building its files and rendering to the templates, the sitemap, the feed and llms.txt. It cannot inject
@@ -121,10 +123,11 @@ const png = (path: string) =>
     .png()
     .toFile(path)
 
+/** Every file below `root`, by its path relative to it, with `/` on every system. */
 const files = async (root: string): Promise<string[]> =>
   (await readdir(root, { recursive: true, withFileTypes: true }))
     .filter((entry) => entry.isFile())
-    .map((entry) => relative(root, join(entry.parentPath, entry.name)))
+    .map((entry) => slashed(relative(root, join(entry.parentPath, entry.name))))
 
 /** A site `name` in `dir` whose one published article is `markdown`, with the files EVIL names. */
 async function site(name: string, markdown: string): Promise<string> {
@@ -288,8 +291,11 @@ before(async () => {
 after(async () => {
   // the Pagefind service a build started here keeps this directory as its own, which a later build needs
   await closePagefind()
+  // so does esbuild's when this file is the first to build in its process, as each is under node --test
+  await stopEsbuild()
   process.chdir(cwd)
-  await rm(dir, { recursive: true, force: true })
+  // a service ends in its own time after it is told to, and Windows removes no directory a process runs in
+  await rm(dir, { recursive: true, force: true, maxRetries: 10 })
 })
 
 describe('hostile content, through a whole publish build', () => {
@@ -351,13 +357,13 @@ describe('hostile content, through a whole publish build', () => {
   it('publishes an SVG file a page links as it is', async () => {
     const root = await site('svg', page('title: S\n', '[file](s.svg)\n'))
     await writeFile(join(root, 'content', 'articles', '[evil]', 's.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>')
-    assert.ok((await publish('svg')).includes(join('sites', 'svg', '.hadley', 'publish', 'evil', 's.svg')))
+    assert.ok((await publish('svg')).includes('sites/svg/.hadley/publish/evil/s.svg'))
   })
 
   it('copies an og:image the front matter names from the bundle and writes its absolute URL', async () => {
     await site('og-file', page('title: O\nog:image: f.png\n', 'Text.\n'))
     const written = await publish('og-file')
-    assert.ok(written.includes(join('sites', 'og-file', '.hadley', 'publish', 'evil', 'f.png')))
+    assert.ok(written.includes('sites/og-file/.hadley/publish/evil/f.png'))
     const html = await readFile(join('sites', 'og-file', '.hadley', 'publish', 'evil', 'index.html'), 'utf8')
     assert.match(html, /<meta property="og:image" content="https:\/\/hostile\.example\/evil\/f\.png">/)
   })
@@ -412,7 +418,7 @@ describe('hostile content, through a whole publish build', () => {
 
   it('builds or copies every file the content names, and writes only into the output directory', async () => {
     const written = await publish('hostile')
-    const outside = written.filter((file) => !file.startsWith(join('sites', 'hostile', '.hadley') + '/'))
+    const outside = written.filter((file) => !file.startsWith('sites/hostile/.hadley/'))
     assert.deepEqual(outside, [])
     const out = join(dir, 'sites', 'hostile', '.hadley', 'publish')
     const built = new Set(await files(out))
@@ -663,6 +669,26 @@ describe('hostile content, through a whole publish build', () => {
     // a destination outside the bundle is the site path a browser resolves it to, which the site must write
     ['traversal', '', '[x](../../../../../secret.txt)\n', /\.\.\/secret\.txt is neither a page nor a file the site/],
     ['encoded', '', '[x](%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/secret.txt)\n', /secret\.txt is neither a page nor a file/],
+    // what Windows reads in a path, in Markdown that gives a destination with backslashes (`\\` is one): a backslash,
+    // a drive, a share, a stream, a device and a short name
+    [
+      'backslash',
+      '',
+      '[x](..\\\\..\\\\..\\\\..\\\\..\\\\secret.txt)\n',
+      /\\secret\.txt is neither a page nor a file the/,
+    ],
+    ['drive', '', '[x](C:/secret.txt)\n', /C:\/secret\.txt has a scheme a link may not have/],
+    ['drive-relative', '', '![x](./C:secret.txt)\n', /\.\/C:secret\.txt does not exist/],
+    [
+      'share',
+      '',
+      '[x](\\\\\\\\evil.example\\\\share\\\\x)\n',
+      /evil\.example\\share\\x means something else on another/,
+    ],
+    ['stream', '', '![x](./a.png::$DATA)\n', /a\.png::\$DATA does not exist/],
+    ['device', '', '![x](con.png) [y](nul)\n', /con\.png does not exist/],
+    // the short name Windows gives a-4w.webp of the bundle, where the volume makes them
+    ['short-name', '', '[x](A-4W~1.WEB)\n', /A-4W~1\.WEB does not exist/],
     // review 2026-10-25: spellings a browser resolves differently from how they read
     ['encoded-slash', '', '[x](/a%2Fb/)\n', /\/a%2Fb\/ holds an encoded \/ or \\ in a segment/],
     ['entity-id', '', '[x](&amp;#36;missing)\n', /&#36;missing does not exist/],
@@ -742,7 +768,7 @@ describe('hostile content, through a whole publish build', () => {
         return true
       })
       const outside = (await files(dir)).filter(
-        (file) => !before.has(file) && !file.startsWith(join('sites', name, '.hadley') + '/'),
+        (file) => !before.has(file) && !file.startsWith(`sites/${name}/.hadley/`),
       )
       assert.deepEqual(outside, [])
       assert.ok(!(await files(join(dir, 'sites', name))).some((file) => file.includes('secret')))

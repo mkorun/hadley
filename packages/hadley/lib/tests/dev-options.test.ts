@@ -125,13 +125,13 @@ describe('the user configuration', () => {
 
   it('reads its keys, with the paths of the certificate and the comments service relative to it', async () => {
     userConfig(
-      'dev:\n  hostname: workstation.fritz.box\n  allowedHosts: [.trycloudflare.com]\n  https:\n    cert: c.pem\n    key: /k.pem\n  open: [wslview]\n  forms: bin/hadley-forms\n',
+      `dev:\n  hostname: workstation.fritz.box\n  allowedHosts: [.trycloudflare.com]\n  https:\n    cert: c.pem\n    key: ${join(dir, 'k.pem')}\n  open: [wslview]\n  forms: bin/hadley-forms\n`,
     )
     assert.deepEqual(await readUserConfig(env()), {
       dev: {
         hostname: 'workstation.fritz.box',
         allowedHosts: ['.trycloudflare.com'],
-        https: { cert: join(dir, 'hadley', 'c.pem'), key: '/k.pem' },
+        https: { cert: join(dir, 'hadley', 'c.pem'), key: join(dir, 'k.pem') },
         open: ['wslview'],
         forms: join(dir, 'hadley', 'bin', 'hadley-forms'),
       },
@@ -159,7 +159,9 @@ describe('the certificate of hadley dev --https', () => {
 
   it('is made once by mkcert from the PATH, and without it the build says how to get one', async () => {
     await assert.rejects(devCertificate(await readUserConfig(env()), env()), /mkcert is not on the PATH[\s\S]*certutil/)
-    // a mkcert that writes the files it is asked for and logs its arguments
+    // a mkcert that writes the files it is asked for and logs its arguments: a shell script, which Windows runs as no
+    // program (it looks for mkcert.exe)
+    if (process.platform === 'win32') return
     const bin = join(dir, 'bin')
     mkdirSync(bin)
     writeFileSync(

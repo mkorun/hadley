@@ -93,7 +93,7 @@ describe('renderComments', () => {
         commentsHtmlPath: join(dir, '_comments.html'),
         language: 'en',
       }),
-      /i18n\/en\.lima is missing/,
+      /i18n[\\/]en\.lima is missing/,
     )
   })
 })

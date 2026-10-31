@@ -1,12 +1,16 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
+import { join } from 'node:path'
 import { Output } from '../output.ts'
+
+// a claimed path as the file system names it, with its separator
+const at = (rel: string) => join('/out', rel)
 
 describe('Output', () => {
   it('gives each path inside the output directory to one owner', () => {
     const output = new Output('/out')
-    assert.equal(output.claim('a/index.html', 'page de/a'), '/out/a/index.html')
-    assert.equal(output.claim('a/index.html', 'page de/a'), '/out/a/index.html')
+    assert.equal(output.claim('a/index.html', 'page de/a'), at('a/index.html'))
+    assert.equal(output.claim('a/index.html', 'page de/a'), at('a/index.html'))
     assert.throws(
       () => output.claim('a/index.html', 'page en/a'),
       /a\/index\.html is written by both page de\/a and page en\/a/,
@@ -22,7 +26,7 @@ describe('Output', () => {
       /About\/index\.html of page en\/about and about\/index\.html of page de\/about differ only in case/,
     )
     assert.throws(() => output.claim('ABOUT/photo.jpg', 'page de/x: photo.jpg'), /ABOUT of .* and about of .* differ/)
-    assert.equal(output.claim('about/photo.jpg', 'page de/about: photo.jpg'), '/out/about/photo.jpg')
+    assert.equal(output.claim('about/photo.jpg', 'page de/about: photo.jpg'), at('about/photo.jpg'))
   })
 
   it('refuses two paths that differ only in Unicode normalisation, which macOS writes as one', () => {
@@ -49,7 +53,7 @@ describe('Output', () => {
     assert.throws(() => output.claim('../x.png', 'page de/a: x.png'), /leaves \/out/)
     assert.throws(() => output.claim('a/../../x.png', 'page de/a: x.png'), /leaves \/out/)
     assert.throws(() => output.claim('', 'site'), /leaves \/out/)
-    assert.equal(output.claim('a/..ok.pdf', 'page de/a: ..ok.pdf'), '/out/a/..ok.pdf')
+    assert.equal(output.claim('a/..ok.pdf', 'page de/a: ..ok.pdf'), at('a/..ok.pdf'))
   })
 })
 
@@ -57,13 +61,13 @@ describe('Output, as a plan', () => {
   it('gives a directory to one owner as a whole', () => {
     const output = new Output('/out')
     output.claim('suche/index.html', 'page de/suche')
-    assert.equal(output.claimDirectory('pagefind', 'site: search index'), '/out/pagefind')
+    assert.equal(output.claimDirectory('pagefind', 'site: search index'), at('pagefind'))
     assert.throws(
       () => output.claim('pagefind/index.html', 'page de/pagefind'),
       /pagefind\/index\.html is written by both site: search index and page de\/pagefind/,
     )
     assert.throws(() => output.claimDirectory('suche', 'site: other'), /suche\/ is written by both page de\/suche/)
-    assert.equal(output.claim('pagefind/x.js', 'site: search index'), '/out/pagefind/x.js')
+    assert.equal(output.claim('pagefind/x.js', 'site: search index'), at('pagefind/x.js'))
   })
 
   it('refuses a file where a directory must be, and the other way round, whoever claims them', () => {
