@@ -67,7 +67,7 @@ ${authorName}
     `Date: ${date}`,
     `To: ${safeTo}`,
     `Subject: ${subject}`,
-    `X-Comment-ID: ${commentId}`,
+    `X-Comment-ID: ${safeHeader(commentId)}`,
     ``,
     body,
   ].join('\r\n')

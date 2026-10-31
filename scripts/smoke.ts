@@ -237,8 +237,8 @@ async function main(args: string[]): Promise<number> {
     console.log('(uncommitted changes are not in a fresh clone, so not tested)')
 
   // the temporary directory by its long name: below a Windows short name (C:\Users\RUNNER~1), bun install
-  // --frozen-lockfile finds changes in a lockfile that has none
-  const root = mkdtempSync(join(realpathSync.native(tmpdir()), 'hadley-smoke-'))
+  // --frozen-lockfile finds changes in a lockfile that has none. A program installs nothing, and is tried below it.
+  const root = mkdtempSync(join(binary ? tmpdir() : realpathSync.native(tmpdir()), 'hadley-smoke-'))
   const clone = join(root, 'hadley')
   const bun = process.execPath
   try {

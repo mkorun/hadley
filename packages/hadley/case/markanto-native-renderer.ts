@@ -40,7 +40,7 @@ const RESERVED_DATA = new Set([
 const SIZING_DATA = new Set(['size', 'style'])
 
 /**
- * The data-* attributes of content, checked: a destination-shaped value (…href, …src, …url) is read as one and
+ * The data-* attributes of content, checked: a destination-shaped value (…href, …src, …url, …link) is read as one and
  * written resolved, or refused; a name hadley reserves is left out. Both are reported. Keys in `omit` are left out
  * silently (they are rendered elsewhere).
  */
@@ -56,7 +56,7 @@ function contentData(
       ctx.ignoredAttributes.push(`data-${key}`)
       continue
     }
-    if (!/(?:href|src|url)$/.test(key)) {
+    if (!/(?:href|src|url|link)$/.test(key)) {
       data[key] = value
       continue
     }

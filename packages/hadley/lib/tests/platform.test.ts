@@ -1,11 +1,22 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { existsExactly, isSystemFile, lf, pathsBelow, readableByOthers, slashed } from '../platform.ts'
+import { changedSince, existsExactly, isSystemFile, lf, pathsBelow, readableByOthers, slashed } from '../platform.ts'
 
 describe('platform', () => {
+  it('tells a file written since a time from one that was not, and counts a file that is gone as changed', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'hadley-changed-'))
+    const file = join(dir, 'a')
+    writeFileSync(file, '')
+    const written = statSync(file).mtimeMs
+    assert.ok(changedSince(file, written))
+    assert.ok(!changedSince(file, written + 1000))
+    assert.ok(changedSince(join(dir, 'gone'), written))
+    rmSync(dir, { recursive: true })
+  })
+
   it('writes a path the file system gives with / between its segments', () => {
     assert.equal(slashed('templates\\partials\\nav.sort', '\\'), 'templates/partials/nav.sort')
     assert.equal(slashed('templates/partials/nav.sort', '/'), 'templates/partials/nav.sort')

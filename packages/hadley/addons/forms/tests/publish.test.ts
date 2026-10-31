@@ -62,6 +62,22 @@ const comment = (id: string, text: string, comments: unknown[] = []) => ({
   comments,
 })
 
+describe('articleDirs and the language of an entry', () => {
+  let site: string
+  beforeEach(async () => {
+    site = await mkdtemp(join(tmpdir(), 'hadley-language-'))
+    await mkdir(join(site, 'content', 'articles', '[a]'), { recursive: true })
+    await writeFile(join(site, 'content', 'articles', '[a]', 'a.md'), '# A\n')
+  })
+  afterEach(() => rm(site, { recursive: true, force: true }))
+
+  it('names no folder for a language that is no name of one', async () => {
+    const dir = await articleDirs(site, 'de')
+    assert.ok(dir('a', 'en')?.endsWith(join('[a]', 'en')))
+    for (const language of ['../..', '..\\x', 'en/../..', '']) assert.equal(dir('a', language), undefined, language)
+  })
+})
+
 describe('renderComments', () => {
   it("writes a visitor's text escaped, its paragraphs and lines as <p> and <br>, with the theme's texts", async () => {
     await file('theme/templates/partials/comments.sort', TEMPLATE)

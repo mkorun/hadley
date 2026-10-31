@@ -8,6 +8,15 @@ import { isProgram, onPath } from './platform.ts'
 export const FORMS_PROGRAM = 'hadley-forms'
 
 /** The site's data directory of the local service; its `dev-secrets.json` holds the admin token the CLI uses. */
+/**
+ * The environment of the service `hadley dev` starts, without what belongs to one in production: its secrets, which it
+ * makes itself in its data directory, and the notifications of real comments.
+ */
+export const devServiceEnv = (env: NodeJS.ProcessEnv): NodeJS.ProcessEnv =>
+  Object.fromEntries(
+    Object.entries(env).filter(([name]) => !/^(?:ADMIN_TOKEN|HMAC_SECRET|SITE_META|NTFY_.*)$/.test(name)),
+  )
+
 export const formsDataDir = (siteDir: string): string => join(siteDir, '.hadley', 'forms')
 
 /**

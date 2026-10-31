@@ -197,7 +197,7 @@ export function main(args: string[]): number {
     if (changes) throw new Error(`the checkout has changes; a release is built from a commit:\n${changes}`)
     const version = JSON.parse(readFileSync(join(repo, 'packages', 'hadley', 'package.json'), 'utf8')).version
     ldflags(version)
-    const go = text('go', ['env', 'GOVERSION'], { timeout: TOOL_TIMEOUT_MS })
+    const go = text('go', ['env', 'GOVERSION'], { cwd: service, timeout: TOOL_TIMEOUT_MS })
     const wanted = goVersion(readFileSync(join(service, 'go.mod'), 'utf8'))
     if (go !== wanted) throw new Error(`Go is ${go}, go.mod names ${wanted}: run it through mise exec go`)
     const commit = text('git', ['log', '-1', '--format=%H %ct'], { timeout: TOOL_TIMEOUT_MS })

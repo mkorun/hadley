@@ -285,7 +285,7 @@ export async function main(args: string[]): Promise<number> {
     const changes = run('git', ['status', '--porcelain'], { timeout: TOOL_TIMEOUT_MS })
     if (changes) throw new Error(`the checkout has changes; a release is built from a commit:\n${changes}`)
     const version = JSON.parse(readFileSync(join(repo, 'packages', 'hadley', 'package.json'), 'utf8')).version
-    const go = run('go', ['env', 'GOVERSION'], { timeout: TOOL_TIMEOUT_MS })
+    const go = run('go', ['env', 'GOVERSION'], { cwd: launcher, timeout: TOOL_TIMEOUT_MS })
     const wanted = goVersion(readFileSync(join(launcher, 'go.mod'), 'utf8'))
     if (go !== wanted) throw new Error(`Go is ${go}, go.mod names ${wanted}: run it through mise exec go`)
     const [revision, time] = run('git', ['log', '-1', '--format=%H %ct'], { timeout: TOOL_TIMEOUT_MS }).split(' ')

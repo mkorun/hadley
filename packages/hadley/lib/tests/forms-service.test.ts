@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, join } from 'node:path'
-import { formsProgram } from '../forms-service.ts'
+import { devServiceEnv, formsProgram } from '../forms-service.ts'
 
 // Which comments service hadley dev starts (services/forms/CONTRACT.md C11).
 
@@ -29,6 +29,13 @@ const noProgram = (path: string): string => {
 }
 // the name onPath looks for: on Windows with .exe
 const FORMS = windows ? 'hadley-forms.exe' : 'hadley-forms'
+
+describe('devServiceEnv', () => {
+  it('keeps what belongs to production from the service of hadley dev', () => {
+    const env = { ADMIN_TOKEN: 'a', HMAC_SECRET: 'b', SITE_META: 'c', NTFY_URL: 'd', NTFY_TOKEN: 'e', PATH: '/bin' }
+    assert.deepEqual(devServiceEnv(env), { PATH: '/bin' })
+  })
+})
 
 describe('formsProgram', () => {
   it('takes dev.forms when it is set, and stops when it cannot be run', () => {

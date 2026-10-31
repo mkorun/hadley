@@ -2,7 +2,7 @@
 // session (session.ts) keeps the decisions, the screen (screen.ts) shows a comment, messages.ts holds the texts.
 
 import { spawnSync } from 'node:child_process'
-import { readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -46,6 +46,8 @@ export async function articleDirs(
       bundles.set(file.bundleId, file.bundleDir)
   return (articleId, lang) => {
     const bundle = bundles.get(articleId)
+    // as the service checks it (services/forms/CONTRACT.md): the name of one folder, whatever the queue says
+    if (!/^[a-z]{2}(-[a-z0-9_-]+)?$/i.test(lang)) return undefined
     return bundle && (lang === defaultLanguage ? bundle : join(bundle, lang))
   }
 }
@@ -308,7 +310,9 @@ async function moderate(
  * when left empty.
  */
 function openEditor(initial: string): string | null {
-  const file = join(tmpdir(), `hadley-comment-${Date.now()}.txt`)
+  // a directory of the user's own: a name in the shared one could be taken before the file is written
+  const dir = mkdtempSync(join(tmpdir(), 'hadley-comment-'))
+  const file = join(dir, 'comment.txt')
   const editor = process.env.EDITOR || process.env.VISUAL || (process.platform === 'win32' ? 'notepad' : 'nano')
   process.stdin.setRawMode(false)
   try {
@@ -317,7 +321,7 @@ function openEditor(initial: string): string | null {
     if (result.status !== 0) return null
     return lf(readFileSync(file, 'utf-8')).trim() || null
   } finally {
-    rmSync(file, { force: true })
+    rmSync(dir, { recursive: true, force: true })
     process.stdin.setRawMode(true)
     // an editor that has a screen of its own leaves the main screen when it ends
     if (process.stdout.isTTY) process.stdout.write(ALTERNATE_SCREEN)

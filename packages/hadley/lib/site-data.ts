@@ -1,8 +1,8 @@
 /**
  * What hadley writes about the site for its tools rather than for readers: meta.json (the site's origin and language
  * and its articles, for the VG Wort report and the comments service's notifications, docs/comments.md) and
- * links.json (the external links) next to a publish build; site.json (the site as loaded, for a look at it) and
- * sitelinks.json (the pages a $id link can reach, for the editors) in a dev build.
+ * links.json (the external links) next to a publish build; site.json (the site as loaded, for a look at it) next to a
+ * dev build, and sitelinks.json (the pages a $id link can reach, for the editors) in it.
  */
 import type { Site } from './site.ts'
 

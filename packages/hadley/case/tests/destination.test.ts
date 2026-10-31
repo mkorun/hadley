@@ -227,4 +227,10 @@ describe('renderer URL policy', () => {
     assert.equal(result.html, '<p><span data-src="/b" data-label="kept">x</span></p>')
     assert.deepEqual(refusedOf(result), ['javascript:x'])
   })
+
+  test('reads a data attribute that ends in link as a destination too', () => {
+    const result = rendered('<m data-link=javascript:x>x</m>')
+    assert.equal(result.html, '<p><span>x</span></p>')
+    assert.deepEqual(refusedOf(result), ['javascript:x'])
+  })
 })

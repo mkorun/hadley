@@ -1,6 +1,7 @@
 import { after, before, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
+import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, posix, relative } from 'node:path'
@@ -524,7 +525,9 @@ describe('hostile content, through a whole publish build', () => {
     const dev = join(root, '.hadley', 'dev')
     const sitelinks = JSON.parse(await readFile(join(dev, 'sitelinks.json'), 'utf8'))
     assert.match(sitelinks.pages.find((p: { id: string }) => p.id === 'evil').title, kept)
-    const siteJson = JSON.parse(await readFile(join(dev, 'site.json'), 'utf8'))
+    // what the dev server serves holds no configuration: site.json lies beside it
+    assert.ok(!existsSync(join(dev, 'site.json')))
+    const siteJson = JSON.parse(await readFile(join(root, '.hadley', 'site.json'), 'utf8'))
     assert.equal(siteJson.content.de.pages.evil.metadata.htmlTitle, `H${X}`)
   })
 

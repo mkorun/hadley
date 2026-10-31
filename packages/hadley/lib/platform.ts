@@ -23,6 +23,15 @@ export const slashed = (path: string, separator: string = sep): string =>
 export const pathsBelow = async (dir: string): Promise<string[]> =>
   (await readdir(realpathSync(dir), { recursive: true })).map((path) => slashed(path))
 
+/** Whether the file at `path` was written at or after `time` (milliseconds), or is gone. */
+export function changedSince(path: string, time: number): boolean {
+  try {
+    return statSync(path).mtimeMs >= time
+  } catch {
+    return true
+  }
+}
+
 /**
  * Whether `name` is a file an operating system leaves in a directory, which hadley neither reads nor publishes:
  * `.DS_Store` and `._*` (macOS), `Thumbs.db` and `desktop.ini` (Windows).

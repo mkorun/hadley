@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { access, constants, mkdir, readFile, readdir, realpath } from 'node:fs/promises'
-import { watch } from 'node:fs'
+import { realpathSync, watch } from 'node:fs'
 import { basename, join, resolve, sep } from 'node:path'
 import http from 'node:http'
 import { createServer as createViteServer, createLogger } from 'vite'
@@ -11,8 +11,8 @@ import { commentsPort, localOrigin, portInUse, siteEditor, type DevOptions } fro
 import { refusal } from './dev-guard.ts'
 import { devCertificate } from './dev-https.ts'
 import { clearScreen, logger } from './logger.ts'
-import { isSystemFile } from './platform.ts'
-import { FORMS_PROGRAM, formsDataDir, formsProgram } from './forms-service.ts'
+import { changedSince, isSystemFile } from './platform.ts'
+import { FORMS_PROGRAM, devServiceEnv, formsDataDir, formsProgram } from './forms-service.ts'
 import { siteLabel } from './site-root.ts'
 import { readUserConfig } from './user-config.ts'
 
@@ -104,13 +104,11 @@ export async function startDevServer({
   let commentsProcess: ReturnType<typeof spawn> | null = null
 
   if (forms) {
-    // its secrets are the ones it made in its data directory, not any of the environment's
-    const { ADMIN_TOKEN: _admin, HMAC_SECRET: _hmac, ...env } = process.env
     commentsProcess = spawn(forms, ['-dev'], {
       cwd: siteDir,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: {
-        ...env,
+        ...devServiceEnv(process.env),
         DATA_DIR: formsDataDir(siteDir),
         PORT: String(servicePort),
         ...(siteConfig?.site?.origin ? { SITE_ORIGINS: siteConfig.site.origin } : {}),
@@ -176,9 +174,11 @@ export async function startDevServer({
     _warnOrig(msg, opts)
   }
 
+  // by its long name: under a Windows short name (C:\Users\RUNNER~1) Vite refuses the files as outside its root
+  const served = realpathSync.native(siteTmp)
   const vite = await createViteServer({
     configFile: false,
-    root: siteTmp,
+    root: served,
     // a site of pages, not one page for every path: a file that is not there is a 404, not the home page
     appType: 'mpa',
     customLogger: viteLogger,
@@ -208,7 +208,7 @@ export async function startDevServer({
       open: false,
       allowedHosts,
       // no file but those of the output directory (as Vite compares them, with links resolved), also not by /@fs/
-      fs: { strict: true, allow: [await realpath(siteTmp)] },
+      fs: { strict: true, allow: [served] },
     },
     plugins: [
       // first, before the editor and the proxy see a request (lib/dev-guard.ts)
@@ -321,6 +321,7 @@ export async function startDevServer({
   // Step 3: File watcher + rebuild
   let buildTimer: ReturnType<typeof setTimeout> | null = null
   let buildRunning = false
+  let buildStarted = 0
   let buildQueued = false
   let lastBuildOk = false
 
@@ -338,6 +339,7 @@ export async function startDevServer({
       return
     }
     buildRunning = true
+    buildStarted = Date.now()
     if (lastBuildOk) clearScreen()
     devLog(`Rebuilding (${reason})...`)
     try {
@@ -397,6 +399,8 @@ export async function startDevServer({
         // comments.json is written per-approval during TUI — the build only reads
         // _comments.html, so skip these intermediate writes to avoid spurious rebuilds.
         if (filename.endsWith('comments.json') || isSystemFile(basename(filename))) return
+        // on Windows a file the build only read is reported too
+        if (process.platform === 'win32' && !changedSince(join(dir, filename), buildStarted)) return
         if (filename.endsWith('_comments.html')) {
           devLog(filename)
         } else {

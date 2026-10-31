@@ -108,7 +108,7 @@ export async function build(
       ]
   for (const lang of feeds) siteFiles.push([feedUrl(site, lang).slice(1), `site: feed ${lang}`])
   if (og) siteFiles.push(['og-default.jpg', 'site: og-default'])
-  if (!isPublish) siteFiles.push(['site.json', 'site: site.json'], ['sitelinks.json', 'site: sitelinks.json'])
+  if (!isPublish) siteFiles.push(['sitelinks.json', 'site: sitelinks.json'])
   if (maintenance) {
     if (!site.content[site.defaultLanguage]?.pages['503'])
       throw new Error(`config.lima: maintenance is on, but @errors/[503] has no page in ${site.defaultLanguage}`)
@@ -196,7 +196,9 @@ export async function build(
     await writeFile(joinPath(siteDir, '.hadley', 'meta.json'), metaJson(site))
     await writeFile(joinPath(siteDir, '.hadley', 'links.json'), linksJson(site))
   } else {
-    await write('site.json', 'site: site.json', siteJson(site))
+    // not in the output, which hadley dev serves, with --host to other devices: it holds the configuration
+    await writeFile(joinPath(siteDir, '.hadley', 'site.json'), siteJson(site))
+    await rm(joinPath(outDir, 'site.json'), { force: true })
     await write('sitelinks.json', 'site: sitelinks.json', sitelinksJson(site))
   }
 
