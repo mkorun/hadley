@@ -39,7 +39,8 @@ bun scripts/check-links.ts
 # Catches files that tests leave in TMPDIR; a test that writes elsewhere is outside this check.
 test_tmp=$(mktemp -d)
 trap 'rm -rf "$test_tmp"' EXIT
-TMPDIR="$test_tmp" bun run test
+# The first build of a test file takes up to 5 s on a CI runner with Windows, the default limit of a test.
+TMPDIR="$test_tmp" bun run test --timeout 30000
 # The same tests on Node.js (ADR 0002).
 TMPDIR="$test_tmp" node --test 'packages/hadley/**/tests/*.test.ts' 'scripts/tests/*.test.ts'
 
