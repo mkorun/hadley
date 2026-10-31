@@ -35,6 +35,12 @@ describe('the programs of a release', () => {
     assert.ok(readFileSync(join(repo, 'bun.lock'), 'utf8').includes(`"pagefind@${PAGEFIND_VERSION}"`))
   })
 
+  it('names the version of the package wherever a text says which one to take', () => {
+    const { version } = JSON.parse(readFileSync(join(repo, 'packages', 'hadley', 'package.json'), 'utf8'))
+    assert.ok(readFileSync(join(repo, 'README.md'), 'utf8').includes(`\`${version}\``))
+    assert.ok(readFileSync(join(repo, 'docs', 'comments.md'), 'utf8').includes(`version=${version}\n`))
+  })
+
   it('pins every download by its checksum', () => {
     for (const { bun, pagefind } of TARGETS) {
       assert.match(bun.sha256, /^[0-9a-f]{64}$/)

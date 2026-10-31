@@ -37,7 +37,19 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	dir := filepath.Join(cache, "hadley", version+"-"+payloadSum[:12])
+	cache = filepath.Join(cache, "hadley")
+	program, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	if program, err = filepath.EvalSymlinks(program); err != nil {
+		return err
+	}
+	removeOld(program)
+	if len(args) == 1 && args[0] == "upgrade" {
+		return upgrade(github(), program, cache)
+	}
+	dir := filepath.Join(cache, version+"-"+payloadSum[:12])
 	if _, err := os.Lstat(dir); errors.Is(err, fs.ErrNotExist) {
 		fmt.Fprintln(os.Stderr, firstStart)
 		if err := install(payload, payloadSum, dir); err != nil {

@@ -74,6 +74,7 @@ Commands:
   clean              Clear all build directories of the site
   comments           Comment moderation TUI against production (docs/comments.md)
   version            Print version
+  upgrade            Replace the program with the latest release (docs/cli.md)
 
 Run "hadley <command> --help" for details.`.trim(),
 
@@ -235,8 +236,16 @@ try {
       break
     }
 
+    // the program of a release answers this itself (services/launcher); here hadley runs from a package or a checkout
+    case 'upgrade': {
+      fail(
+        'hadley upgrade replaces the program of a release; update a package with: npm install --global @mkorun/hadley',
+      )
+      break
+    }
+
     default: {
-      fail(`hadley has no command ${command}: init, dev, deploy, clean, comments, version (hadley --help)`)
+      fail(`hadley has no command ${command}: init, dev, deploy, clean, comments, version, upgrade (hadley --help)`)
     }
   }
 } catch (error) {
