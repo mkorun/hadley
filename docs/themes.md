@@ -115,7 +115,8 @@ heading's `level`, its `id` and its content as `html.text`, and the page's `t` a
 {@raw html.text}{#if id}<a href="#{ id }" aria-label="{ t.heading.link }">¶</a>{/if}
 ```
 
-hems: `packages/hadley/themes/hems/templates/markup/heading.sort`.
+hems:
+[`heading.sort`](https://github.com/mkorun/hadley/blob/main/packages/hadley/themes/hems/templates/markup/heading.sort).
 
 ## Home page
 
@@ -184,7 +185,7 @@ build.
 
 ## hems
 
-hems is hadley's default theme (`packages/hadley/themes/hems/`).
+hems is hadley's default theme ([its files](https://github.com/mkorun/hadley/tree/main/packages/hadley/themes/hems)).
 
 Line art — an image in `<m data-style=ink>` — takes the colour of the paper in the light scheme and turns light on dark
 in the dark one; so does a cover whose page sets `coverStyle: ink`. A portrait in `<m data-style=cameo>` is round: on
@@ -199,7 +200,8 @@ Its settings:
 
 ## punch
 
-punch is the theme of a personal site with a few posts (`packages/hadley/themes/punch/`); `hadley init --theme punch`
+punch is the theme of a personal site with a few posts
+([its files](https://github.com/mkorun/hadley/tree/main/packages/hadley/themes/punch)); `hadley init --theme punch`
 makes one with its starter (docs/init.md). Its home page opens on the page's cover, as wide as the screen, with the
 site's title, the home page's text and the owner's profiles (`profiles`, "Persons") on it; an image of that text in
 `<m data-style=cameo>` is the round portrait above the title. The posts follow as cards with their covers

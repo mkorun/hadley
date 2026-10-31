@@ -178,7 +178,8 @@ export async function startDevServer({
   // Vite starts in well under a second; a start that hangs would otherwise say nothing at all
   let starting = 'creating its server'
   const stalled = setTimeout(
-    () => devErr(`Vite has not started after ${VITE_STALL_MS / 1000} s, at: ${starting}`),
+    () =>
+      devErr(`Vite has not started after ${VITE_STALL_MS / 1000} s, at: ${starting}; stop and start hadley dev again`),
     VITE_STALL_MS,
   )
   // by its long name: under a Windows short name (C:\Users\RUNNER~1) Vite refuses the files as outside its root
@@ -323,8 +324,10 @@ export async function startDevServer({
   // the browser, by the program the user configuration names (dev.open), with the URL last
   const open = userConfig.dev.open
   if (open) {
-    const opener = spawn(open[0]!, [...open.slice(1), origin], { stdio: 'ignore', timeout: 10_000 })
+    // a browser it starts may stay as long as the user likes: nothing waits for it, and it outlives hadley
+    const opener = spawn(open[0]!, [...open.slice(1), origin], { stdio: 'ignore', detached: true, windowsHide: true })
     opener.on('error', (error) => devWarn(`dev.open: ${error.message}`))
+    opener.unref()
   }
 
   // Step 3: File watcher + rebuild

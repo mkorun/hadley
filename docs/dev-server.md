@@ -132,5 +132,5 @@ dev:
   forms: /opt/hadley/hadley-forms   # the comments service, instead of hadley-forms on the PATH
 ```
 
-`dev.open` runs the program with its arguments, never through a shell. A command that needs a shell names one:
-`open: [sh, -c, 'echo "open $1" | nc -q 1 host 12345', sh]`.
+`dev.open` runs the program with its arguments, never through a shell, and leaves it running when hadley ends. A command
+that needs a shell names one: `open: [sh, -c, 'echo "open $1" | nc -q 1 host 12345', sh]`.
