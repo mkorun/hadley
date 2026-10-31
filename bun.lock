@@ -25,10 +25,10 @@
         "hadley": "./hadley.ts",
       },
       "dependencies": {
-        "@limaformat/lima": "^0.7.0",
+        "@limaformat/lima": "^0.7.1",
         "@markantolang/parser": "0.2.0",
         "@mkorun/galley": "^0.3.4",
-        "@mkorun/quad": "^0.1.3",
+        "@mkorun/quad": "^0.1.4",
         "esbuild": "0.28.2",
         "pagefind": "^1.5.2",
         "sharp": "^0.35.4",
@@ -149,7 +149,7 @@
 
     "@img/sharp-win32-x64": ["@img/sharp-win32-x64@0.35.4", "", { "os": "win32", "cpu": "x64" }, "sha512-XtmnYhBcrORsJ4XJngyzr/EWP0hRZLAZRFaApdKuviyqF78+ylxh2y06ZmtULAMOnObJ3ucpN0AcwSWnMowTRg=="],
 
-    "@limaformat/lima": ["@limaformat/lima@0.7.0", "", {}, "sha512-2bVT5aaJQLsuRdX0Zv3KUUdVDfFAl0L1ISDD+dldHN83znyjErrY424RBnYVn4nuIj6p/foZ3HVeK83IblQsjg=="],
+    "@limaformat/lima": ["@limaformat/lima@0.7.1", "", {}, "sha512-fvXKtNiNHPC4nXKQ0kKlFfzZ4hTq0dS0kaK8EqBAbKpTSiNz7tmTdXlk0wYVjTQxkHYNVK0nCnlxaNgX73wMvw=="],
 
     "@markantolang/parser": ["@markantolang/parser@0.2.0", "", { "peerDependencies": { "mdast-util-from-markdown": "2.0.2", "mdast-util-gfm": "3.1.0", "micromark-extension-gfm": "3.0.0" }, "optionalPeers": ["mdast-util-from-markdown", "mdast-util-gfm", "micromark-extension-gfm"], "bin": { "markanto": "dist/cli.js" } }, "sha512-3A51QUSYQg0CI7b/4fiylWU1hzuLa+/Vk3oLEnwaDDw+jBvfBnm3KXp/li06oEeG9un4e6P1SfPOzjEYQ5QC+g=="],
 
@@ -157,7 +157,7 @@
 
     "@mkorun/hadley": ["@mkorun/hadley@workspace:packages/hadley"],
 
-    "@mkorun/quad": ["@mkorun/quad@0.1.3", "", {}, "sha512-+4l2rG6DXB5ONsEIKEwk1lvR5JPCpYqXuhjJQcXFUBykoE68qKVczOFISEWoUVzdgkHJoU/JNKYaWveVwelfwQ=="],
+    "@mkorun/quad": ["@mkorun/quad@0.1.4", "", {}, "sha512-rET3sDoPQ/+I8EXAGc3s/ixg70vi8GTmTz3/38b18dT3qgYwyCLZf6isTDLvIJDqhqYMXvSh0Tk0nNj0AhzQRQ=="],
 
     "@oxc-parser/binding-android-arm-eabi": ["@oxc-parser/binding-android-arm-eabi@0.155.0", "", { "os": "android", "cpu": "arm" }, "sha512-A6xv7hDtnTm+xlZ7utn6rRQpRMJHRhVr3gjRGqlx0RUX84mNk0pAsy6YN/wWhuOTkaZhRrrzaLxf0NfbH77j2w=="],
 

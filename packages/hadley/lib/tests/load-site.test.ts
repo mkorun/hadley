@@ -95,7 +95,6 @@ describe('the front matter of a page', () => {
       return { warnings: settle(dev.problems, false), date: dev.content.de!.pages.a!.metadata.publishFrom }
     }
     for (const [name, value] of Object.entries({
-      space: '2030-01-01\u00a0',
       german: '"01.03.2030"',
       local: '"2030-01-01 10:00"',
       noDay: '"2026-02-30"',
@@ -107,6 +106,8 @@ describe('the front matter of a page', () => {
       )
     }
     assert.equal((await date('date-iso', '"2030-01-01"')).date?.toISOString(), '2030-01-01T00:00:00.000Z')
+    // Lima trims a no-break space after a value, so this is the day a reader sees
+    assert.equal((await date('date-space', '2030-01-01\u00a0')).date?.toISOString(), '2030-01-01T00:00:00.000Z')
     assert.equal(
       (await date('date-time', '"2030-01-01T10:00:00+02:00"')).date?.toISOString(),
       '2030-01-01T08:00:00.000Z',

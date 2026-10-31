@@ -2,7 +2,7 @@
 // integrity check (integrity.ts), which both need the exact same md/baseOffset
 // split for a raw document. The title comes from the syntax tree (title.ts).
 
-import { parse as limaparse } from '@limaformat/lima'
+import { LimaError, parse as limaparse } from '@limaformat/lima'
 import type { CaseOptions, ParseErrorInfo } from './types.ts'
 
 export interface PreparedDocument {
@@ -43,9 +43,8 @@ export function prepareDocument(rawDoc: string, options: CaseOptions): PreparedD
           ...(options.partials === undefined ? {} : { partials: options.partials }),
         })
       } catch (e) {
-        // Bun gives every error a line of its own, of the JavaScript that threw it; 0.7 does not export LimaError
-        const { name, line: limaLine } = e as { name?: unknown; line?: unknown }
-        const line = name === 'LimaError' ? limaLine : undefined
+        // Bun gives every error a line of its own, of the JavaScript that threw it
+        const line = e instanceof LimaError ? e.line : undefined
         // the error's line counts in `text`, which starts this far into the document
         const textStart = bom + opening.length + inner.indexOf(text)
         frontMatterError = {

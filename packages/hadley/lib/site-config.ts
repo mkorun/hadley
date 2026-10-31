@@ -6,7 +6,7 @@
 import { readdir, readFile } from 'node:fs/promises'
 import { join as joinPath } from 'node:path'
 import { isSystemFile, pathsBelow } from './platform.ts'
-import { parse as limaparse } from '@limaformat/lima'
+import { LimaError, parse as limaparse } from '@limaformat/lima'
 import galley from '@mkorun/galley'
 import type { Themes } from '../case/index.ts'
 import { rawProblems } from './compile-templates.ts'
@@ -20,12 +20,11 @@ const limaFile = async (path: string, partials?: Record<string, unknown>): Promi
   try {
     return limaparse(text, { strict: true, ...(partials ? { partials } : {}) })
   } catch (error) {
-    // Bun gives every error a line of its own, of the JavaScript that threw it; 0.7 does not export LimaError
-    const { name, line } = error as { name?: unknown; line?: unknown }
-    if (name !== 'LimaError') throw new Error(`${path}: ${String(error)}`, { cause: error })
+    // Bun gives every error a line of its own, of the JavaScript that threw it
+    const line = error instanceof LimaError ? error.line : undefined
     const message = error instanceof Error ? error.message : String(error)
     // the line goes with the path, as a failure names a place (lib/logger.ts)
-    if (typeof line !== 'number' || line < 1) throw new Error(`${path}: ${message}`, { cause: error })
+    if (line === undefined || line < 1) throw new Error(`${path}: ${message}`, { cause: error })
     throw new Error(`${path}:${line}: ${message.replace(/ at line \d+/, '')}`, { cause: error })
   }
 }
