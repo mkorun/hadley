@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { existsExactly, isSystemFile, lf, readableByOthers, slashed } from '../platform.ts'
@@ -25,7 +25,9 @@ describe('platform', () => {
     try {
       mkdirSync(join(dir, 'Bilder'))
       writeFileSync(join(dir, 'Bilder', 'Foto.jpg'), '')
-      for (const blind of [false, true]) {
+      // without the comparison, only a file system that tells names by their case refuses another spelling
+      const caseBlindFs = existsSync(join(dir, 'bilder'))
+      for (const blind of caseBlindFs ? [true] : [false, true]) {
         assert.equal(existsExactly(dir, 'Bilder/Foto.jpg', { blind }), true)
         assert.equal(existsExactly(dir, 'Bilder/../Bilder/Foto.jpg', { blind }), true)
         assert.equal(existsExactly(dir, 'bilder/foto.jpg', { blind }), false)

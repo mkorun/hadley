@@ -7,6 +7,7 @@
  * of the theme's: a publish build would rename the one it imports (themeImports).
  */
 import { createHash } from 'node:crypto'
+import { realpathSync } from 'node:fs'
 import { copyFile, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import type { Output } from './output.ts'
@@ -53,12 +54,14 @@ export async function published(output: string, code: string): Promise<{ name: s
  * `require`), as esbuild reads it, by file; a URL with a scheme is another site's. A file it shows (`url()`) is not an
  * import. An import whose path a script computes (`import(p)`) esbuild cannot read, so it passes: the theme is
  * trusted like code (AGENTS.md, "Security"), and its author keeps to what this check can see, until the theme step
- * bundles.
+ * bundles. esbuild names a file by its real path, so the files are too: `dir` may be reached through a symbolic link,
+ * as the temporary directory of macOS is.
  */
 export async function themeImports(dir: string, files: readonly string[]): Promise<Map<string, string[]>> {
   if (files.length === 0) return new Map()
   const { build } = await import('esbuild')
-  const imports = new Map<string, string[]>(files.map((file) => [resolve(dir, file), []]))
+  const real = (file: string) => realpathSync(resolve(dir, file))
+  const imports = new Map<string, string[]>(files.map((file) => [real(file), []]))
   const IMPORTS = new Set(['import-statement', 'import-rule', 'dynamic-import', 'require-call', 'composes-from'])
   await build({
     entryPoints: [...imports.keys()],
@@ -83,7 +86,7 @@ export async function themeImports(dir: string, files: readonly string[]): Promi
       },
     ],
   })
-  return new Map(files.map((file) => [file, imports.get(resolve(dir, file))!]))
+  return new Map(files.map((file) => [file, imports.get(real(file))!]))
 }
 
 // Pagefind's files, which the search writes under the names Pagefind gives them (lib/search.ts): a script imports

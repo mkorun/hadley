@@ -1,14 +1,17 @@
-# The gate (check.sh, docs/typescript.md "Gate") on every push to main and every pull request, with the tools at the
-# versions the project uses, through mise as check.sh runs them: Bun, Node.js at the lowest version hadley supports
-# (docs/adr/0001-runtimes.md), Go for the comments service; then the smoke test (scripts/smoke.ts), which builds a
-# small site with a fresh clone and with the package as npm installs it, each on Bun and on Node.js. One job on Linux,
-# and a new push cancels the run before it. Every action is pinned to a commit.
+# The gate (check.sh, docs/typescript.md "Gate") on every push to main, every pull request and every release
+# (release.yml calls it), on Linux, macOS and Windows (docs/platforms.md), with the tools at the versions the project
+# uses (.github/actions/tools); then the smoke test (scripts/smoke.ts), which builds a small site with a fresh clone and
+# with the package as npm installs it, each on Bun and on Node.js. Each system also gets exiftool, which the tests use,
+# and the Noto fonts of the og images. check.sh is a Bash script; on Windows it runs in Git Bash. A system that fails
+# does not stop the others; Windows, which does not pass yet, does not fail the run. A new push cancels the run before
+# it. Every action is pinned to a commit.
 name: check
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -19,25 +22,49 @@ concurrency:
 
 jobs:
   check:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    # Windows does not pass the tests yet (docs/platforms.md); its run shows what is left, and does not fail the check
+    continue-on-error: ${{ matrix.os == 'windows-2025' }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
-        with:
-          version: 2026.8.5
-          mise_toml: |
-            [tools]
-            bun = "1.4.0"
-            node = "24.18.0"
-            go = "1.27.3"
-      - run: sudo apt-get install -y libimage-exiftool-perl fonts-noto-core
+      - uses: ./.github/actions/tools
+        timeout-minutes: 10
+      - if: runner.os == 'Linux'
+        run: sudo apt-get install -y libimage-exiftool-perl fonts-noto-core
         timeout-minutes: 5
+      - if: runner.os == 'macOS'
+        run: brew install exiftool && brew install --cask font-noto-sans
+        timeout-minutes: 10
+      - if: runner.os == 'Windows'
+        run: choco install exiftool --yes --no-progress
+        timeout-minutes: 10
+      # the release of Noto Sans the font-noto-sans cask of macOS installs, at its checksum; Chocolatey's noto
+      # package downloads from a place that is gone
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $zip = "$env:RUNNER_TEMP\NotoSans.zip"
+          Invoke-WebRequest -OutFile $zip `
+            https://github.com/notofonts/latin-greek-cyrillic/releases/download/NotoSans-v2.015/NotoSans-v2.015.zip
+          if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne '0c34df072a3fa7efbb7cbf34950e1f971a4447cffe365d3a359e2d4089b958f5') {
+            throw "$zip is not the NotoSans-v2.015.zip it should be"
+          }
+          Expand-Archive $zip "$env:RUNNER_TEMP\NotoSans"
+          Copy-Item "$env:RUNNER_TEMP\NotoSans\NotoSans\unhinted\ttf\NotoSans-*.ttf" "$env:WINDIR\Fonts"
+        timeout-minutes: 10
       - run: bun install --frozen-lockfile
         timeout-minutes: 5
       - run: ./check.sh
-        timeout-minutes: 15
+        timeout-minutes: 20
       - run: bun scripts/smoke.ts
         timeout-minutes: 15

@@ -1,8 +1,13 @@
 # Platforms
 
-hadley is made to build a site the same on Linux, macOS and Windows; so far it is tested on Linux. What differs
-between them is handled in one place, `packages/hadley/lib/platform.ts`, and keeps a site from building on one system
-but not on another:
+hadley is made to build a site the same on Linux, macOS and Windows. The CI (`.github/workflows/check.yml`) runs the
+gate (`check.sh`) and the smoke test on Ubuntu 24.04, macOS 15 and Windows Server 2025, in Git Bash there, for every
+push to `main`, every pull request and every release. Linux and macOS pass; Windows does not yet, and its run does not
+fail the check: many of its tests expect paths with `/` and file modes and times as Linux and macOS have them. The
+release files of the comments service are built on Linux only (`scripts/build-forms.ts`).
+
+What differs between the systems is handled in one place, `packages/hadley/lib/platform.ts`, and keeps a site from
+building on one system but not on another:
 
 - **Paths** are written with `/`, in URLs and in the output directory alike. A path in the output with a backslash,
   or with a segment in the form of a Windows short name (`PROGRA~1`), stops the build.

@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
+import { close as closePagefind } from 'pagefind'
 import sharp from 'sharp'
 import { build } from '../../index.ts'
 import { runPagefind } from '../search.ts'
@@ -114,6 +115,8 @@ before(async () => {
 })
 
 after(async () => {
+  // the Pagefind service a build started here keeps this directory as its own, which a later build needs
+  await closePagefind()
   process.chdir(cwd)
   await rm(dir, { recursive: true, force: true })
 })

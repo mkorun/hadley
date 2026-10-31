@@ -84,7 +84,9 @@ describe('the release of the comments service', () => {
     }
   })
 
-  it('makes the same archive of the same files, with their modes, no owner and the given time', () => {
+  // build-forms.ts makes the archives with GNU tar, so on Linux; the tar of macOS has no --mtime
+  const GNU_TAR = { skip: process.platform !== 'linux' && 'the archives are made with GNU tar, on Linux' }
+  it('makes the same archive of the same files, with their modes, no owner and the given time', GNU_TAR, () => {
     const root = mkdtempSync(join(tmpdir(), 'hadley-build-forms-'))
     try {
       const make = (name: string) => {
