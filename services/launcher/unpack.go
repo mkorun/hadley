@@ -11,12 +11,16 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
 const (
 	settleAttempts = 30
 	settleWait     = 100 * time.Millisecond
+	temporaryName  = ".unpack-"
+	// Longer than any unpacking takes: what is older was left by a start that died.
+	staleAfter = time.Hour
 )
 
 // install unpacks payload into the new directory dir, which appears whole or not at all: two first starts at once
@@ -27,10 +31,11 @@ func install(payload []byte, sum, dir string) error {
 		return errors.New("the program is damaged: download it again")
 	}
 	parent := filepath.Dir(dir)
-	if err := os.MkdirAll(parent, 0o755); err != nil {
+	if err := os.MkdirAll(parent, 0o700); err != nil {
 		return err
 	}
-	temporary, err := os.MkdirTemp(parent, ".unpack-")
+	removeStale(parent)
+	temporary, err := os.MkdirTemp(parent, temporaryName)
 	if err != nil {
 		return err
 	}
@@ -41,8 +46,49 @@ func install(payload []byte, sum, dir string) error {
 	return settle(temporary, dir)
 }
 
-// settle moves the finished directory from to its place. Another start may have got there first, which is as good.
-// Windows refuses the move while a virus scanner still reads a file just written, so it is tried for a few seconds.
+// removeStale deletes what a start left that died while unpacking. It only frees space, so a failure does not matter.
+func removeStale(parent string) {
+	entries, err := os.ReadDir(parent)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if err == nil && strings.HasPrefix(entry.Name(), temporaryName) && time.Since(info.ModTime()) > staleAfter {
+			os.RemoveAll(filepath.Join(parent, entry.Name()))
+		}
+	}
+}
+
+// check refuses a directory hadley should not run from: what lies there runs as the user, so it must be the user's
+// alone, and a part may be gone if something cleaned up the cache.
+func check(dir string) error {
+	for _, path := range []string{filepath.Dir(dir), dir} {
+		info, err := os.Lstat(path)
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() || !private(info) {
+			return fmt.Errorf("%s is not a directory of this user alone; delete it and start again", path)
+		}
+	}
+	parts := []string{
+		executable(dir, "bun"),
+		executable(dir, "pagefind"),
+		filepath.Join(dir, "app", "hadley.js"),
+		filepath.Join(dir, "app", "node_modules"),
+	}
+	for _, part := range parts {
+		if _, err := os.Stat(part); err != nil {
+			return fmt.Errorf("%s is incomplete; delete it and start again", dir)
+		}
+	}
+	return nil
+}
+
+// settle moves the finished directory from to its place. Another start may have got there first, which is as good, and
+// check looks at whatever stands there. Windows refuses the move while a virus scanner still reads a file just written,
+// so it is tried for a few seconds.
 func settle(from, to string) error {
 	var err error
 	for range settleAttempts {

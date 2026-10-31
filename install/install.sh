@@ -71,7 +71,8 @@ main() {
   target=$(system)
   bin=$HOME/.local/bin
   program=$bin/hadley
-  if [ -L "$program" ] || { [ -e "$program" ] && ! "$program" version 2>/dev/null | grep -q '^hadley '; }; then
+  # the program is told by a line it carries; a file that may be anything is not run to ask it
+  if [ -L "$program" ] || { [ -e "$program" ] && ! grep -q 'hadley: first start, unpacking' "$program"; }; then
     fail "$program is there and is not the hadley program; move it away first"
   fi
 

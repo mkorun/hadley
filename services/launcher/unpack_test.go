@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 type entry struct {
@@ -146,11 +147,116 @@ func TestTwoFirstStartsAtOnceBothGetTheDirectory(t *testing.T) {
 	}
 }
 
-func TestBunReadsNothingOfTheSite(t *testing.T) {
-	got := strings.Join(bunArgs("/c", []string{"dev", "--port", "8000"}), " ")
-	want := "bun --no-env-file --config=" + filepath.Join("/c", "app", "bunfig.toml") + " " +
-		filepath.Join("/c", "app", "hadley.js") + " dev --port 8000"
-	if got != want {
-		t.Errorf("got %s", got)
+func TestBunGetsItsOptionsFromTheProgramOnly(t *testing.T) {
+	env := strings.Join(bunEnv([]string{"PATH=/bin", "BUN_OPTIONS=--preload ./hook.ts", "bun_config_x=1"}, "/c"), " ")
+	if strings.Contains(strings.ToUpper(env), "BUN_") || !strings.Contains(env, "PATH=/bin") {
+		t.Errorf("got %s", env)
+	}
+	if !strings.Contains(env, "PAGEFIND_BINARY_PATH=") {
+		t.Errorf("no Pagefind in %s", env)
+	}
+	args := strings.Join(bunArgs("/c", []string{"dev"}), " ")
+	for _, want := range []string{"--no-env-file", "--no-install", "--config=", "hadley.js dev"} {
+		if !strings.Contains(args, want) {
+			t.Errorf("no %s in %s", want, args)
+		}
+	}
+}
+
+// whole makes the directory of a version as install leaves it, and returns it.
+func whole(t *testing.T) string {
+	t.Helper()
+	parent := filepath.Join(t.TempDir(), "hadley")
+	dir := filepath.Join(parent, "1")
+	for _, part := range []string{executable(dir, "bun"), executable(dir, "pagefind"),
+		filepath.Join(dir, "app", "hadley.js"), filepath.Join(dir, "app", "node_modules", "a")} {
+		if err := os.MkdirAll(filepath.Dir(part), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(part, nil, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Chmod(parent, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func TestCheckTakesAWholeDirectory(t *testing.T) {
+	if err := check(whole(t)); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestCheckRefusesADirectoryWithAPartGone(t *testing.T) {
+	dir := whole(t)
+	if err := os.RemoveAll(filepath.Join(dir, "app", "node_modules")); err != nil {
+		t.Fatal(err)
+	}
+	if err := check(dir); err == nil || !strings.Contains(err.Error(), "incomplete") {
+		t.Errorf("got %v", err)
+	}
+}
+
+func TestCheckRefusesALink(t *testing.T) {
+	dir := whole(t)
+	link := filepath.Join(filepath.Dir(dir), "2")
+	if err := os.Symlink(dir, link); err != nil {
+		t.Skip(err)
+	}
+	if err := check(link); err == nil || !strings.Contains(err.Error(), "not a directory") {
+		t.Errorf("got %v", err)
+	}
+}
+
+func TestCheckRefusesADirectoryOthersCanWriteTo(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows shows no such permissions")
+	}
+	dir := whole(t)
+	for _, path := range []string{dir, filepath.Dir(dir)} {
+		if err := os.Chmod(path, 0o777); err != nil {
+			t.Fatal(err)
+		}
+		if err := check(dir); err == nil || !strings.Contains(err.Error(), "not a directory") {
+			t.Errorf("%s: got %v", path, err)
+		}
+		if err := os.Chmod(path, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestInstallRemovesWhatADeadStartLeftAndOnlyThat(t *testing.T) {
+	parent := t.TempDir()
+	dead := filepath.Join(parent, temporaryName+"dead")
+	running := filepath.Join(parent, temporaryName+"running")
+	other := filepath.Join(parent, "0.1.0-abc")
+	old := time.Now().Add(-2 * staleAfter)
+	for _, path := range []string{dead, running, other} {
+		if err := os.Mkdir(path, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, path := range []string{dead, other} {
+		if err := os.Chtimes(path, old, old); err != nil {
+			t.Fatal(err)
+		}
+	}
+	payload := archive(t, entry{name: "bun", body: "program", mode: 0o755})
+	if err := install(payload, sum(payload), filepath.Join(parent, "1")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(dead); err == nil {
+		t.Error("the dead start's directory stayed")
+	}
+	for _, path := range []string{running, other} {
+		if _, err := os.Stat(path); err != nil {
+			t.Errorf("%s went", path)
+		}
 	}
 }

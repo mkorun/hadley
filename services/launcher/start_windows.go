@@ -8,9 +8,10 @@ import (
 )
 
 // start runs program and ends with its exit status: Windows cannot replace a process. Ctrl+C reaches both, and hadley
-// decides when it ends.
+// decides when it ends: a signal someone is notified of does not end this process, and signal.Ignore does nothing on
+// Windows.
 func start(program string, args, env []string) error {
-	signal.Ignore(os.Interrupt)
+	signal.Notify(make(chan os.Signal, 1), os.Interrupt)
 	command := exec.Command(program, args[1:]...)
 	command.Stdin, command.Stdout, command.Stderr = os.Stdin, os.Stdout, os.Stderr
 	command.Env = env

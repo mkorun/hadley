@@ -55,7 +55,7 @@ describe('the programs of a release', () => {
 })
 
 describe('install.sh', () => {
-  const program = '#!/bin/sh\necho "hadley 9.9.9"\n'
+  const program = '#!/bin/sh\n# hadley: first start, unpacking\necho "hadley 9.9.9"\n'
   const sum = (text: string) => createHash('sha256').update(text).digest('hex')
   const SYSTEMS = ['linux-amd64', 'linux-arm64', 'darwin-amd64', 'darwin-arm64']
 
@@ -141,14 +141,22 @@ cp "${join(root, 'program')}" "$out"`,
     rmSync(root, { recursive: true })
   })
 
-  it('does not touch another hadley', unix, () => {
+  it('tells the program by the line it carries', () => {
+    const line = /grep -q '([^']+)'/.exec(template)![1]!
+    assert.ok(readFileSync(join(repo, 'services', 'launcher', 'main.go'), 'utf8').includes(line))
+  })
+
+  it('neither touches nor runs another hadley', unix, () => {
     const { root, run, installed, urls } = setup()
+    const mine = `#!/bin/sh\ntouch "${join(root, 'ran')}"\n`
     mkdirSync(join(installed, '..'), { recursive: true })
-    writeFileSync(installed, 'mine\n')
+    writeFileSync(installed, mine)
+    chmodSync(installed, 0o755)
     let result = run()
     assert.equal(result.status, 1)
     assert.match(result.stderr, /is not the hadley program/)
-    assert.equal(readFileSync(installed, 'utf8'), 'mine\n')
+    assert.equal(readFileSync(installed, 'utf8'), mine)
+    assert.ok(!existsSync(join(root, 'ran')))
     rmSync(installed)
     symlinkSync(join(root, 'program'), installed)
     chmodSync(join(root, 'program'), 0o755)

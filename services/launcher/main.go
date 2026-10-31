@@ -10,7 +10,11 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
+
+// firstStart is also how install/install.sh tells a program of hadley from any other file, without running it.
+const firstStart = "hadley: first start, unpacking (this happens once and takes a moment)"
 
 // Set by scripts/build-binary.ts.
 var (
@@ -34,16 +38,18 @@ func run(args []string) error {
 		return err
 	}
 	dir := filepath.Join(cache, "hadley", version+"-"+payloadSum[:12])
-	if _, err := os.Stat(dir); errors.Is(err, fs.ErrNotExist) {
-		fmt.Fprintln(os.Stderr, "hadley: first start, unpacking (this happens once and takes a moment)")
+	if _, err := os.Lstat(dir); errors.Is(err, fs.ErrNotExist) {
+		fmt.Fprintln(os.Stderr, firstStart)
 		if err := install(payload, payloadSum, dir); err != nil {
 			return fmt.Errorf("unpacking into %s: %w", dir, err)
 		}
 	} else if err != nil {
 		return err
 	}
-	return start(executable(dir, "bun"), bunArgs(dir, args), append(os.Environ(),
-		"PAGEFIND_BINARY_PATH="+executable(dir, "pagefind")))
+	if err := check(dir); err != nil {
+		return err
+	}
+	return start(executable(dir, "bun"), bunArgs(dir, args), bunEnv(os.Environ(), dir))
 }
 
 func executable(dir, name string) string {
@@ -54,13 +60,26 @@ func executable(dir, name string) string {
 }
 
 // bunArgs is the command line of Bun, its own name first. Bun would read a .env file and a bunfig.toml from the working
-// directory, which is the user's site; hadley reads neither.
+// directory, which is the user's site, and would download a package it does not find; hadley runs on what it carries.
 func bunArgs(dir string, args []string) []string {
 	app := filepath.Join(dir, "app")
 	return append([]string{
 		"bun",
 		"--no-env-file",
+		"--no-install",
 		"--config=" + filepath.Join(app, "bunfig.toml"),
 		filepath.Join(app, "hadley.js"),
 	}, args...)
+}
+
+// bunEnv is the environment of Bun: the user's, without the variables that give Bun options, of which BUN_OPTIONS would
+// load code from the working directory before hadley.
+func bunEnv(environ []string, dir string) []string {
+	var env []string
+	for _, variable := range environ {
+		if !strings.HasPrefix(strings.ToUpper(variable), "BUN_") {
+			env = append(env, variable)
+		}
+	}
+	return append(env, "PAGEFIND_BINARY_PATH="+executable(dir, "pagefind"))
 }

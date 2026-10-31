@@ -63,6 +63,22 @@ export function goVersion(goMod: string): string {
   return `go${match[1]}`
 }
 
+/**
+ * The environment of `go build` for a system: what the builder's own settings could change in a release is fixed, as
+ * the oldest processors of each architecture must run it.
+ */
+export const goEnv = (os: string, arch: string): NodeJS.ProcessEnv => ({
+  ...process.env,
+  GOOS: os,
+  GOARCH: arch,
+  CGO_ENABLED: '0',
+  GOFLAGS: '-mod=readonly',
+  GOAMD64: 'v1',
+  GOARM64: 'v8.0',
+  GOEXPERIMENT: '',
+  GOTOOLCHAIN: 'local',
+})
+
 export interface Licence {
   name: string
   text: string
@@ -138,7 +154,7 @@ const text = (program: string, args: string[], options: Parameters<typeof run>[2
   run(program, args, options).toString().trim()
 
 function build(version: string, os: string, arch: string, output: string) {
-  const env = { ...process.env, GOOS: os, GOARCH: arch, CGO_ENABLED: '0', GOFLAGS: '-mod=readonly' }
+  const env = goEnv(os, arch)
   run('go', ['build', '-trimpath', `-ldflags=${ldflags(version)}`, '-o', output, './cmd/hadley-forms'], {
     cwd: service,
     env,

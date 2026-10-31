@@ -31,7 +31,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { archive, goVersion, ldflags, outside, sha256sums, thirdPartyLicences } from './build-forms.ts'
+import { archive, goEnv, goVersion, ldflags, outside, sha256sums, thirdPartyLicences } from './build-forms.ts'
 import { DIST, main as pack } from './pack.ts'
 
 const BUILD_TIMEOUT_MS = 10 * 60 * 1000
@@ -264,7 +264,7 @@ function program(target: Target, version: string, payload: Uint8Array, scratch: 
     ],
     {
       cwd: source,
-      env: { ...process.env, GOOS: target.os, GOARCH: target.arch, CGO_ENABLED: '0', GOFLAGS: '-mod=readonly' },
+      env: goEnv(target.os, target.arch),
       timeout: BUILD_TIMEOUT_MS,
     },
   )
@@ -348,7 +348,12 @@ export async function main(args: string[]): Promise<number> {
     }
     writeFileSync(join(out, 'install.sh'), install)
     writeFileSync(join(out, 'THIRD_PARTY_LICENSES'), licences)
-    const named = [...programs, { name: 'install.sh', bytes: new TextEncoder().encode(install) }]
+    const encoder = new TextEncoder()
+    const named = [
+      ...programs,
+      { name: 'install.sh', bytes: encoder.encode(install) },
+      { name: 'THIRD_PARTY_LICENSES', bytes: encoder.encode(licences) },
+    ]
     writeFileSync(join(out, 'SHA256SUMS'), sha256sums(named))
     console.log(`built hadley ${version} from ${revision} with ${go} in ${out}`)
     return 0
