@@ -12,7 +12,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 )
 
 type entry struct {
@@ -227,36 +226,6 @@ func TestCheckRefusesADirectoryOthersCanWriteTo(t *testing.T) {
 		}
 		if err := os.Chmod(path, 0o700); err != nil {
 			t.Fatal(err)
-		}
-	}
-}
-
-func TestInstallRemovesWhatADeadStartLeftAndOnlyThat(t *testing.T) {
-	parent := t.TempDir()
-	dead := filepath.Join(parent, temporaryName+"dead")
-	running := filepath.Join(parent, temporaryName+"running")
-	other := filepath.Join(parent, "0.1.0-abc")
-	old := time.Now().Add(-2 * staleAfter)
-	for _, path := range []string{dead, running, other} {
-		if err := os.Mkdir(path, 0o700); err != nil {
-			t.Fatal(err)
-		}
-	}
-	for _, path := range []string{dead, other} {
-		if err := os.Chtimes(path, old, old); err != nil {
-			t.Fatal(err)
-		}
-	}
-	payload := archive(t, entry{name: "bun", body: "program", mode: 0o755})
-	if err := install(payload, sum(payload), filepath.Join(parent, "1")); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(dead); err == nil {
-		t.Error("the dead start's directory stayed")
-	}
-	for _, path := range []string{running, other} {
-		if _, err := os.Stat(path); err != nil {
-			t.Errorf("%s went", path)
 		}
 	}
 }

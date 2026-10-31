@@ -71,9 +71,12 @@ main() {
   target=$(system)
   bin=$HOME/.local/bin
   program=$bin/hadley
-  # the program is told by a line it carries; a file that may be anything is not run to ask it
-  if [ -L "$program" ] || { [ -e "$program" ] && ! grep -q 'hadley: first start, unpacking' "$program"; }; then
-    fail "$program is there and is not the hadley program; move it away first"
+  # the program is told by a line it carries; a file that may be anything is not run to ask it, and only a plain file is
+  # read, as a pipe would wait for ever
+  if [ -e "$program" ] || [ -L "$program" ]; then
+    if [ -L "$program" ] || [ ! -f "$program" ] || ! grep -q 'hadley: first start, unpacking' "$program"; then
+      fail "$program is there and is not the hadley program; move it away first"
+    fi
   fi
 
   mkdir -p "$bin"

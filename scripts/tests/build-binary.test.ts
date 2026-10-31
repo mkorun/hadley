@@ -167,6 +167,16 @@ cp "${join(root, 'program')}" "$out"`,
     rmSync(root, { recursive: true })
   })
 
+  it('does not wait on a pipe in the place of the program', unix, () => {
+    const { root, run, installed } = setup()
+    mkdirSync(join(installed, '..'), { recursive: true })
+    assert.equal(spawnSync('mkfifo', [installed], { timeout: 5_000 }).status, 0)
+    const result = run()
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /is not the hadley program/)
+    rmSync(root, { recursive: true })
+  })
+
   it('stops on a system without a program, and says what to do', unix, () => {
     const { root, stub, run, installed } = setup()
     const failure = (env: Record<string, string>) => {

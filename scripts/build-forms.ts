@@ -76,7 +76,9 @@ export const goEnv = (os: string, arch: string): NodeJS.ProcessEnv => ({
   GOAMD64: 'v1',
   GOARM64: 'v8.0',
   GOEXPERIMENT: '',
+  GOFIPS140: 'off',
   GOTOOLCHAIN: 'local',
+  GOENV: 'off',
 })
 
 export interface Licence {

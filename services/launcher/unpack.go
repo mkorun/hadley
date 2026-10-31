@@ -11,16 +11,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
 const (
 	settleAttempts = 30
 	settleWait     = 100 * time.Millisecond
-	temporaryName  = ".unpack-"
-	// Longer than any unpacking takes: what is older was left by a start that died.
-	staleAfter = time.Hour
 )
 
 // install unpacks payload into the new directory dir, which appears whole or not at all: two first starts at once
@@ -34,8 +30,7 @@ func install(payload []byte, sum, dir string) error {
 	if err := os.MkdirAll(parent, 0o700); err != nil {
 		return err
 	}
-	removeStale(parent)
-	temporary, err := os.MkdirTemp(parent, temporaryName)
+	temporary, err := os.MkdirTemp(parent, ".unpack-")
 	if err != nil {
 		return err
 	}
@@ -44,20 +39,6 @@ func install(payload []byte, sum, dir string) error {
 		return err
 	}
 	return settle(temporary, dir)
-}
-
-// removeStale deletes what a start left that died while unpacking. It only frees space, so a failure does not matter.
-func removeStale(parent string) {
-	entries, err := os.ReadDir(parent)
-	if err != nil {
-		return
-	}
-	for _, entry := range entries {
-		info, err := entry.Info()
-		if err == nil && strings.HasPrefix(entry.Name(), temporaryName) && time.Since(info.ModTime()) > staleAfter {
-			os.RemoveAll(filepath.Join(parent, entry.Name()))
-		}
-	}
 }
 
 // check refuses a directory hadley should not run from: what lies there runs as the user, so it must be the user's
