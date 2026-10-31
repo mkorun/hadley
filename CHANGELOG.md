@@ -8,13 +8,20 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ### Added
 
-- CI on Linux, macOS and Windows: Linux and macOS pass, Windows does not yet (docs/platforms.md).
+- CI on Linux, macOS and Windows; each must pass. On Windows the gate leaves out the comments service's contract
+  tests and its Go tests of file modes and open files: the service does not start there (docs/platforms.md).
 - A release workflow: the gate, the comments service and the package, each release approved by hand and published with
   a provenance attestation.
 
 ### Fixed
 
+- **Security, Windows:** a page of another repository (`sources`) could link a picture whose name held backslashes
+  (`..\..\x.png`), and the build wrote that file of the repository outside the site. A link with a backslash in its
+  path is now a problem of the page.
 - A build stopped when the theme was reached through a symbolic link.
+- On Bun on Windows, a theme reached through a junction was published without its files.
+- `hadley dev` on Windows copied the theme's files again at every build: a copy there keeps the time of its source.
+- `scripts/compare-builds.ts` named the files of the output with `\` on Windows.
 
 ## [0.1.0-rc.1] — 2026-10-31
 

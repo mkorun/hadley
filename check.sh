@@ -66,7 +66,13 @@ trap 'rm -rf "$test_tmp" "$go_bin"' EXIT
   go tool -modfile=tools.mod govulncheck ./...
   go build -o "$go_bin/hadley-forms" ./cmd/hadley-forms
 )
-FORMS_SERVICE="$go_bin/hadley-forms" TMPDIR="$test_tmp" bun test services/forms/tests/
+# hadley-forms does not start on Windows (lock_other.go, docs/platforms.md), so its contract tests have nothing to
+# run against there.
+if [[ "$OSTYPE" == msys || "$OSTYPE" == cygwin ]]; then
+  echo 'check.sh: the contract tests of the comments service are left out on Windows, where hadley-forms does not run'
+else
+  FORMS_SERVICE="$go_bin/hadley-forms" TMPDIR="$test_tmp" bun test services/forms/tests/
+fi
 
 leftover=$(find "$test_tmp" -mindepth 1 -print -quit)
 if [[ -n "$leftover" ]]; then

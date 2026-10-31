@@ -3,8 +3,8 @@
 # uses (.github/actions/tools); then the smoke test (scripts/smoke.ts), which builds a small site with a fresh clone and
 # with the package as npm installs it, each on Bun and on Node.js. Each system also gets exiftool, which the tests use,
 # and the Noto fonts of the og images. check.sh is a Bash script; on Windows it runs in Git Bash. A system that fails
-# does not stop the others; Windows, which does not pass yet, does not fail the run. A new push cancels the run before
-# it. Every action is pinned to a commit.
+# does not stop the others, and fails the run. A new push cancels the run before it. Every action is pinned to a
+# commit.
 name: check
 
 on:
@@ -27,8 +27,6 @@ jobs:
       matrix:
         os: [ubuntu-24.04, macos-15, windows-2025]
     runs-on: ${{ matrix.os }}
-    # Windows does not pass the tests yet (docs/platforms.md); its run shows what is left, and does not fail the check
-    continue-on-error: ${{ matrix.os == 'windows-2025' }}
     timeout-minutes: 30
     defaults:
       run:

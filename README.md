@@ -1,8 +1,8 @@
 # hadley
 
 > **Preview.** hadley is in preview before its first release: `0.1.0-rc.1` is on npm under the
-> tag `next`. The tests pass on Linux and macOS, not yet on Windows; the [changelog](CHANGELOG.md) names what else the
-> preview leaves open.
+> tag `next`. The tests pass on Linux, macOS and Windows; the [changelog](CHANGELOG.md) names what the preview leaves
+> open.
 
 A static site generator small enough to be understood as a whole. Content is written in
 [Markanto](https://markanto.org), metadata in [LIMA](https://limaformat.dev), templates in
