@@ -6,6 +6,10 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ## [Unreleased]
 
+## [0.1.0-rc.2] — 2026-10-31
+
+The second preview: hadley now needs nothing else installed, and passes its tests on Windows.
+
 ### Added
 
 - CI on Linux, macOS and Windows; each must pass. On Windows the gate leaves out the comments service's contract
@@ -26,6 +30,13 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 - On Bun on Windows, a theme reached through a junction was published without its files.
 - `hadley dev` on Windows copied the theme's files again at every build: a copy there keeps the time of its source.
 - `scripts/compare-builds.ts` named the files of the output with `\` on Windows.
+
+### Known limits of the preview
+
+- The programs are not signed: Windows warns about one from a browser, and macOS about one that does not come through
+  `install.sh`.
+- Search in Chinese and Japanese is weaker in a program than with the npm package.
+- The comments service, `hadley-forms`, comes for Linux and macOS; on Windows it runs only in WSL.
 
 ## [0.1.0-rc.1] — 2026-10-31
 
