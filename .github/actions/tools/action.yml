@@ -1,0 +1,17 @@
+# The tools at the versions the project uses, through mise as check.sh runs them: Bun, Node.js at the lowest version
+# hadley supports (docs/adr/0001-runtimes.md), Go at the version services/forms/go.mod names. mise writes the list to
+# mise.toml in the workspace; a checkout below the workspace finds it there. The workflows use these versions only
+# from here.
+name: tools
+description: Bun, Node.js and Go at the versions hadley uses, through mise
+runs:
+  using: composite
+  steps:
+    - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      with:
+        version: 2026.8.5
+        mise_toml: |
+          [tools]
+          bun = "1.4.0"
+          node = "24.18.0"
+          go = "1.27.3"

@@ -20,8 +20,8 @@ bun install
 [Bun](https://bun.sh) 1.4 builds and tests; [mise](https://mise.jdx.dev) gives the gate Go for the comments service,
 at the version `services/forms/go.mod` names, and [gitleaks](https://github.com/gitleaks/gitleaks), at the one
 `check.sh` names. The gate also needs Node.js 24, `exiftool`, the Noto fonts for og images, and the network for
-`govulncheck`; `.github/workflows/check.yml` names the versions. `packages/hadley` is the package, `services/forms` the
-comments service in Go, `scripts` the tools of the repository.
+`govulncheck`; `.github/actions/tools/action.yml` names the versions. `packages/hadley` is the package,
+`services/forms` the comments service in Go, `scripts` the tools of the repository.
 
 ## The gate
 
