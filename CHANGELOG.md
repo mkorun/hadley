@@ -6,6 +6,16 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- CI on Linux, macOS and Windows: Linux and macOS pass, Windows does not yet (docs/platforms.md).
+- A release workflow: the gate, the comments service and the package, each release approved by hand and published with
+  a provenance attestation.
+
+### Fixed
+
+- A build stopped when the theme was reached through a symbolic link.
+
 ## [0.1.0-rc.1] — 2026-10-31
 
 The first preview of hadley on npm, under the tag `next`, before the first release.
