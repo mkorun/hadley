@@ -4,7 +4,8 @@
  * its HEAD commit. It installs the dependencies from the lockfile, makes a small site (a home page, an article with an
  * image, a feed), builds it with `hadley dev --build` below the site's directory and `hadley deploy --build --root
  * <site>` beside it, and checks that each build exits 0 and writes the files a reader gets; in between it starts
- * `hadley dev` in the site's directory and loads what a browser loads first. It does so four times: with hadley from
+ * `hadley dev` in the site's directory, loads what a browser loads first, and changes a page, which must make one build
+ * and show on the page. It does so four times: with hadley from
  * the clone on Bun and on Node.js, and with the package scripts/pack.ts builds, packed and installed with npm into a
  * project of its own, on Node.js and on Bun. Needs `node` and `npm` on the PATH, and the npm registry. With --binary it
  * does so once and with nothing else: with a program scripts/build-binary.ts built.
@@ -17,8 +18,9 @@
  * Uncommitted changes are not in a fresh clone, so they are not tested. Exit status: 0 the site builds, 1 a step
  * failed, 2 usage error.
  */
-import { spawn, spawnSync } from 'node:child_process'
+import { type ChildProcess, spawn, spawnSync } from 'node:child_process'
 import {
+  appendFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -103,6 +105,9 @@ export const EXPECTED = [
 
 // the port of the dev server (and the next one, its comments service's), unlikely to be taken
 const PORT = 8790
+// what hadley dev says without a terminal when it has nothing to do; what the smoke test adds to a page
+const IDLE = '(no keyboard: not a terminal)'
+const CHANGED = 'Changed by the smoke test.'
 
 /** What the dev server must answer, by path: pages, a stylesheet of the theme, an image, a page there is not. */
 export const SERVED: [path: string, status: number][] = [
@@ -135,8 +140,51 @@ function run(step: Step): void {
 class SmokeFailure extends Error {}
 
 /**
+ * Changes the article once the first build is over, and adds to `wrong` if the page does not show it or the server
+ * builds anything but once for it. hadley writes the line IDLE when it starts and after each build.
+ */
+async function changePage(
+  site: string,
+  log: () => string,
+  deadline: number,
+  server: ChildProcess,
+  wrong: string[],
+): Promise<void> {
+  const count = (text: string) => log().split(text).length - 1
+  const built = () => count(IDLE) - 1 === count('Rebuilding (')
+  const until = async (done: () => boolean | Promise<boolean>) => {
+    while (Date.now() < deadline && server.exitCode === null) {
+      if (await done()) return true
+      await new Promise((wait) => setTimeout(wait, 100))
+    }
+    return false
+  }
+  if (!(await until(built))) {
+    wrong.push('the first build did not end')
+    return
+  }
+  appendFileSync(join(site, 'content', 'articles', '[hello]', 'hello.md'), `\n${CHANGED}\n`)
+  const shown = await until(() =>
+    fetch(`http://localhost:${PORT}/hello/`, { signal: AbortSignal.timeout(5_000) }).then(
+      async (response) => (await response.text()).includes(CHANGED),
+      () => false,
+    ),
+  )
+  if (!shown) {
+    wrong.push('the change of a page did not show')
+    return
+  }
+  await until(built)
+  // a second build, for what the first one wrote or read, would start now
+  await new Promise((wait) => setTimeout(wait, 1_500))
+  const builds = count('Rebuilding (') - 1
+  if (builds !== 1) wrong.push(`a change of a page made ${builds} builds, not one`)
+}
+
+/**
  * Starts `hadley dev` in `site` and asks it for each path of SERVED until it answers as expected (the first build is
- * written while Vite already runs) or a minute is over; then stops it.
+ * written while Vite already runs) or a minute is over; then changes a page, and expects it to show after one build.
+ * Then it stops the server.
  */
 async function serve(hadley: Hadley, site: string): Promise<void> {
   const started = performance.now()
@@ -159,6 +207,7 @@ async function serve(hadley: Hadley, site: string): Promise<void> {
       }
       if (got !== status) wrong.push(`${path}: ${got}, not ${status}`)
     }
+    if (wrong.length === 0) await changePage(site, () => log, deadline, server, wrong)
   } finally {
     // on Windows a program of a release is a process with hadley below it, and a signal reaches only the first
     if (process.platform === 'win32')
