@@ -65,6 +65,10 @@ jobs:
         timeout-minutes: 5
       - run: ./check.sh
         timeout-minutes: 20
+        env:
+          # mise fetches gitleaks and shellcheck through GitHub's API, whose limit without a token is shared by all
+          # who use a runner's address; this token can only read, and ends with the job
+          MISE_GITHUB_TOKEN: ${{ github.token }}
       - run: bun scripts/smoke.ts
         timeout-minutes: 15
 
