@@ -43,7 +43,9 @@ export function prepareDocument(rawDoc: string, options: CaseOptions): PreparedD
           ...(options.partials === undefined ? {} : { partials: options.partials }),
         })
       } catch (e) {
-        const line = (e as { line?: unknown }).line
+        // Bun gives every error a line of its own, of the JavaScript that threw it; 0.7 does not export LimaError
+        const { name, line: limaLine } = e as { name?: unknown; line?: unknown }
+        const line = name === 'LimaError' ? limaLine : undefined
         // the error's line counts in `text`, which starts this far into the document
         const textStart = bom + opening.length + inner.indexOf(text)
         frontMatterError = {

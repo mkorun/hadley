@@ -20,7 +20,9 @@ const limaFile = async (path: string, partials?: Record<string, unknown>): Promi
   try {
     return limaparse(text, { strict: true, ...(partials ? { partials } : {}) })
   } catch (error) {
-    const line = (error as { line?: unknown }).line
+    // Bun gives every error a line of its own, of the JavaScript that threw it; 0.7 does not export LimaError
+    const { name, line } = error as { name?: unknown; line?: unknown }
+    if (name !== 'LimaError') throw new Error(`${path}: ${String(error)}`, { cause: error })
     const message = error instanceof Error ? error.message : String(error)
     // the line goes with the path, as a failure names a place (lib/logger.ts)
     if (typeof line !== 'number' || line < 1) throw new Error(`${path}: ${message}`, { cause: error })

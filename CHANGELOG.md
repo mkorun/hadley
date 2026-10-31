@@ -23,6 +23,9 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ### Fixed
 
+- A date in quotes is read only in ISO form. `publishFrom: 2030-01-01` with an invisible space after it, or
+  `"01.03.2030"` in quotes, was read by the host and could publish a page a day or two months early; both are now a
+  problem of the page.
 - A content `data-*link` attribute is read as a destination, like `data-*href`, `data-*src` and `data-*url`: a script
   URL is refused there too.
 - The comments tool refuses a language that is no name of a folder, keeps a header of the mail to one line, and writes

@@ -29,6 +29,19 @@ const TEXT_FIELDS = [
   'coverStyle', // a style for the cover the theme may know (docs/themes.md, "Covers")
 ] as const
 const DATE_FIELDS = ['publishFrom', 'updatedAt'] as const
+
+/**
+ * The moment a date in quotes names, in the one form that means the same on every machine: `2030-01-01`, or with a
+ * time and its offset. The host's own date parser reads other text too, some of it as another day: an invisible
+ * space after the date moves it to the host's time zone, and `01.03.2030` is read as month first.
+ */
+function isoDate(value: string): Date | undefined {
+  if (!/^\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2}))?$/.test(value)) return undefined
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return undefined
+  // 2026-02-30 is no day, whatever a parser makes of it
+  return value.length > 10 || date.toISOString().slice(0, 10) === value ? date : undefined
+}
 const FLAG_FIELDS = ['ai_assisted', 'noindex'] as const
 // the fields hadley reads; a page may have another only when config.lima declares it (metadata.<field>), for its theme
 const HADLEY_FIELDS: ReadonlySet<string> = new Set([
@@ -166,8 +179,8 @@ function checkMetadata(raw: Record<string, unknown>, problems: Fault[], declared
   for (const field of DATE_FIELDS) {
     const value = metadata[field]
     if (value === undefined || value instanceof Date) continue
-    const date = typeof value === 'string' ? new Date(value) : undefined
-    if (date && !Number.isNaN(date.getTime())) metadata[field] = date
+    const date = typeof value === 'string' ? isoDate(value) : undefined
+    if (date) metadata[field] = date
     else wrong(field, 'a date')
   }
   for (const field of FLAG_FIELDS) {

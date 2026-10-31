@@ -88,6 +88,31 @@ describe('the front matter of a page', () => {
     assert.ok(warnings.some((warning) => warning.includes('front matter field publishFrom is not a date')))
   })
 
+  it('reads a date in quotes only in ISO form, as no host then reads another day', async () => {
+    const date = async (name: string, value: string) => {
+      await site(name, { 'articles/[a]/a.md': page(`publishFrom: ${value}\ntitle: A\n`) })
+      const dev = await quietly(() => loadSite(join('sites', name), false))
+      return { warnings: settle(dev.problems, false), date: dev.content.de!.pages.a!.metadata.publishFrom }
+    }
+    for (const [name, value] of Object.entries({
+      space: '2030-01-01\u00a0',
+      german: '"01.03.2030"',
+      local: '"2030-01-01 10:00"',
+      noDay: '"2026-02-30"',
+    })) {
+      const { warnings } = await date(`date-${name}`, value)
+      assert.ok(
+        warnings.some((warning) => warning.includes('publishFrom is not a date')),
+        value,
+      )
+    }
+    assert.equal((await date('date-iso', '"2030-01-01"')).date?.toISOString(), '2030-01-01T00:00:00.000Z')
+    assert.equal(
+      (await date('date-time', '"2030-01-01T10:00:00+02:00"')).date?.toISOString(),
+      '2030-01-01T08:00:00.000Z',
+    )
+  })
+
   it('stops at a status it does not know, in both builds', async () => {
     await site('status', { 'articles/[a]/a.md': page('title: A\nstatus: publshed\n') })
     await assert.rejects(
