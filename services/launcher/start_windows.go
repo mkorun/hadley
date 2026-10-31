@@ -19,9 +19,5 @@ func start(program string, args, env []string) error {
 	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
 		os.Exit(exit.ExitCode())
 	}
-	if err != nil {
-		return err
-	}
-	os.Exit(0)
-	return nil
+	return err
 }

@@ -92,9 +92,16 @@ fi
   fi
   go vet ./...
   go tool -modfile=../forms/tools.mod staticcheck ./...
+  # a part of it is Windows only, and any system can read that; the tool itself is built for this one
+  GOOS=windows go vet ./...
+  staticcheck=$(go tool -n -modfile=../forms/tools.mod staticcheck)
+  GOOS=windows mise exec go -- "$staticcheck" ./...
   TMPDIR="$test_tmp" go test -race -count=1 ./...
 )
-mise exec shellcheck@0.11.0 -- shellcheck install/install.sh
+# install.sh does not run on Windows.
+if [[ "$OSTYPE" != msys && "$OSTYPE" != cygwin ]]; then
+  mise exec shellcheck@0.11.0 -- shellcheck install/install.sh
+fi
 
 leftover=$(find "$test_tmp" -mindepth 1 -print -quit)
 if [[ -n "$leftover" ]]; then
