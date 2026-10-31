@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, it } from 'node:test'
 import { createHash } from 'node:crypto'
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Output } from '../output.ts'
@@ -81,6 +81,22 @@ describe('the theme files of a build', () => {
         ])
         return true
       })
+    }
+  })
+
+  // CI on macOS 2026-10-31: its temporary directory is reached through a symbolic link, which esbuild resolves
+  it('read the imports of a theme reached through a symbolic link', async () => {
+    file('assets/css/b.css', '.b { color: blue }\n')
+    file('assets/css/style.css', '@import "b.css";\n')
+    const link = `${dir}-link`
+    symlinkSync(dir, link, 'junction')
+    try {
+      await assert.rejects(planTheme(link, true), {
+        message:
+          'theme/assets/css/style.css imports b.css; link each stylesheet and script from a template (assets[…])',
+      })
+    } finally {
+      rmSync(link, { force: true })
     }
   })
 
