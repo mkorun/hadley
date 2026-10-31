@@ -18,6 +18,7 @@ import { readUserConfig } from './user-config.ts'
 
 // what the dev server hands to the comments service instead of serving it
 const COMMENTS_PATHS = ['/api/comment/', '/admin/']
+const VITE_STALL_MS = 15_000
 
 /** The explicit UTF-8 type of text files Vite would otherwise infer incompletely. */
 export const textContentType = (path: string): string | undefined =>
@@ -174,6 +175,12 @@ export async function startDevServer({
     _warnOrig(msg, opts)
   }
 
+  // Vite starts in well under a second; a start that hangs would otherwise say nothing at all
+  let starting = 'creating its server'
+  const stalled = setTimeout(
+    () => devErr(`Vite has not started after ${VITE_STALL_MS / 1000} s, at: ${starting}`),
+    VITE_STALL_MS,
+  )
   // by its long name: under a Windows short name (C:\Users\RUNNER~1) Vite refuses the files as outside its root
   const served = realpathSync.native(siteTmp)
   const vite = await createViteServer({
@@ -298,7 +305,9 @@ export async function startDevServer({
       },
     ],
   })
+  starting = `listening on ${serve.host ? 'every interface' : 'localhost'}`
   await vite.listen()
+  clearTimeout(stalled)
 
   devLog(`Ready at ${origin}`)
   for (const url of network) devLog(`        ${url}`)
