@@ -1,9 +1,9 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { existsExactly, isSystemFile, lf, readableByOthers, slashed } from '../platform.ts'
+import { existsExactly, isSystemFile, lf, pathsBelow, readableByOthers, slashed } from '../platform.ts'
 
 describe('platform', () => {
   it('writes a path the file system gives with / between its segments', () => {
@@ -47,5 +47,19 @@ describe('platform', () => {
     assert.equal(readableByOthers(0o600, { onWindows: false }), false)
     assert.equal(readableByOthers(0o644, { onWindows: false }), true)
     assert.equal(readableByOthers(0o666, { onWindows: true }), false)
+  })
+
+  // CI on Windows 2026-10-31: Bun read nothing below a directory given as a junction
+  it('reads every path below a directory, also one reached through a link, with /', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'hadley-platform-test-'))
+    try {
+      mkdirSync(join(dir, 'theme', 'assets', 'css'), { recursive: true })
+      writeFileSync(join(dir, 'theme', 'assets', 'css', 'a.css'), '')
+      symlinkSync(join(dir, 'theme'), join(dir, 'link'), 'junction')
+      for (const at of ['theme', 'link'])
+        assert.deepEqual((await pathsBelow(join(dir, at))).sort(), ['assets', 'assets/css', 'assets/css/a.css'], at)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })

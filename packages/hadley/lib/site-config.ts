@@ -5,7 +5,7 @@
  */
 import { readdir, readFile } from 'node:fs/promises'
 import { join as joinPath } from 'node:path'
-import { isSystemFile, slashed } from './platform.ts'
+import { isSystemFile, pathsBelow } from './platform.ts'
 import { parse as limaparse } from '@limaformat/lima'
 import galley from '@mkorun/galley'
 import type { Themes } from '../case/index.ts'
@@ -37,10 +37,7 @@ export async function readMetaFiles(siteDir: string): Promise<Record<string, unk
   const partials: Record<string, unknown> = {}
   let files: string[]
   try {
-    files = (await readdir(metaDir, { recursive: true }))
-      .map((file) => slashed(String(file)))
-      .filter((file) => !file.split('/').some(isSystemFile))
-      .sort()
+    files = (await pathsBelow(metaDir)).filter((file) => !file.split('/').some(isSystemFile)).sort()
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return partials
     throw error
