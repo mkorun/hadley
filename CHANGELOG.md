@@ -6,9 +6,23 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ## [Unreleased]
 
+## [0.1.0-rc.4] — 2026-10-31
+
+The fourth preview: the first release `hadley upgrade` can reach, to try it before 0.1.0.
+
 ### Changed
 
 - `hadley upgrade` leaves a program winget installed to winget, and names the command.
+- `hadley dev` says to start it again when Vite has not started after 15 s.
+
+### Fixed
+
+- `dev.open` ended the program it started after 10 s, a browser too. The program now outlives hadley.
+
+### Known limits of the preview
+
+- `hadley dev` has hung three times at the start of Vite, so far only on the Linux machines of the CI, and never on a
+  second try. Its cause is not known: start it again.
 
 ## [0.1.0-rc.3] — 2026-10-31
 
