@@ -27,7 +27,7 @@
   "dependencies": {
     "@limaformat/lima": "^0.7.0",
     "@markantolang/parser": "0.2.0",
-    "@mkorun/galley": "^0.3.3",
+    "@mkorun/galley": "^0.3.4",
     "@mkorun/quad": "^0.1.3",
     "esbuild": "0.28.2",
     "pagefind": "^1.5.2",

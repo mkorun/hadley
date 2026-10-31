@@ -79,6 +79,23 @@ describe('articleDirs and the language of an entry', () => {
 })
 
 describe('renderComments', () => {
+  it('refuses a {@raw} of what a visitor wrote, in the template and in a partial it includes', async () => {
+    const render = () =>
+      renderComments({
+        themePath: join(dir, 'theme'),
+        commentsJsonPath: join(dir, 'comments.json'),
+        commentsHtmlPath: join(dir, '_comments.html'),
+        language: 'de',
+      })
+    await file('theme/i18n/de.lima', 'comments:\n  headingPlural: Kommentare\n')
+    await file('comments.json', '[]')
+    await file('theme/templates/partials/comments.sort', '{#each comments as c}{@raw c.text}{/each}')
+    await assert.rejects(render, /comments\.sort: /)
+    await file('theme/templates/partials/comments.sort', '{@partial partials/inner.sort}')
+    await file('theme/templates/partials/inner.sort', '{#each comments as c}{@raw c.text}{/each}')
+    await assert.rejects(render, /inner\.sort: /)
+  })
+
   it("writes a visitor's text escaped, its paragraphs and lines as <p> and <br>, with the theme's texts", async () => {
     await file('theme/templates/partials/comments.sort', TEMPLATE)
     await file('theme/i18n/de.lima', 'comments:\n  headingPlural: Kommentare\n')

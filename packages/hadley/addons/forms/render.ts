@@ -52,13 +52,20 @@ export async function renderComments(opts: {
   const src = await findTemplate(themePath)
   const { default: galley } = await import('@mkorun/galley')
   const { default: util } = await import('@mkorun/galley/util')
+  const { checked, rawProblems } = await import('../../lib/compile-templates.ts')
 
-  const tpl = await galley(src, {
-    includes: {
-      import: (path, enc) => readFile(path, enc as BufferEncoding),
-      basedir: `${themePath}/templates`,
-    },
-  })
+  // the rule of every template of the build (AGENTS.md, Security): here the values are what visitors wrote
+  const problems = rawProblems(src, 'comments.sort')
+  if (problems.length > 0) throw new Error(`comments.sort: ${problems.join('; ')}`)
+  const tpl = await galley(
+    src,
+    checked({
+      includes: {
+        import: (path, enc) => readFile(path, enc as BufferEncoding),
+        basedir: `${themePath}/templates`,
+      },
+    }),
+  )
   const html = await Promise.resolve(
     tpl.render({ comments: withParagraphs(tree), language, t: await themeTexts(themePath, language) }, util),
   )

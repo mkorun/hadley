@@ -69,7 +69,7 @@ export function rawProblems(source: string, id = 'template', use: 'theme' | 'fie
 }
 
 // every layout and partial galley reads is checked as it is read
-const checked = (options: GalleyOptions): GalleyOptions => {
+export const checked = (options: GalleyOptions): GalleyOptions => {
   const read = options.includes.import
   const basedir = options.includes.basedir ?? '.'
   const missing = (path: string) => new Error(`${path}: the theme has no such template, which a {@partial} includes`)

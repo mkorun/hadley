@@ -6,6 +6,13 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ## [Unreleased]
 
+### Security
+
+- galley 0.3.4: a value of a page could pass the check of URL attributes (`G5001`) with characters the render removed
+  afterwards, and write `href="javascript:…"` into a published page, through the themes hems and punch among others.
+  A site's Content Security Policy held the script off. Update if you publish pages others wrote.
+- The comments tool checks `comments.sort` like every template of the build: `{@raw}` of what a visitor wrote stops it.
+
 ### Added
 
 - `hadley upgrade` replaces the program with the latest release (docs/cli.md).
