@@ -50,8 +50,8 @@ A release comes from a tag; `.github/workflows/release.yml` says what happens th
 `release` on GitHub with its reviewer, and on npm a trusted publisher for that workflow and environment that may
 `npm publish`.
 
-1. Set the version in `packages/hadley/package.json`, `README.md` and `docs/comments.md` (a test checks they agree), and
-   turn `[Unreleased]` in `CHANGELOG.md` into the version with its date.
+1. Set the version in `packages/hadley/package.json`, `README.md` and `docs/comments.md` (a test checks they agree), run
+   `bun scripts/facts.ts`, and turn `[Unreleased]` in `CHANGELOG.md` into the version with its date.
 2. Push `main` and wait for `check`.
 3. Tag the commit `v<version>` and push the tag.
 4. When the run waits, approve it for the environment `release`. That publishes to GitHub and npm together.

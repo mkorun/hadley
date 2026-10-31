@@ -15,6 +15,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { facts } from '../facts.ts'
 import { BUN_VERSION, PAGEFIND_VERSION, TARGETS, installScript, leftOut, programName } from '../build-binary.ts'
 
 const repo = join(import.meta.dirname, '..', '..')
@@ -39,6 +40,21 @@ describe('the programs of a release', () => {
     const { version } = JSON.parse(readFileSync(join(repo, 'packages', 'hadley', 'package.json'), 'utf8'))
     assert.ok(readFileSync(join(repo, 'README.md'), 'utf8').includes(`\`${version}\``))
     assert.ok(readFileSync(join(repo, 'docs', 'comments.md'), 'utf8').includes(`version=${version}\n`))
+  })
+
+  it('writes the versions hadley.sh states, without the range of a dependency', () => {
+    const text = facts({
+      version: '1.2.3',
+      dependencies: {
+        '@limaformat/lima': '^0.7.1',
+        '@markantolang/parser': '0.2.1',
+        '@mkorun/galley': '^0.3.4',
+        '@mkorun/quad': '^0.1.4',
+      },
+    })
+    assert.match(text, /^version: "1\.2\.3"$/m)
+    assert.match(text, /^ {2}lima: "0\.7\.1"$/m)
+    assert.throws(() => facts({ version: '1', dependencies: {} }), /no dependency/)
   })
 
   it('pins every download by its checksum', () => {

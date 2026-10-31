@@ -36,6 +36,9 @@ bun scripts/check-content.ts
 # The documentation's relative links and anchors, which hadley.sh keeps as GitHub has them.
 bun scripts/check-links.ts
 
+# docs/facts.lima, which hadley.sh reads its versions from.
+bun scripts/facts.ts --check
+
 # Catches files that tests leave in TMPDIR; a test that writes elsewhere is outside this check.
 test_tmp=$(mktemp -d)
 trap 'rm -rf "$test_tmp"' EXIT
