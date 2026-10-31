@@ -6,6 +6,24 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- `hadley upgrade` replaces the program with the latest release (docs/cli.md).
+
+### Changed
+
+- A dev build writes `site.json` to `.hadley/`: in the output it was served with `--host`, to every device.
+
+### Fixed
+
+- A content `data-*link` attribute is read as a destination, like `data-*href`, `data-*src` and `data-*url`: a script
+  URL is refused there too.
+- The comments tool refuses a language that is no name of a folder, keeps a header of the mail to one line, and writes
+  the text for `$EDITOR` in a directory of the user's own.
+- The comments service of `hadley dev` does not inherit `SITE_META` or `NTFY_*`, so it notifies no one of a test.
+- `hadley dev` on Windows served no file of a site below a short name (`C:\Users\RUNNER~1`), and built again after
+  the first build, for the files that build had read.
+
 ## [0.1.0-rc.2] — 2026-10-31
 
 The second preview: hadley now needs nothing else installed, and passes its tests on Windows.

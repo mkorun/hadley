@@ -18,6 +18,7 @@ adds the stack trace to a failure. A command that fails says why and exits with 
 | `hadley clean` | empties the site's `.hadley/dev/`, `.hadley/publish/` and `.hadley/cache/` |  |
 | `hadley comments` | moderates the comments of the site in production | [comments.md](comments.md) |
 | `hadley version` | prints hadley's version |  |
+| `hadley upgrade` | replaces the program with the latest release, and deletes what earlier versions unpacked; a prerelease also takes prereleases. A package updates through npm | [getting-started.md](getting-started.md#install) |
 
 ## init
 

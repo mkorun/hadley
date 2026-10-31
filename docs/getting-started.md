@@ -10,11 +10,13 @@ On Linux, macOS and in WSL:
 curl -fsSL https://hadley.sh/install.sh | sh
 ```
 
-puts it in `~/.local/bin`. Running the line again updates it.
+puts it in `~/.local/bin`.
 
 On Windows, download `hadley-<version>-windows-amd64.exe` from the
 [releases](https://github.com/mkorun/hadley/releases), name it `hadley.exe` and put it in a folder on your `PATH`.
 The program is not signed yet, so Windows warns about it the first time.
+
+`hadley upgrade` replaces the program with the latest release, once its checksum fits.
 
 `hadley version` prints the version that runs. The first start takes a few seconds: the program unpacks what it carries
 into your cache directory (`~/.cache/hadley`, `~/Library/Caches/hadley`, `%LOCALAPPDATA%\hadley`), about 200 MB. That

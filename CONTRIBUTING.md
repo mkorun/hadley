@@ -44,6 +44,23 @@ compares every file. A difference that is meant is named in the commit message.
 - A commit says what it changes in its first line, and why in its body where that is not plain.
 - External programs run with argument arrays, never through a shell, and with a timeout.
 
+## Releasing
+
+A release comes from a tag; `.github/workflows/release.yml` says what happens then. It needs, once, the environment
+`release` on GitHub with its reviewer, and on npm a trusted publisher for that workflow and environment that may
+`npm publish`.
+
+1. Set the version in `packages/hadley/package.json`, `README.md` and `docs/comments.md` (a test checks they agree), and
+   turn `[Unreleased]` in `CHANGELOG.md` into the version with its date.
+2. Push `main` and wait for `check`.
+3. Tag the commit `v<version>` and push the tag.
+4. When the run waits, approve it for the environment `release`. That publishes to GitHub and npm together.
+5. A prerelease goes to npm under `next` alone: `npm dist-tag add @mkorun/hadley@<version> latest`, while there is no
+   release to keep `latest`.
+6. On hadley.sh, take `install.sh` from the GitHub release and move the documentation to the commit of the tag (its
+   `DEPLOYING.md`). `curl -fsSL https://hadley.sh/install.sh | sh` serves the release only from then on.
+7. Check it from outside: a fresh install with `install.sh`, and `gh attestation verify <file> --repo mkorun/hadley`.
+
 ## Pull requests
 
 A pull request does one thing, with its tests and its documentation, and passes the gate. Contributions are under the
