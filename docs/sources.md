@@ -59,8 +59,9 @@ A link of a page leads where it leads in the repository:
 | any other file of the repository, `../AGENTS.md` | the file on GitHub at `ref`, `<repository>/blob/724820d/AGENTS.md` |
 | a picture beside the page in `path`, `flow.svg` | the picture, which comes with the page |
 
-A query and an anchor stay with the link. A link that leaves the repository, or a picture outside `path`, is a problem
-of the page. A link to the web, to an anchor of the page itself or to a path of the site (`/feed.xml`) stays as it is.
+A query and an anchor stay with the link. A link that leaves the repository, a picture outside `path`, and a link
+with a backslash in its path, which Windows reads as a separator, are problems of the page. A link to the web, to an
+anchor of the page itself or to a path of the site (`/feed.xml`) stays as it is.
 
 ## Reading
 

@@ -267,13 +267,16 @@ export type SiteLink = { href: string } | { problem: string }
 /**
  * Where a link of the page `file` (its path in the repository) leads on the site: another page of the source by its id,
  * a picture of the source's folder into the bundle (named to `picture`), any other file of the repository on GitHub. A
- * link that leaves the repository, or a picture outside the folder, is a problem. A query and an anchor stay with it.
+ * link that leaves the repository, a picture outside the folder, and a path with a backslash are problems. A query and
+ * an anchor stay with it.
  */
 export function siteHref(source: Source, file: string, href: string, picture: (path: string) => void): SiteLink {
   if (/^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('#') || href.startsWith('/')) return { href }
   const cut = href.search(/[?#]/)
   const path = cut === -1 ? href : href.slice(0, cut)
   const rest = cut === -1 ? '' : href.slice(cut)
+  // a picture is written under the last segment of its path, which on Windows a backslash would not be
+  if (path.includes('\\')) return { problem: `the link ${href} holds a backslash, which Windows reads as a separator` }
   const inRepository = posix.normalize(posix.join(posix.dirname(file), path))
   if (inRepository === '..' || inRepository.startsWith('../'))
     return { problem: `the link ${href} leaves the repository ${source.repository}` }
