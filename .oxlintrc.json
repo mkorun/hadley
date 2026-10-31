@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "off"
+  },
+  "rules": {
+    "typescript/no-floating-promises": [
+      "error",
+      {
+        "allowForKnownSafeCalls": [
+          {
+            "from": "package",
+            "package": "node:test",
+            "name": ["describe", "it", "test", "suite", "before", "after", "beforeEach", "afterEach"]
+          }
+        ]
+      }
+    ],
+    "typescript/no-misused-promises": "error"
+  }
+}

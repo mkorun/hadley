@@ -1,0 +1,95 @@
+# The texts of punch in Italian.
+
+nav:
+  skipLink:    Vai al contenuto
+  mainLabel:   Navigazione principale
+  footerLabel: Navigazione del sito
+  languages:   Lingue
+  backHome:    Torna alla home page
+
+heading:
+  link: Link a questa sezione
+
+home:
+  articles: Articoli
+  featured: In evidenza
+
+article:
+  readingTime:    min di lettura
+  firstPublished: Pubblicato per la prima volta
+  contents:       Indice
+  seriesPart:     Parte
+  seriesOf:       di
+  aiAssisted:     Scritto con l’aiuto dell’IA.
+  pager:          Da leggere ancora
+  older:          Precedente
+  newer:          Successivo
+
+author:
+  label: Scritto da
+
+status:
+  draft:     Bozza
+  seed:      Abbozzo
+  archived:  Archiviato
+  scheduled: Programmato
+  updated:   Aggiornato
+
+footer:
+  builtWith: Realizzato con
+
+image:
+  aiGenerated:    Generato con IA
+  aiGeneratedAlt: (generato con IA)
+  coverLabel:     Immagine di copertina
+
+imprint:
+  address:     Indirizzo
+  contact:     Contatti
+  email:       E-mail
+  phone:       Telefono
+  responsible: Responsabile dei contenuti
+
+feed:
+  subscribe: "Iscriviti a questo indirizzo nel tuo lettore di feed:"
+  articles:  Nel feed
+
+comments:
+  headingSingular:    commento
+  headingPlural:      commenti
+  openButton:         Scrivi un commento
+  formTitle:          Scrivi un commento
+  fieldName:          Nome
+  fieldEmail:         E-mail (facoltativa)
+  fieldText:          Commento
+  notifyLabel:        Avvisami per e-mail quando il mio commento viene pubblicato.
+  privacy:            Il tuo indirizzo e-mail non viene pubblicato; serve solo per risponderti.
+  submitButton:       Invia
+  cancelButton:       Annulla
+  waiting:            Un momento …
+  success:            Grazie! Il tuo commento apparirà dopo essere stato letto.
+  errorEmailRequired: Indica il tuo indirizzo e-mail, così possiamo avvisarti.
+  error422:           Il modulo è scaduto. Invialo di nuovo, per favore.
+  error429:           Troppi commenti in una volta. Attendi qualche minuto.
+  error503:           I commenti non sono disponibili al momento. Riprova più tardi.
+  errorNetwork:       Non è stato possibile inviare il commento. Controlla la connessione.
+
+search:
+  open:        Cerca
+  label:       Ricerca
+  close:       Chiudi la ricerca
+  placeholder: Cerca nel sito
+  results:     'Risultati: {count}'
+  none:        'Nessun risultato per «{term}».'
+
+scheme:
+  label: Schema di colori
+  auto:  Automatico
+  light: Chiaro
+  dark:  Scuro
+
+profiles:
+  label: Profili
+
+contact:
+  write: Scrivimi

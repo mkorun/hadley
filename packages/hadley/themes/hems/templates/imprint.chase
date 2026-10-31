@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="{ meta.lang }"{#if site.theme.colorScheme !== 'auto'} data-color-scheme="{ site.theme.colorScheme }"{/if}>
+{@partial partials/head.sort}
+<body>
+{@partial partials/header.sort}
+
+<main id="main" data-pagefind-body data-pagefind-filter="lang:{ meta.lang }">
+  <article>
+    <header class="title-block">
+      <h1>{ meta.title }</h1>
+    </header>
+    <div class="prose">
+      {#snippet owner()}
+      <address>
+        { site.ownerLinks.name }<br>
+        {#if site.ownerLinks.address.co}{ site.ownerLinks.address.co }<br>{/if}
+        { site.ownerLinks.address.street }<br>
+        { site.ownerLinks.address.postalCode } { site.ownerLinks.address.locality }{#if site.ownerLinks.address.country}<br>{ site.ownerLinks.address.country }{/if}
+      </address>
+      {/snippet}
+
+      <h2>{ t.imprint.address }</h2>
+      {@render owner()}
+
+      <h2>{ t.imprint.contact }</h2>
+      <p>
+        {#if site.ownerLinks.email}{ t.imprint.email }: <a href="{ site.ownerLinks.emailMailto }">{ site.ownerLinks.email }</a>{/if}
+        {#if site.ownerLinks.mobile}<br>{ t.imprint.phone }: <a href="{ site.ownerLinks.mobileHref }">{ site.ownerLinks.mobile }</a>{/if}
+      </p>
+
+      <h2>{ t.imprint.responsible }</h2>
+      {@render owner()}
+
+      {@raw html.markup}
+    </div>
+  </article>
+</main>
+
+{@partial partials/footer.sort}
+</body>
+</html>

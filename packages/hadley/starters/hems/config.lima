@@ -1,0 +1,53 @@
+# The site: config.lima says what it is and how it is built. Each language has its block; hadley init leaves out the
+# languages a site does not have (docs/init.md).
+
+site:
+  origin: https://example.org
+  owner: $(persons/odile)
+  default:
+    language: en
+    title: Feather Cat
+  en:
+    locale: en_GB
+    claim: Notes on type, tools and the slow web
+    description: A small writing blog from Paris, and the starter of hadley.
+  de:
+    locale: de_DE
+    claim: Notizen über Schrift, Werkzeuge und das langsame Web
+    description: Ein kleines Schreibblog aus Paris, und der Starter von hadley.
+  fr:
+    locale: fr_FR
+    claim: Notes sur la typographie, les outils et le web lent
+    description: Un petit blog d'écriture à Paris, et le modèle de départ de hadley.
+  es:
+    locale: es_ES
+    claim: Notas sobre tipografía, herramientas y la web lenta
+    description: Un pequeño blog de escritura desde París, y la plantilla de inicio de hadley.
+  it:
+    locale: it_IT
+    claim: Appunti su caratteri, strumenti e web lento
+    description: Un piccolo blog di scrittura da Parigi, e lo starter di hadley.
+
+# The navigation of the header and the footer, by page id (the name of the bundle).
+navigations:
+  main: [about]
+  footer: [about, imprint, feed]
+
+# Articles the home page shows above the others.
+featured_articles:
+  - id: pilcrow
+    label:
+      en: Essay
+      de: Essay
+      fr: Essai
+      es: Ensayo
+      it: Saggio
+
+typography:
+  enabled: true
+
+rss:
+  enabled: true
+
+search:
+  enabled: true

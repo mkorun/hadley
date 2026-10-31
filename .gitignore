@@ -1,0 +1,8 @@
+node_modules
+# the package to publish, built by scripts/pack.ts
+/dist/
+vite.config.js
+.hadley.json
+# Local symlinks to the sites (~/create/<domain>/site), used until the CLI resolves the site root itself
+sites/
+*Zone.Identifier

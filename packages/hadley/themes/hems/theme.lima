@@ -1,0 +1,21 @@
+# The settings of hems, which config.lima sets under `theme:`, and what a new site starts with (docs/themes.md).
+
+settings:
+  # auto follows the reader's system; light or dark is the site's choice
+  colorScheme:
+    allowed: [auto, light, dark]
+    defaultValue: auto
+
+  # true: a button in the header that switches auto, light and dark; the reader's browser keeps the choice
+  colorToggle:
+    allowed: [true, false]
+    defaultValue: false
+
+# What hadley init writes into a new site's config.lima: the colour button shown, and code in hems' own colours
+# (highlighting/), light and dark.
+starter:
+  theme:
+    colorToggle: true
+  highlighting:
+    light: hems-light
+    dark: hems-dark

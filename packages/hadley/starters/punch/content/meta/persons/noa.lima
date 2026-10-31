@@ -1,0 +1,24 @@
+# A person of the site: config.lima names the owner, a post its author, as $(persons/noa).
+# Her fields are those of every language; a language's block adds or replaces them for its pages.
+name: Noa Varela
+url: $about
+email: noa@example.org
+address:
+  street: Rua Imaginária 1
+  postalCode: 0000-000
+  locality: Lisboa
+  country: Portugal
+mastodon: https://mastodon.example/@noa
+bluesky: https://bsky.example/noa
+linkedin: https://linkedin.example/in/noa
+github: https://github.example/noa
+en:
+  bio: Photographer and designer in Lisbon. Takes pictures of light on walls, and writes a little about it.
+de:
+  bio: Fotografin und Gestalterin in Lissabon. Fotografiert Licht auf Wänden und schreibt ein wenig darüber.
+fr:
+  bio: Photographe et graphiste à Lisbonne. Photographie la lumière sur les murs, et écrit un peu à son sujet.
+es:
+  bio: Fotógrafa y diseñadora en Lisboa. Fotografía la luz sobre las paredes y escribe un poco sobre ella.
+it:
+  bio: Fotografa e grafica a Lisbona. Fotografa la luce sui muri, e ne scrive un poco.

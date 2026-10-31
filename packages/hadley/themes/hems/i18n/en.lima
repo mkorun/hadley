@@ -1,0 +1,90 @@
+# The texts of hems in English. Another language's file (de.lima) takes what it leaves out from the site's default
+# language.
+
+nav:
+  skipLink:    Skip to content
+  mainLabel:   Main navigation
+  footerLabel: Site navigation
+  languages:   Languages
+  backHome:    Back to the home page
+
+heading:
+  link: Link to this section
+
+home:
+  articles: Articles
+  featured: Featured
+
+article:
+  readingTime:    min read
+  firstPublished: First published
+  contents:       Contents
+  seriesPart:     Part
+  seriesOf:       of
+  aiAssisted:     Written with the help of AI.
+  pager:          More to read
+  older:          Older
+  newer:          Newer
+
+author:
+  label: Written by
+
+status:
+  draft:     Draft
+  seed:      Seed
+  archived:  Archived
+  scheduled: Scheduled
+  updated:   Updated
+
+footer:
+  builtWith: Built with
+
+image:
+  aiGenerated:    AI-generated
+  aiGeneratedAlt: (AI-generated)
+  coverLabel:     Cover image
+
+imprint:
+  address:     Address
+  contact:     Contact
+  email:       Email
+  phone:       Phone
+  responsible: Responsible for the content
+
+feed:
+  subscribe: "Subscribe to this address in your feed reader:"
+  articles:  In the feed
+
+comments:
+  headingSingular:    comment
+  headingPlural:      comments
+  openButton:         Write a comment
+  formTitle:          Write a comment
+  fieldName:          Name
+  fieldEmail:         Email (optional)
+  fieldText:          Comment
+  notifyLabel:        Tell me by email when my comment is published.
+  privacy:            Your email address is not published; it is kept only to answer you.
+  submitButton:       Send
+  cancelButton:       Cancel
+  waiting:            One moment …
+  success:            Thank you! Your comment appears once it has been read.
+  errorEmailRequired: Please give your email address, so that we can tell you.
+  error422:           The form expired. Please send it again.
+  error429:           Too many comments at once. Please wait a few minutes.
+  error503:           The comments are not available just now. Please try again later.
+  errorNetwork:       The comment could not be sent. Please check your connection.
+
+search:
+  open:        Search
+  label:       Search
+  close:       Close the search
+  placeholder: Search the site
+  results:     'Results: {count}'
+  none:        'Nothing found for “{term}”.'
+
+scheme:
+  label: Color scheme
+  auto:  Auto
+  light: Light
+  dark:  Dark

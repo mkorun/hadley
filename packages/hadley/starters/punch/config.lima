@@ -1,0 +1,56 @@
+# The site: config.lima says what it is and how it is built. Each language has its block; hadley init leaves out the
+# languages a site does not have (docs/init.md).
+
+site:
+  origin: https://example.org
+  owner: $(persons/noa)
+  default:
+    language: en
+    title: Noa Varela
+  en:
+    locale: en_GB
+    claim: Photographs and notes from Lisbon
+    description: The personal site of Noa Varela, photographer and designer in Lisbon, and a starter of hadley.
+  de:
+    locale: de_DE
+    claim: Fotografien und Notizen aus Lissabon
+    description: Die persönliche Site von Noa Varela, Fotografin und Gestalterin in Lissabon, und ein Starter von hadley.
+  fr:
+    locale: fr_FR
+    claim: Photographies et notes de Lisbonne
+    description: Le site de Noa Varela, photographe et graphiste à Lisbonne, et un modèle de départ de hadley.
+  es:
+    locale: es_ES
+    claim: Fotografías y notas desde Lisboa
+    description: El sitio de Noa Varela, fotógrafa y diseñadora en Lisboa, y una plantilla de inicio de hadley.
+  it:
+    locale: it_IT
+    claim: Fotografie e appunti da Lisbona
+    description: Il sito personale di Noa Varela, fotografa e grafica a Lisbona, e uno starter di hadley.
+
+# The navigation of the header and the footer, by page id (the name of the bundle).
+navigations:
+  main: [about]
+  footer: [about, imprint, feed]
+
+# The owner's profiles the site shows, in this order (content/meta/persons/noa.lima holds them).
+profiles: [mastodon, bluesky, linkedin, github]
+
+# Posts the home page shows above the others.
+featured_articles:
+  - id: light-on-walls
+    label:
+      en: Start here
+      de: Zum Einstieg
+      fr: Pour commencer
+      es: Para empezar
+      it: Per iniziare
+
+typography:
+  enabled: true
+
+rss:
+  enabled: true
+
+search:
+  enabled: true

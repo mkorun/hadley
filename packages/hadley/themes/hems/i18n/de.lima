@@ -1,0 +1,89 @@
+# The texts of hems in German.
+
+nav:
+  skipLink:    Zum Inhalt springen
+  mainLabel:   Hauptnavigation
+  footerLabel: Seitennavigation
+  languages:   Sprachen
+  backHome:    Zurück zur Startseite
+
+heading:
+  link: Link zu diesem Abschnitt
+
+home:
+  articles: Artikel
+  featured: Empfohlen
+
+article:
+  readingTime:    Min. Lesezeit
+  firstPublished: Erstmals veröffentlicht
+  contents:       Inhalt
+  seriesPart:     Teil
+  seriesOf:       von
+  aiAssisted:     Mit Unterstützung von KI geschrieben.
+  pager:          Weiterlesen
+  older:          Älter
+  newer:          Neuer
+
+author:
+  label: Geschrieben von
+
+status:
+  draft:     Entwurf
+  seed:      Skizze
+  archived:  Archiviert
+  scheduled: Geplant
+  updated:   Aktualisiert
+
+footer:
+  builtWith: Erstellt mit
+
+image:
+  aiGenerated:    KI-generiert
+  aiGeneratedAlt: (KI-generiert)
+  coverLabel:     Titelbild
+
+imprint:
+  address:     Anschrift
+  contact:     Kontakt
+  email:       E-Mail
+  phone:       Telefon
+  responsible: Redaktionell verantwortlich
+
+feed:
+  subscribe: "Diese Adresse im Feedreader abonnieren:"
+  articles:  Im Feed
+
+comments:
+  headingSingular:    Kommentar
+  headingPlural:      Kommentare
+  openButton:         Kommentar schreiben
+  formTitle:          Kommentar schreiben
+  fieldName:          Name
+  fieldEmail:         E-Mail (freiwillig)
+  fieldText:          Kommentar
+  notifyLabel:        Bitte per E-Mail Bescheid geben, wenn mein Kommentar erscheint.
+  privacy:            Deine E-Mail-Adresse wird nicht veröffentlicht; sie dient nur dazu, dir zu antworten.
+  submitButton:       Senden
+  cancelButton:       Abbrechen
+  waiting:            Einen Moment …
+  success:            Danke! Dein Kommentar erscheint, sobald er gelesen wurde.
+  errorEmailRequired: Bitte gib deine E-Mail-Adresse an, damit wir dir Bescheid geben können.
+  error422:           Das Formular ist abgelaufen. Bitte noch einmal senden.
+  error429:           Zu viele Kommentare auf einmal. Bitte warte ein paar Minuten.
+  error503:           Die Kommentare sind gerade nicht erreichbar. Bitte später noch einmal versuchen.
+  errorNetwork:       Der Kommentar konnte nicht gesendet werden. Bitte prüfe deine Verbindung.
+
+search:
+  open:        Suchen
+  label:       Suche
+  close:       Suche schließen
+  placeholder: Die Site durchsuchen
+  results:     'Treffer: {count}'
+  none:        'Nichts gefunden für „{term}“.'
+
+scheme:
+  label: Farbschema
+  auto:  Automatisch
+  light: Hell
+  dark:  Dunkel

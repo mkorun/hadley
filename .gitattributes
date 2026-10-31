@@ -1,0 +1,2 @@
+# Text checks out with \n on every system (docs/platforms.md).
+* text=auto eol=lf

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1140 512">
+  <!-- "AI" in a frame: hadley's og images and hems mark an AI-generated image with it -->
+  <path fill-rule="evenodd" d="M80,0 H1060 A80,80 0 0 1 1140,80 V432 A80,80 0 0 1 1060,512 H80 A80,80 0 0 1 0,432 V80 A80,80 0 0 1 80,0 Z M96,56 A40,40 0 0 0 56,96 V416 A40,40 0 0 0 96,456 H1044 A40,40 0 0 0 1084,416 V96 A40,40 0 0 0 1044,56 Z"/>
+  <path fill-rule="evenodd" d="M330,402 L450,110 H530 L650,402 H570 L547,340 H433 L410,402 Z M455,278 H525 L490,180 Z"/>
+  <path d="M740,110 H820 V402 H740 Z"/>
+</svg>

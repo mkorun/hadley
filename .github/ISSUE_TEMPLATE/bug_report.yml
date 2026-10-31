@@ -1,0 +1,32 @@
+name: Bug report
+description: hadley does something it should not, or not what its documentation says.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: What you did, what hadley did, and what you expected. Paste messages as text.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce it
+      description: The smallest site that shows it — a page, a line of config.lima, a template — and the command.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: hadley version
+      description: What `hadley version` prints.
+    validations:
+      required: true
+  - type: input
+    id: runtime
+    attributes:
+      label: Runtime and system
+      description: Bun or Node.js, its version, and the operating system.
+    validations:
+      required: true

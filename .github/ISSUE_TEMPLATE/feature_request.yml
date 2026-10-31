@@ -1,0 +1,16 @@
+name: Feature request
+description: Something hadley could do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What you want to do
+      description: The site, the page or the step it is for; what you do today instead.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How it could work
+      description: As you would find it in the documentation. hadley stays small; a rule that can be explained wins.

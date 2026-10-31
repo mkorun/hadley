@@ -1,0 +1,33 @@
+<galley:config>
+{
+  "images": {
+    "default": {
+      "widths": [720, 1440],
+      "formats": ["webp"],
+      "sizes": "(max-width: 46rem) calc(100vw - 2.5rem), 42rem",
+      "quality": 80
+    }
+  }
+}
+</galley:config>
+<!DOCTYPE html>
+<html lang="{ meta.lang }"{#if site.theme.colorScheme !== 'auto'} data-color-scheme="{ site.theme.colorScheme }"{/if}>
+{@partial partials/head.sort}
+<body>
+{@partial partials/header.sort}
+
+<main id="main" data-pagefind-body data-pagefind-filter="lang:{ meta.lang }">
+  <article>
+    <header class="title-block">
+      <h1>{ meta.title }</h1>
+      {#if showBadge}<p class="entry-meta" data-pagefind-ignore><span class="badge">{#if status === 'draft'}{ t.status.draft }{:else if status === 'seed'}{ t.status.seed }{:else if status === 'scheduled'}{ t.status.scheduled }{:else}{ t.status.archived }{/if}</span></p>{/if}
+    </header>
+    <div class="prose">
+      {@raw html.markup}
+    </div>
+  </article>
+</main>
+
+{@partial partials/footer.sort}
+</body>
+</html>

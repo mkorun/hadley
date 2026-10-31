@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="{ meta.lang }"{#if site.theme.colorScheme !== 'auto'} data-color-scheme="{ site.theme.colorScheme }"{/if}>
+{@partial partials/head.sort}
+<body>
+{@partial partials/header.sort}
+
+<main id="main">
+  {#if html.markup}<div class="prose intro">{@raw html.markup}</div>{/if}
+
+  {#if featuredList.length > 0}
+  <section class="listing" aria-labelledby="featured">
+    <h2 class="listing-title" id="featured">{ t.home.featured }</h2>
+    <ol class="entries">
+      {#each featuredList as item}
+      <li class="entry">
+        <p class="entry-meta">{#if item.label}<span>{ item.label }</span>{/if}<time datetime="{ item.displayDate | isoDate }">{ item.displayDate | dateFormat('yyyy-MM-dd') }</time></p>
+        <h3 class="entry-title"><a href="{ item.urlPath }">{ item.title }</a></h3>
+        {#if item.subtitle}<p class="entry-text">{ item.subtitle }</p>{:else if item.description}<p class="entry-text">{ item.description }</p>{/if}
+      </li>
+      {/each}
+    </ol>
+  </section>
+  {/if}
+
+  {#if articleList.length > 0}
+  <section class="listing" aria-labelledby="articles">
+    <h2 class="listing-title" id="articles">{ t.home.articles }</h2>
+    <ol class="entries">
+      {#each articleList as item}
+      <li class="entry">
+        <p class="entry-meta">
+          {#if item.categoryLabel}<span>{ item.categoryLabel }</span>{/if}
+          {#if item.displayDate}<time datetime="{ item.displayDate | isoDate }">{ item.displayDate | dateFormat('yyyy-MM-dd') }</time>{/if}
+          {#if item.isUpdated}<span>{ t.status.updated }</span>{/if}
+          {#if item.showBadge}<span class="badge">{#if item.status === 'draft'}{ t.status.draft }{:else if item.status === 'seed'}{ t.status.seed }{:else if item.status === 'scheduled'}{ t.status.scheduled }{:else}{ t.status.archived }{/if}</span>{/if}
+        </p>
+        <h3 class="entry-title"><a href="{ item.urlPath }">{ item.title }</a></h3>
+        {#if item.subtitle}<p class="entry-text">{ item.subtitle }</p>{:else if item.description}<p class="entry-text">{ item.description }</p>{/if}
+      </li>
+      {/each}
+    </ol>
+  </section>
+  {/if}
+</main>
+
+{@partial partials/footer.sort}
+</body>
+</html>

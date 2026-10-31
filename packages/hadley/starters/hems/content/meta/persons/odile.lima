@@ -1,0 +1,20 @@
+# A person of the site: config.lima names the owner, an article its author, as $(persons/odile).
+# Her fields are those of every language; a language's block adds or replaces them for its pages.
+name: Odile Lemoine
+url: $about
+email: odile@example.org
+address:
+  street: 1 Rue Imaginaire
+  postalCode: 00000
+  locality: Paris
+  country: France
+en:
+  bio: Writes about type, tools and the slow parts of the web, mostly at a table by a window.
+de:
+  bio: Schreibt über Schrift, Werkzeuge und die langsamen Seiten des Webs, meistens an einem Tisch am Fenster.
+fr:
+  bio: Écrit sur la typographie, les outils et le web qui prend son temps, le plus souvent à une table près d'une fenêtre.
+es:
+  bio: Escribe sobre tipografía, herramientas y las partes lentas de la web, casi siempre en una mesa junto a una ventana.
+it:
+  bio: Scrive di caratteri, di strumenti e delle parti lente del web, quasi sempre a un tavolino accanto a una finestra.

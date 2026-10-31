@@ -1,0 +1,32 @@
+<galley:config>
+{
+  "images": {
+    "cover": {
+      "widths": [960, 1920],
+      "formats": ["webp"],
+      "sizes": "(max-width: 62.5rem) calc(100vw - 2.5rem), 60rem",
+      "quality": 82
+    }
+  }
+}
+</galley:config>
+<!DOCTYPE html>
+<html lang="{ meta.lang }"{#if site.theme.colorScheme !== 'auto'} data-color-scheme="{ site.theme.colorScheme }"{/if}>
+{@partial partials/head.sort}
+<body class="maintenance">
+
+<main id="main">
+  <p class="maintenance-site">{ site.title }</p>
+  {#if html.cover}
+  <figure class="cover maintenance-cover"{#if meta.coverStyle} data-style="{ meta.coverStyle }"{/if}{#if isAiCover} data-ai-generated data-ai-label="{ t.image.aiGenerated }"{/if}>
+    {@raw html.cover}
+  </figure>
+  {/if}
+  <h1>{ meta.title }</h1>
+  <div class="prose">
+    {@raw html.markup}
+  </div>
+</main>
+
+</body>
+</html>

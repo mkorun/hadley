@@ -1,0 +1,88 @@
+<galley:config>
+{
+  "images": {
+    "default": {
+      "widths": [720, 1440],
+      "formats": ["webp"],
+      "sizes": "(max-width: 46rem) calc(100vw - 2.5rem), 42rem",
+      "quality": 80
+    },
+    "cover": {
+      "widths": [480, 768, 960, 1440, 1920],
+      "formats": ["webp"],
+      "sizes": "(max-width: 62.5rem) calc(100vw - 2.5rem), 60rem",
+      "quality": 82
+    }
+  }
+}
+</galley:config>
+<!DOCTYPE html>
+<html lang="{ meta.lang }"{#if site.theme.colorScheme !== 'auto'} data-color-scheme="{ site.theme.colorScheme }"{/if}>
+{@partial partials/head.sort}
+<body>
+{@partial partials/header.sort}
+
+<main id="main" data-pagefind-body data-pagefind-filter="lang:{ meta.lang }">
+  <article>
+    <header class="title-block">
+      <p class="entry-meta" data-pagefind-ignore>
+        {#if categoryLabel}<span data-pagefind-meta="category">{ categoryLabel }</span>{/if}
+        {#if meta.updatedAt}<time datetime="{ meta.updatedAt | isoDate }" data-pagefind-meta="date[datetime]">{ t.status.updated } { meta.updatedAt | dateFormat('yyyy-MM-dd') }</time>{:else if meta.publishFrom}<time datetime="{ meta.publishFrom | isoDate }" data-pagefind-meta="date[datetime]">{ meta.publishFrom | dateFormat('yyyy-MM-dd') }</time>{/if}
+        {#if readingTimeMinutes}<span>{ readingTimeMinutes } { t.article.readingTime }</span>{/if}
+        {#if isAiCover}<span>{ t.image.coverLabel } { t.image.aiGenerated }</span>{/if}
+        {#if showBadge}<span class="badge">{#if status === 'draft'}{ t.status.draft }{:else if status === 'seed'}{ t.status.seed }{:else if status === 'scheduled'}{ t.status.scheduled }{:else}{ t.status.archived }{/if}</span>{/if}
+      </p>
+      <h1>{ meta.title }</h1>
+      {#if meta.subtitle}<p class="subtitle">{ meta.subtitle }</p>{/if}
+      {#if isUpdated && meta.publishFrom}<p class="entry-meta" data-pagefind-ignore>{ t.article.firstPublished } <time datetime="{ meta.publishFrom | isoDate }">{ meta.publishFrom | dateFormat('yyyy-MM-dd') }</time></p>{/if}
+    </header>
+
+    {#if html.cover}
+    <figure class="cover"{#if meta.coverStyle} data-style="{ meta.coverStyle }"{/if}{#if isAiCover} data-ai-generated data-ai-label="{ t.image.aiGenerated }"{/if}>
+      {@raw html.cover}
+    </figure>
+    {/if}
+    {#if hasToc}
+    <details class="aside-list" data-pagefind-ignore>
+      <summary>{ t.article.contents }</summary>
+      <ol>
+        {#each toc as entry}<li><a href="#{ entry.id }">{ entry.text }</a></li>
+        {/each}
+      </ol>
+    </details>
+    {/if}
+    {#each seriesData as series}
+    <details class="aside-list" data-pagefind-ignore>
+      <summary>{ t.article.seriesPart } { series.currentNum } { t.article.seriesOf } { series.total }</summary>
+      <ol>
+        {#each series.items as item}<li>{#if item.isCurrent}<span aria-current="page">{ item.title }</span>{:else if item.unpublished}<a href="{ item.urlPath }" data-link-unpublished>{ item.title }</a>{:else}<a href="{ item.urlPath }">{ item.title }</a>{/if}</li>
+        {/each}
+      </ol>
+    </details>
+    {/each}
+
+    <div class="prose">
+      {@raw html.markup}
+    </div>
+
+    {#if meta.ai_assisted}<p class="disclosure">{ t.article.aiAssisted }</p>{/if}
+    {@partial partials/author.sort}
+    {#if newer || older}
+    {#snippet neighbour(item)}
+    {#if item.cover}<picture>{#each item.cover.sources as source}<source type="{ source.type }" srcset="{ source.srcset }" sizes="6rem">{/each}<img src="{ item.cover.src }" alt="" width="{ item.cover.width }" height="{ item.cover.height }" loading="lazy" decoding="async"></picture>{/if}
+    <span class="pager-title">{ item.title }</span>
+    {/snippet}
+    <nav class="pager" aria-label="{ t.article.pager }" data-pagefind-ignore>
+      {#if older}<a class="pager-older" href="{ older.urlPath }" rel="prev"><span class="pager-label">← { t.article.older }</span>{@render neighbour(older)}</a>{/if}
+      {#if newer}<a class="pager-newer" href="{ newer.urlPath }" rel="next"><span class="pager-label">{ t.article.newer } →</span>{@render neighbour(newer)}</a>{/if}
+    </nav>
+    {/if}
+  </article>
+
+  {@raw html.comments ?? ''}
+  {@partial partials/comment-form.sort}
+</main>
+
+{@partial partials/footer.sort}
+</body>
+</html>

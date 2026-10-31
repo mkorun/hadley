@@ -1,0 +1,6 @@
+{#if meta.author.name}
+<aside class="author" data-pagefind-ignore="all">
+  {#if meta.author.photo}<img class="author-photo" src="{ meta.author.photo }" alt="" width="72" height="72" loading="lazy">{/if}
+  <p><span class="author-label">{ t.author.label }</span>{#if meta.author.url}<a href="{ meta.author.url }">{ meta.author.name }</a>{:else}{ meta.author.name }{/if}{#if meta.author.bio} · { meta.author.bio }{/if}</p>
+</aside>
+{/if}

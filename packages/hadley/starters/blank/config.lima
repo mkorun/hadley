@@ -1,0 +1,37 @@
+# The site: config.lima says what it is and how it is built. Each language has its block; hadley init leaves out the
+# languages a site does not have (docs/init.md).
+
+site:
+  origin: https://example.org
+  owner: $(persons/you)
+  default:
+    language: en
+    title: My Site
+  en:
+    locale: en_GB
+    description: A new site, made with hadley.
+  de:
+    locale: de_DE
+    description: Eine neue Site, gemacht mit hadley.
+  fr:
+    locale: fr_FR
+    description: Un nouveau site, fait avec hadley.
+  es:
+    locale: es_ES
+    description: Un sitio nuevo, hecho con hadley.
+  it:
+    locale: it_IT
+    description: Un sito nuovo, fatto con hadley.
+
+# The navigation of the footer, by page id (the name of the bundle).
+navigations:
+  footer: [imprint, feed]
+
+typography:
+  enabled: true
+
+rss:
+  enabled: true
+
+search:
+  enabled: true

@@ -1,0 +1,9 @@
+# You, as config.lima names the site's owner ($(persons/you)) and an article its author; the imprint shows your
+# address. A language's block adds or replaces fields for its pages (docs/themes.md, "Persons").
+name: Your Name
+email: you@example.org
+address:
+  street: Street 1
+  postalCode: "00000"
+  locality: City
+  country: Country

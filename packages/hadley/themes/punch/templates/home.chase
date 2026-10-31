@@ -1,0 +1,95 @@
+<galley:config>
+{
+  "images": {
+    "default": {
+      "widths": [320, 640],
+      "formats": ["webp"],
+      "sizes": "10rem",
+      "quality": 82
+    },
+    "cover": {
+      "widths": [768, 960, 1600, 2400],
+      "formats": ["webp"],
+      "sizes": "100vw",
+      "quality": 78
+    }
+  }
+}
+</galley:config>
+<!DOCTYPE html>
+<html lang="{ meta.lang }"{#if site.theme.colorScheme !== 'auto'} data-color-scheme="{ site.theme.colorScheme }"{/if}>
+{@partial partials/head.sort}
+<body class="page-home">
+{@partial partials/header.sort}
+
+{#snippet body(item)}
+  <div class="card-body">
+    <p class="entry-meta">
+      {#if item.label}<span class="card-label">{ item.label }</span>{/if}
+      {#if item.categoryLabel}<span>{ item.categoryLabel }</span>{/if}
+      {#if item.displayDate}<time datetime="{ item.displayDate | isoDate }">{ item.displayDate | dateFormat('yyyy-MM-dd') }</time>{/if}
+      {#if item.showBadge}<span class="badge">{#if item.status === 'draft'}{ t.status.draft }{:else if item.status === 'seed'}{ t.status.seed }{:else if item.status === 'scheduled'}{ t.status.scheduled }{:else}{ t.status.archived }{/if}</span>{/if}
+    </p>
+    <h3 class="entry-title"><a href="{ item.urlPath }">{ item.title }</a></h3>
+    {#if item.subtitle}<p class="entry-text">{ item.subtitle }</p>{:else if item.description}<p class="entry-text">{ item.description }</p>{/if}
+  </div>
+{/snippet}
+
+{#snippet lead(item)}
+<li class="card{#if !item.cover} card--text{/if}">
+  {#if item.cover}
+  <figure class="card-image"{#if item.isAiCover} data-ai-generated{/if}>
+    <picture>{#each item.cover.sources as source}<source type="{ source.type }" srcset="{ source.srcset }" sizes="(min-width: 72rem) 40rem, (min-width: 46rem) 55vw, 100vw">{/each}<img src="{ item.cover.src }" alt="" width="{ item.cover.width }" height="{ item.cover.height }" loading="lazy" decoding="async"></picture>
+  </figure>
+  {/if}
+  {@render body(item)}
+</li>
+{/snippet}
+
+{#snippet card(item)}
+<li class="card{#if !item.cover} card--text{/if}">
+  {#if item.cover}
+  <figure class="card-image"{#if item.isAiCover} data-ai-generated{/if}>
+    <picture>{#each item.cover.sources as source}<source type="{ source.type }" srcset="{ source.srcset }" sizes="(min-width: 72rem) 22rem, (min-width: 46rem) 45vw, 100vw">{/each}<img src="{ item.cover.src }" alt="" width="{ item.cover.width }" height="{ item.cover.height }" loading="lazy" decoding="async"></picture>
+  </figure>
+  {/if}
+  {@render body(item)}
+</li>
+{/snippet}
+
+<main id="main">
+  <section class="hero{#if html.cover} hero--image{/if}">
+    {#if html.cover}
+    <figure class="hero-image"{#if isAiCover} data-ai-generated{/if}>
+      {@raw html.cover}
+    </figure>
+    {/if}
+    <div class="hero-inner">
+      <h1 class="hero-title">{ site.title }</h1>
+      {#if html.markup}<div class="hero-text">{@raw html.markup}</div>{/if}
+      {@partial partials/profiles.sort}
+    </div>
+  </section>
+
+  {#if featuredList.length > 0}
+  <section class="listing" aria-labelledby="featured">
+    <h2 class="listing-title" id="featured">{ t.home.featured }</h2>
+    <ol class="cards cards--lead">
+      {#each featuredList as item}{@render lead(item)}{/each}
+    </ol>
+  </section>
+  {/if}
+
+  {#if articleList.length > 0}
+  <section class="listing" aria-labelledby="articles">
+    <h2 class="listing-title" id="articles">{ t.home.articles }</h2>
+    <ol class="cards">
+      {#each articleList as item}{@render card(item)}{/each}
+    </ol>
+  </section>
+  {/if}
+</main>
+
+{@partial partials/footer.sort}
+</body>
+</html>

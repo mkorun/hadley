@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="{ meta.lang }"{#if site.theme.colorScheme !== 'auto'} data-color-scheme="{ site.theme.colorScheme }"{/if}>
+{@partial partials/head.sort}
+<body>
+{@partial partials/header.sort}
+
+<main id="main">
+  <article>
+    <header class="title-block">
+      <h1>{ meta.title }</h1>
+    </header>
+    <div class="prose">
+      {@raw html.markup}
+      {#if feed}
+      <p>{ t.feed.subscribe }</p>
+      <p><code>{ site.origin }{ feed.url }</code></p>
+      {/if}
+    </div>
+    {#if feed}
+    <section class="listing" aria-labelledby="feed-articles">
+      <h2 class="listing-title" id="feed-articles">{ t.feed.articles }</h2>
+      <ol class="entries">
+        {#each feed.items as item}
+        <li class="entry">
+          <p class="entry-meta"><time datetime="{ item.displayDate | isoDate }">{ item.displayDate | dateFormat('yyyy-MM-dd') }</time></p>
+          <h3 class="entry-title"><a href="{ item.urlPath }">{ item.title }</a></h3>
+          {#if item.description}<p class="entry-text">{ item.description }</p>{/if}
+        </li>
+        {/each}
+      </ol>
+    </section>
+    {/if}
+  </article>
+</main>
+
+{@partial partials/footer.sort}
+</body>
+</html>

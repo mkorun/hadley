@@ -1,0 +1,32 @@
+# One comments service per site with comments (services/forms/CONTRACT.md, "The Go service"): the instance name is the
+# site, its environment /etc/hadley-forms/<site>.env (mode 0600) with at least DATA_DIR (absolute), ADMIN_TOKEN,
+# HMAC_SECRET, CORS_ORIGINS and, for a second site, a PORT of its own.
+#
+#   systemctl enable --now hadley-forms@example.org
+
+[Unit]
+Description=hadley-forms, the comments service of %i
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+EnvironmentFile=/etc/hadley-forms/%i.env
+ExecStart=/usr/local/bin/hadley-forms
+UMask=0077
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

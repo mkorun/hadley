@@ -1,0 +1,33 @@
+{#if site.comments}
+<div class="comment-form" data-pagefind-ignore>
+  <button type="button" class="comment-open" hidden>{ t.comments.openButton }</button>
+  <p class="comment-success" role="status" hidden>{ t.comments.success }</p>
+
+  <dialog class="comment-dialog" aria-labelledby="comment-dialog-title"
+    data-lang="{ meta.lang }"
+    data-article-id="{ meta.id }"
+    data-service-url="{ site.comments.url }"
+    data-i18n-submit="{ t.comments.submitButton }"
+    data-i18n-waiting="{ t.comments.waiting }"
+    data-i18n-error-email="{ t.comments.errorEmailRequired }"
+    data-i18n-error-422="{ t.comments.error422 }"
+    data-i18n-error-429="{ t.comments.error429 }"
+    data-i18n-error-503="{ t.comments.error503 }"
+    data-i18n-error-network="{ t.comments.errorNetwork }">
+    <form method="dialog" novalidate>
+      <h2 id="comment-dialog-title">{ t.comments.formTitle }</h2>
+      <label class="field">{ t.comments.fieldName }<input name="name" type="text" required autocomplete="name"></label>
+      <label class="field">{ t.comments.fieldEmail }<input name="email" type="email" autocomplete="email"></label>
+      <label class="field">{ t.comments.fieldText }<textarea name="text" required rows="6"></textarea></label>
+      <label class="field-check"><input name="notify" type="checkbox" value="true"> { t.comments.notifyLabel }</label>
+      <p class="privacy">{ t.comments.privacy }</p>
+      <p class="form-error" role="alert" hidden></p>
+      <div class="form-actions">
+        <button type="submit" class="button-primary" aria-disabled="true">{ t.comments.submitButton }</button>
+        <button type="button" class="button" data-dialog-close>{ t.comments.cancelButton }</button>
+      </div>
+    </form>
+  </dialog>
+</div>
+<script type="module" src="{ assets['/assets/js/comments.js'] }" data-worker="{ assets['/assets/js/comments-worker.js'] }"></script>
+{/if}

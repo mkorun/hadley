@@ -1,0 +1,95 @@
+# The texts of punch in Spanish.
+
+nav:
+  skipLink:    Saltar al contenido
+  mainLabel:   Navegación principal
+  footerLabel: Navegación del sitio
+  languages:   Idiomas
+  backHome:    Volver a la página de inicio
+
+heading:
+  link: Enlace a esta sección
+
+home:
+  articles: Artículos
+  featured: Destacados
+
+article:
+  readingTime:    min de lectura
+  firstPublished: Publicado por primera vez
+  contents:       Contenido
+  seriesPart:     Parte
+  seriesOf:       de
+  aiAssisted:     Escrito con ayuda de IA.
+  pager:          Más para leer
+  older:          Anterior
+  newer:          Siguiente
+
+author:
+  label: Escrito por
+
+status:
+  draft:     Borrador
+  seed:      Esbozo
+  archived:  Archivado
+  scheduled: Programado
+  updated:   Actualizado
+
+footer:
+  builtWith: Hecho con
+
+image:
+  aiGenerated:    Generado por IA
+  aiGeneratedAlt: (generado por IA)
+  coverLabel:     Imagen de portada
+
+imprint:
+  address:     Dirección
+  contact:     Contacto
+  email:       Correo electrónico
+  phone:       Teléfono
+  responsible: Responsable del contenido
+
+feed:
+  subscribe: "Suscríbete a esta dirección en tu lector de feeds:"
+  articles:  En el feed
+
+comments:
+  headingSingular:    comentario
+  headingPlural:      comentarios
+  openButton:         Escribir un comentario
+  formTitle:          Escribir un comentario
+  fieldName:          Nombre
+  fieldEmail:         Correo electrónico (opcional)
+  fieldText:          Comentario
+  notifyLabel:        Avísame por correo cuando se publique mi comentario.
+  privacy:            Tu dirección de correo no se publica; solo sirve para responderte.
+  submitButton:       Enviar
+  cancelButton:       Cancelar
+  waiting:            Un momento …
+  success:            ¡Gracias! Tu comentario aparecerá en cuanto se haya leído.
+  errorEmailRequired: Indica tu correo electrónico para que podamos avisarte.
+  error422:           El formulario ha caducado. Envíalo de nuevo, por favor.
+  error429:           Demasiados comentarios a la vez. Espera unos minutos, por favor.
+  error503:           Los comentarios no están disponibles ahora. Inténtalo más tarde.
+  errorNetwork:       No se pudo enviar el comentario. Comprueba tu conexión.
+
+search:
+  open:        Buscar
+  label:       Búsqueda
+  close:       Cerrar la búsqueda
+  placeholder: Buscar en el sitio
+  results:     'Resultados: {count}'
+  none:        'No hay nada para «{term}».'
+
+scheme:
+  label: Esquema de color
+  auto:  Automático
+  light: Claro
+  dark:  Oscuro
+
+profiles:
+  label: Perfiles
+
+contact:
+  write: Escríbeme

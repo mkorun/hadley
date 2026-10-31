@@ -1,0 +1,506 @@
+/* ─── Theme variables (dark default = teblo.de) ────────────────────────────── */
+/* @layer makes sure the site's own :root overrides always win,                 */
+/* whatever the load order.                                                     */
+@layer hadley-editor-defaults {
+  :root {
+    --he-bg: #1e293b;
+    --he-bg-deep: #0f172a;
+    --he-bg-raised: #263344;
+    --he-bg-hover: #334155;
+    --he-bg-cancel-hv: #2d3f55;
+    --he-border: #334155;
+    --he-text: #e2e8f0;
+    --he-muted: #94a3b8;
+    --he-sep: rgba(148, 163, 184, 0.2);
+    --he-accent: #2563eb;
+    --he-accent-deep: #1d4ed8;
+    --he-accent-focus: #60a5fa;
+    --he-danger: #dc2626;
+    --he-danger-deep: #b91c1c;
+    --he-overlay-bg: rgba(15, 23, 42, 0.42);
+    --he-shadow: rgba(0, 0, 0, 0.4);
+    --he-block-idle: rgba(37, 99, 235, 0.22);
+    --he-block-hover: rgba(37, 99, 235, 0.85);
+    --he-block-bg: rgba(37, 99, 235, 0.07);
+    --he-trigger-bg: rgba(37, 99, 235, 0.25);
+    --he-trigger-text: rgba(255, 255, 255, 0.93);
+    --he-danger-icon: rgba(220, 38, 38, 0.09);
+    --he-danger-hv: rgba(239, 68, 68, 0.18);
+  }
+}
+
+/* ─── Dev bar: dev-overlay + edit toggle, together bottom right ────────────── */
+
+#hadley-dev-bar {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 9998;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+#hadley-dev-bar > * {
+  pointer-events: auto;
+}
+
+/* dev-overlay: static inside the bar instead of fixed */
+#hadley-dev-bar .dev-overlay {
+  position: static;
+  inset: auto;
+}
+
+#hadley-edit-toggle {
+  padding: 0.4rem 0.9rem;
+  background: var(--he-bg);
+  color: var(--he-muted);
+  border: 1px solid var(--he-border);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+#hadley-edit-toggle:hover {
+  background: var(--he-bg-hover);
+  color: var(--he-text);
+}
+
+body.hadley-edit-mode #hadley-edit-toggle {
+  background: var(--he-accent);
+  color: #fff;
+  border-color: var(--he-accent);
+}
+
+/* ─── Block affordance in edit mode ────────────────────────────────────────── */
+
+/* Transparent outline always present — only the colour transitions (no flash) */
+[data-hadley-id] {
+  outline: 2px dashed transparent;
+  outline-offset: 8px;
+  transition:
+    outline-color 0.25s ease,
+    background-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+body.hadley-edit-mode [data-hadley-id] {
+  outline-color: var(--he-block-idle);
+  position: relative;
+  cursor: default;
+}
+
+body.hadley-edit-mode [data-hadley-id]:hover,
+body.hadley-edit-mode [data-hadley-id].hadley-block-active {
+  outline-color: var(--he-block-hover);
+  background-color: var(--he-block-bg);
+  box-shadow: 0 0 0 8px var(--he-block-bg);
+}
+
+/* Markanto comments do not exist in the published DOM. In the editor they need
+   a visible block handle, clearly marked as not published. The ::before line
+   says so explicitly; the dashed outline, the muted colour and the diagonal
+   hatching underline "not live". */
+.hadley-editor-comment {
+  display: block;
+  margin-block: 1rem;
+  padding: 0.55rem 1rem 0.75rem;
+  border: 1px dashed var(--he-muted);
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(135deg, transparent 0 7px, color-mix(in srgb, var(--he-muted) 7%, transparent) 7px 8px),
+    color-mix(in srgb, var(--he-bg) 10%, transparent);
+  color: color-mix(in srgb, var(--he-muted) 80%, transparent);
+  font:
+    0.8125rem/1.5 ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
+  white-space: pre-wrap;
+}
+
+.hadley-editor-comment::before {
+  /* The editor's UI texts come from the `T` table in editor.js (German and English, by the
+       page's <html lang>), server messages from i18n.ts. This label is CSS's own: English, German
+       on a German page (below), and a site can set its own through the CSS variable. */
+  content: var(--he-comment-label, '⊘ Comment · not in the output');
+  display: block;
+  margin-block-end: 0.45rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: normal;
+  color: var(--he-muted);
+}
+
+.hadley-editor-comment:lang(de)::before {
+  content: var(--he-comment-label, '⊘ Kommentar · nicht im Output');
+}
+
+/* ─── Trigger button (⋯) ────────────────────────────────────────────────────── */
+
+.hadley-trigger {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: var(--he-trigger-bg);
+  color: var(--he-trigger-text);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+  transition:
+    opacity 0.2s ease,
+    background 0.15s ease;
+  padding: 0;
+}
+
+/* Non-void: controlled by CSS — in sync with the block hover.
+   Descendant combinator (not only a direct child), because for <details> blocks the trigger sits
+   in <summary> (otherwise the shadow tree hides every child except summary while closed) */
+body.hadley-edit-mode [data-hadley-id]:hover .hadley-trigger {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Void trigger (hr, appended to body): JS sets is-visible */
+.hadley-trigger.is-visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Hover on the trigger itself */
+.hadley-trigger:hover {
+  background: var(--he-accent);
+  color: #fff;
+}
+
+/* Active (menu open) — stays visible, left side square (joins the menu) */
+.hadley-trigger.is-active {
+  opacity: 1 !important;
+  pointer-events: all;
+  background: var(--he-accent-deep);
+  color: #fff;
+  border-radius: 0 4px 4px 0;
+}
+
+/* While the editor is open: disable all triggers */
+body.hadley-editing .hadley-trigger {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* ─── Slide-out block menu ──────────────────────────────────────────────────── */
+
+/* display: flex NOT in the base selector — it would override [hidden] */
+#hadley-block-menu {
+  position: absolute;
+  z-index: 9999;
+  top: -9999px; /* off-screen until the first positioning (prevents a flash) */
+  left: -9999px;
+  gap: 2px;
+  background: var(--he-bg);
+  border: 1px solid var(--he-bg);
+  border-right: 2px solid var(--he-bg);
+  border-radius: 6px 0 0 6px;
+  overflow: hidden;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.2),
+    0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+#hadley-block-menu:not([hidden]) {
+  display: flex;
+  flex-direction: row;
+  animation: hadley-menu-in 0.14s ease;
+}
+
+@keyframes hadley-menu-in {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+#hadley-block-menu button {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: var(--he-bg-raised);
+  cursor: pointer;
+  transition: background 0.12s ease;
+  padding: 0;
+}
+
+#hadley-block-menu button:focus-visible {
+  outline: 2px solid var(--he-accent-focus);
+  outline-offset: -2px;
+  position: relative;
+  z-index: 1;
+}
+
+#hadley-block-menu svg {
+  display: block;
+  pointer-events: none;
+}
+
+.hadley-menu-merge {
+  color: var(--he-muted);
+}
+#hadley-block-menu .hadley-menu-merge:hover {
+  background: var(--he-bg-hover);
+}
+
+.hadley-menu-move {
+  color: var(--he-muted);
+}
+#hadley-block-menu .hadley-menu-move:hover {
+  background: var(--he-bg-hover);
+}
+
+.hadley-menu-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--he-sep);
+  align-self: center;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.hadley-menu-delete {
+  color: var(--he-danger);
+}
+#hadley-block-menu .hadley-menu-delete:hover {
+  background: var(--he-danger-hv);
+}
+
+/* ─── In-flow editor ───────────────────────────────────────────────────────── */
+
+.hadley-editor {
+  margin-block: 0.5rem;
+  border: 2px solid var(--he-accent);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--he-bg);
+  box-shadow: 0 4px 16px var(--he-shadow);
+}
+
+.hadley-textarea {
+  display: block;
+  width: 100%;
+  min-height: 3.5rem;
+  max-height: 60vh;
+  padding: 0.75rem;
+  border: none;
+  resize: none;
+  font-family: ui-monospace, 'Cascadia Code', 'Fira Mono', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  background: var(--he-bg);
+  color: var(--he-text);
+  box-sizing: border-box;
+  /* Modern auto-resize: no JS needed where supported */
+  field-sizing: content;
+}
+
+.hadley-textarea:focus {
+  outline: none;
+  background: var(--he-bg-raised);
+}
+
+.hadley-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--he-bg-deep);
+  border-top: 1px solid var(--he-border);
+}
+
+.hadley-save-btn,
+.hadley-cancel-btn {
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.8125rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.hadley-save-btn {
+  background: var(--he-accent);
+  color: #fff;
+  border: none;
+}
+
+.hadley-save-btn:hover:not(:disabled) {
+  background: var(--he-accent-deep);
+}
+
+.hadley-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hadley-cancel-btn {
+  background: transparent;
+  color: var(--he-muted);
+  border: 1px solid var(--he-border);
+}
+
+.hadley-cancel-btn:hover {
+  background: var(--he-bg);
+}
+
+.hadley-toolbar-hint {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--he-muted);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ─── Delete confirmation overlay ───────────────────────────────────────────── */
+
+#hadley-delete-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--he-overlay-bg);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: hadley-overlay-in 0.18s ease;
+}
+
+@keyframes hadley-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+#hadley-delete-dialog {
+  background: var(--he-bg);
+  border-radius: 14px;
+  padding: 1.75rem 1.75rem 1.5rem;
+  width: 320px;
+  box-shadow:
+    0 8px 24px var(--he-shadow),
+    0 32px 64px var(--he-shadow);
+  animation: hadley-dialog-in 0.18s cubic-bezier(0.34, 1.2, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+@keyframes hadley-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.93) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.hdd-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--he-danger-icon);
+  color: var(--he-danger);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.hdd-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--he-text);
+  margin-bottom: 0.375rem;
+}
+
+.hdd-body {
+  font-size: 0.8125rem;
+  color: var(--he-muted);
+  line-height: 1.55;
+  margin-bottom: 1.5rem;
+}
+
+.hdd-actions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.hdd-actions button {
+  flex: 1;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.13s ease,
+    box-shadow 0.13s ease;
+  font-family: inherit;
+}
+
+.hdd-cancel {
+  background: var(--he-bg-raised);
+  color: var(--he-muted);
+  border: 1px solid var(--he-border) !important;
+}
+
+.hdd-cancel:hover {
+  background: var(--he-bg-cancel-hv);
+}
+.hdd-cancel:focus-visible {
+  outline: 2px solid var(--he-accent);
+  outline-offset: 2px;
+}
+
+.hdd-confirm {
+  background: var(--he-danger);
+  color: #fff;
+}
+
+.hdd-confirm:hover {
+  background: var(--he-danger-deep);
+}
+.hdd-confirm:focus-visible {
+  outline: 2px solid var(--he-danger);
+  outline-offset: 2px;
+}

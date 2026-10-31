@@ -1,0 +1,11 @@
+# gitleaks (check.sh): its default rules, and the examples of this repository it may pass.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "the test vector of the Altcha challenge in the contract of the comments service, not a key"
+condition = "AND"
+paths = ['''^services/forms/CONTRACT\.md$''']
+regexTarget = "line"
+regexes = ['''"derivedKey": "''']

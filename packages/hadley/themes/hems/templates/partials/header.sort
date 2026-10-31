@@ -1,0 +1,41 @@
+<a class="skip-link" href="#main">{ t.nav.skipLink }</a>
+<header class="masthead{#if template === 'home'} masthead--home{/if}" data-pagefind-ignore>
+  <a class="site-title" href="{ homeUrl }"{#if template === 'home'} aria-current="page"{/if}>{ site.title }</a>
+  {#if navigations.main}
+  <nav class="nav" aria-label="{ t.nav.mainLabel }">
+    {#each navigations.main as link}
+    {#if !link.unpublished}<a href="{ link.urlPath }"{#if link.urlPath === urlPath} aria-current="page"{/if}>{ link.title }</a>{:else if isDevBuild}<a href="{ link.urlPath }" data-link-unpublished>{ link.title }</a>{/if}
+    {/each}
+  </nav>
+  {/if}
+  {#if hasTranslations}
+  {#snippet language(code)}{#if code === 'en'}English{:else if code === 'de'}Deutsch{:else if code === 'fr'}Français{:else if code === 'es'}Español{:else if code === 'it'}Italiano{:else}{ code }{/if}{/snippet}
+  <details class="languages">
+    <summary title="{ t.nav.languages }"><span class="visually-hidden">{ t.nav.languages }: </span>{ meta.lang }</summary>
+    <ul>
+      {#each translations as url, lang}<li>{#if lang === meta.lang}<span aria-current="page" lang="{ lang }">{@render language(lang)}</span>{:else}<a href="{ url }" hreflang="{ lang }" lang="{ lang }">{@render language(lang)}</a>{/if}</li>
+      {/each}
+    </ul>
+  </details>
+  {/if}
+  {#if site.search}
+  <button type="button" class="icon-button search-open" title="{ t.search.open }" aria-keyshortcuts="Control+K Meta+K" hidden>
+    <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m10.5 10.5 3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    <span class="visually-hidden">{ t.search.open }</span>
+  </button>
+  {/if}
+  {#if site.theme.colorToggle}
+  <button type="button" class="icon-button scheme" title="{ t.scheme.label }" hidden>
+    <span class="visually-hidden">{ t.scheme.label }:</span>
+    <span class="scheme-auto"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg><span class="visually-hidden">{ t.scheme.auto }</span></span>
+    <span class="scheme-light"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="currentColor"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M3 13l1.4-1.4M11.6 4.4 13 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span class="visually-hidden">{ t.scheme.light }</span></span>
+    <span class="scheme-dark"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 9.8A5.5 5.5 0 1 1 6.2 2.5a4.5 4.5 0 0 0 7.3 7.3z" fill="currentColor"/></svg><span class="visually-hidden">{ t.scheme.dark }</span></span>
+  </button>
+  {/if}
+</header>
+{#if template === 'home'}
+<div class="title-page" data-pagefind-ignore>
+  <p class="title-page-title">{ site.title }</p>
+  {#if site.claim}<p class="site-claim">{ site.claim }</p>{/if}
+</div>
+{:else if site.claim}<p class="site-claim" data-pagefind-ignore>{ site.claim }</p>{/if}

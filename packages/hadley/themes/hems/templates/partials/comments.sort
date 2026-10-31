@@ -1,0 +1,25 @@
+{#snippet commentBlock(comment)}
+<article class="comment{#if comment.author_reply} comment--author{/if}" id="comment-{ comment.id }">
+  <p class="entry-meta"><span class="comment-author">{ comment.name }</span><time datetime="{ comment.submitted_at }">{ comment.submitted_at | dateFormat('yyyy-MM-dd') }</time></p>
+  <div class="comment-text">
+    {#each comment.paragraphs as lines}<p>{#each lines as line, i}{#if i > 0}<br>{/if}{ line }{/each}</p>{/each}
+  </div>
+  {#if comment.comments.length > 0}
+  <ol class="comment-replies">
+    {#each comment.comments as reply}
+    <li>{@render commentBlock(reply)}</li>
+    {/each}
+  </ol>
+  {/if}
+</article>
+{/snippet}
+{#if comments.length > 0}
+<section class="comments" aria-labelledby="comments-heading" data-pagefind-ignore>
+  <h2 class="listing-title" id="comments-heading">{ comments | length } {#if comments.length === 1}{ t.comments.headingSingular }{:else}{ t.comments.headingPlural }{/if}</h2>
+  <ol class="comments-list">
+    {#each comments as comment}
+    <li>{@render commentBlock(comment)}</li>
+    {/each}
+  </ol>
+</section>
+{/if}

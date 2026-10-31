@@ -1,0 +1,22 @@
+<footer class="colophon" data-pagefind-ignore>
+  {#if navigations.footer}
+  <nav class="nav" aria-label="{ t.nav.footerLabel }">
+    {#each navigations.footer as link}
+    {#if !link.unpublished}<a href="{ link.urlPath }"{#if link.urlPath === urlPath} aria-current="page"{/if}>{ link.title }</a>{:else if isDevBuild}<a href="{ link.urlPath }" data-link-unpublished>{ link.title }</a>{/if}
+    {/each}
+  </nav>
+  {/if}
+  <p>© { copyrightYear } { site.title } · { t.footer.builtWith } <a href="https://hadley.sh">hadley</a></p>
+</footer>
+{#if site.search}
+<dialog class="search" aria-label="{ t.search.label }" data-results="{ t.search.results }" data-none="{ t.search.none }">
+  <form class="search-bar" method="dialog" role="search">
+    <svg class="search-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m10.5 10.5 3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    <input class="search-input" type="search" placeholder="{ t.search.placeholder }" aria-label="{ t.search.label }" role="combobox" aria-controls="search-results" aria-expanded="false" aria-autocomplete="list" autocomplete="off" spellcheck="false">
+    <button class="search-close" aria-label="Esc: { t.search.close }"><kbd>Esc</kbd></button>
+  </form>
+  <p class="search-status" role="status"></p>
+  <ol class="search-results" id="search-results" role="listbox" aria-label="{ t.search.label }"></ol>
+</dialog>
+<script type="module" src="{ assets['/assets/js/search.js'] }"></script>
+{/if}

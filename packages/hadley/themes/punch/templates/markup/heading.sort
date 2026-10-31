@@ -1,0 +1,1 @@
+{@raw html.text}{#if id}<a class="heading-anchor" href="#{ id }" data-pagefind-ignore aria-label="{ t.heading.link }">¶</a>{/if}

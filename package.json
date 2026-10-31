@@ -1,0 +1,27 @@
+{
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/hadley"
+  ],
+  "scripts": {
+    "build": "bun packages/hadley/index.ts",
+    "import:commonmark": "bun scripts/import-commonmark.ts",
+    "test": "bun test packages/hadley/ scripts/tests/",
+    "test:case": "bun test packages/hadley/case/",
+    "test:lib": "bun test packages/hadley/lib/tests/"
+  },
+  "devDependencies": {
+    "@markantolang/parser": "0.2.0",
+    "@types/node": "^26.5.1",
+    "bun-types": "^1.4.2",
+    "mdast-util-from-markdown": "2.0.2",
+    "mdast-util-gfm": "3.1.0",
+    "micromark-extension-gfm": "3.0.0",
+    "oxc-parser": "0.155.0",
+    "oxfmt": "0.74.0",
+    "oxlint": "1.89.0",
+    "oxlint-tsgolint": "7.0.2005",
+    "typescript": "7.0.2"
+  }
+}

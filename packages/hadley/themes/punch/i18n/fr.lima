@@ -1,0 +1,95 @@
+# The texts of punch in French.
+
+nav:
+  skipLink:    Aller au contenu
+  mainLabel:   Navigation principale
+  footerLabel: Navigation du site
+  languages:   Langues
+  backHome:    Retour à l’accueil
+
+heading:
+  link: Lien vers cette section
+
+home:
+  articles: Articles
+  featured: À la une
+
+article:
+  readingTime:    min de lecture
+  firstPublished: Première publication
+  contents:       Sommaire
+  seriesPart:     Partie
+  seriesOf:       sur
+  aiAssisted:     Écrit avec l’aide de l’IA.
+  pager:          À lire aussi
+  older:          Plus ancien
+  newer:          Plus récent
+
+author:
+  label: Écrit par
+
+status:
+  draft:     Brouillon
+  seed:      Ébauche
+  archived:  Archivé
+  scheduled: Programmé
+  updated:   Mis à jour
+
+footer:
+  builtWith: Créé avec
+
+image:
+  aiGenerated:    Généré par IA
+  aiGeneratedAlt: (généré par IA)
+  coverLabel:     Image de couverture
+
+imprint:
+  address:     Adresse
+  contact:     Contact
+  email:       E-mail
+  phone:       Téléphone
+  responsible: Responsable du contenu
+
+feed:
+  subscribe: "Abonnez-vous à cette adresse dans votre lecteur de flux :"
+  articles:  Dans le flux
+
+comments:
+  headingSingular:    commentaire
+  headingPlural:      commentaires
+  openButton:         Écrire un commentaire
+  formTitle:          Écrire un commentaire
+  fieldName:          Nom
+  fieldEmail:         E-mail (facultatif)
+  fieldText:          Commentaire
+  notifyLabel:        Me prévenir par e-mail quand mon commentaire est publié.
+  privacy:            Votre adresse e-mail n’est pas publiée ; elle sert seulement à vous répondre.
+  submitButton:       Envoyer
+  cancelButton:       Annuler
+  waiting:            Un instant …
+  success:            Merci ! Votre commentaire paraîtra une fois lu.
+  errorEmailRequired: Indiquez votre adresse e-mail pour que nous puissions vous prévenir.
+  error422:           Le formulaire a expiré. Merci de l’envoyer à nouveau.
+  error429:           Trop de commentaires à la fois. Merci de patienter quelques minutes.
+  error503:           Les commentaires sont indisponibles pour le moment. Réessayez plus tard.
+  errorNetwork:       Le commentaire n’a pas pu être envoyé. Vérifiez votre connexion.
+
+search:
+  open:        Rechercher
+  label:       Recherche
+  close:       Fermer la recherche
+  placeholder: Rechercher sur le site
+  results:     'Résultats : {count}'
+  none:        'Aucun résultat pour « {term} ».'
+
+scheme:
+  label: Thème de couleur
+  auto:  Automatique
+  light: Clair
+  dark:  Sombre
+
+profiles:
+  label: Profils
+
+contact:
+  write: Écrivez-moi
