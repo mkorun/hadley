@@ -6,6 +6,17 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-11-01
+
+The first release of hadley: what the previews below brought, with nothing new since the last of them.
+
+### Known limits
+
+- The programs are not signed: Windows warns about one from a browser, and macOS about one that does not come through
+  `install.sh`.
+- Search in Chinese and Japanese is weaker in a program than with the npm package.
+- The comments service, `hadley-forms`, comes for Linux and macOS; on Windows it runs only in WSL.
+
 ## [0.1.0-rc.4] — 2026-10-31
 
 The fourth preview: the first release `hadley upgrade` can reach, to try it before 0.1.0.
