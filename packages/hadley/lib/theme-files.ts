@@ -8,7 +8,7 @@
  */
 import { createHash } from 'node:crypto'
 import { realpathSync } from 'node:fs'
-import { copyFile, mkdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import type { Output } from './output.ts'
 import { isSystemFile, pathsBelow } from './platform.ts'
@@ -142,7 +142,8 @@ export async function writeTheme(
     await mkdir(dirname(destFile), { recursive: true })
     if (file.bytes !== undefined) await writeFile(destFile, file.bytes)
     else if (file.source.endsWith('.ts')) await writeFile(destFile, await compile(await readFile(sourceFile, 'utf-8')))
-    else await copyFile(sourceFile, destFile)
+    // read and written, not copied: Windows gives a copy its source's modification time, so it would never be newer
+    else await writeFile(destFile, await readFile(sourceFile))
     written++
   }
   return written
