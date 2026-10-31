@@ -11,13 +11,14 @@ import (
 	"testing"
 )
 
-func TestLatestTakesAPrereleaseOnlyForAPrerelease(t *testing.T) {
+func TestLatestIsTheHighestAPrereleaseOnlyForAPrerelease(t *testing.T) {
 	releases := []release{
-		{Tag: "v9.0.0", Draft: true},
-		{Tag: "v2.0.0-rc.1", Prerelease: true},
 		{Tag: "v1.0.0"},
+		{Tag: "v2.0.0-rc.2", Prerelease: true},
+		{Tag: "v2.0.0-rc.10", Prerelease: true},
+		{Tag: "v0.9.0"},
 	}
-	for current, want := range map[string]string{"1.0.0": "1.0.0", "2.0.0-rc.0": "2.0.0-rc.1", "0.9.0": "1.0.0"} {
+	for current, want := range map[string]string{"1.0.0": "1.0.0", "2.0.0-rc.1": "2.0.0-rc.10", "0.9.0": "1.0.0"} {
 		got, err := latest(releases, current)
 		if err != nil || got != want {
 			t.Errorf("%s: got %s, %v", current, got, err)
@@ -25,14 +26,26 @@ func TestLatestTakesAPrereleaseOnlyForAPrerelease(t *testing.T) {
 	}
 }
 
-func TestLatestRefusesWhatIsNoVersion(t *testing.T) {
-	for _, tag := range []string{"v1/../../x", "latest", "v1.2"} {
+func TestLatestTakesOnlyTheTagOfARelease(t *testing.T) {
+	for _, tag := range []string{"1.0.0", "v1/../../x", "latest", "v1.2"} {
 		if got, err := latest([]release{{Tag: tag}}, "1.0.0"); err == nil {
 			t.Errorf("%s: got %s", tag, got)
 		}
 	}
 	if _, err := latest(nil, "1.0.0"); err == nil {
 		t.Error("no refusal without a release")
+	}
+}
+
+func TestOlderKeepsTheOrderOfVersions(t *testing.T) {
+	inOrder := []string{"0.1.0-rc.2", "0.1.0-rc.10", "0.1.0", "0.2.0", "0.10.0", "1.0.0-alpha", "1.0.0-alpha.1",
+		"1.0.0-beta", "1.0.0"}
+	for i, a := range inOrder {
+		for j, b := range inOrder {
+			if got, want := older(a, b), i < j; got != want {
+				t.Errorf("older(%s, %s) is %v", a, b, got)
+			}
+		}
 	}
 }
 
@@ -64,7 +77,10 @@ func serve(t *testing.T, newest, body, checksum string) source {
 	return source{server.URL + "/releases", server.URL + "/download", server.Client()}
 }
 
-// installed makes a program and a cache with a version in it, and returns their paths.
+// running names the directory of the version the tests run as.
+const running = "1.0.0-abc"
+
+// installed makes a program, and a cache with its version, an older one and an unpacking, and returns their paths.
 func installed(t *testing.T) (program, cache string) {
 	t.Helper()
 	dir := t.TempDir()
@@ -73,8 +89,10 @@ func installed(t *testing.T) (program, cache string) {
 	if err := os.WriteFile(program, []byte("old"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(cache, "1.0.0-abc"), 0o700); err != nil {
-		t.Fatal(err)
+	for _, name := range []string{running, "0.9.0-abc", temporaryName + "x"} {
+		if err := os.MkdirAll(filepath.Join(cache, name), 0o700); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return program, cache
 }
@@ -88,47 +106,56 @@ func read(t *testing.T, path string) string {
 	return string(body)
 }
 
-func TestUpgradePutsTheNewProgramInPlaceAndEmptiesTheCache(t *testing.T) {
+func TestUpgradePutsTheNewProgramInPlaceAndKeepsTheVersionThatRuns(t *testing.T) {
+	version = "1.0.0"
 	program, cache := installed(t)
-	if err := upgrade(serve(t, "2.0.0", "new", sum([]byte("new"))), program, cache); err != nil {
+	if err := upgrade(serve(t, "2.0.0", "new", sum([]byte("new"))), program, cache, running); err != nil {
 		t.Fatal(err)
 	}
 	if got := read(t, program); got != "new" {
 		t.Errorf("program is %q", got)
 	}
-	if left, _ := os.ReadDir(cache); len(left) != 0 {
-		t.Errorf("left %v", left)
+	left, err := os.ReadDir(cache)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if left, _ := os.ReadDir(filepath.Dir(program)); len(left) != 2 {
-		t.Errorf("beside the program: %v", left)
+	if len(left) != 2 || left[0].Name() != temporaryName+"x" || left[1].Name() != running {
+		t.Errorf("left %v, not the version that runs and an unpacking", left)
+	}
+	beside, err := filepath.Glob(filepath.Join(filepath.Dir(program), ".hadley-upgrade-*"))
+	if err != nil || len(beside) != 0 {
+		t.Errorf("beside the program: %v, %v", beside, err)
 	}
 }
 
 func TestUpgradeKeepsTheProgramWhenTheChecksumDiffers(t *testing.T) {
+	version = "1.0.0"
 	program, cache := installed(t)
-	err := upgrade(serve(t, "2.0.0", "new", sum([]byte("other"))), program, cache)
+	err := upgrade(serve(t, "2.0.0", "new", sum([]byte("other"))), program, cache, running)
 	if err == nil || !strings.Contains(err.Error(), "checksum differs") {
 		t.Fatalf("got %v", err)
 	}
 	if got := read(t, program); got != "old" {
 		t.Errorf("program is %q", got)
 	}
-	if left, _ := os.ReadDir(cache); len(left) != 1 {
+	if left, _ := os.ReadDir(cache); len(left) != 3 {
 		t.Errorf("the cache went: %v", left)
 	}
 }
 
-func TestUpgradeLeavesTheLatestVersionAlone(t *testing.T) {
-	version = "2.0.0"
-	t.Cleanup(func() { version = "devel" })
-	program, cache := installed(t)
-	if err := upgrade(serve(t, "2.0.0", "new", sum([]byte("new"))), program, cache); err != nil {
-		t.Fatal(err)
-	}
-	if got := read(t, program); got != "old" {
-		t.Errorf("program is %q", got)
-	}
-	if left, _ := os.ReadDir(cache); len(left) != 1 {
-		t.Errorf("the cache went: %v", left)
+func TestUpgradeLeavesAVersionAsNewAsTheLatestOrNewerAlone(t *testing.T) {
+	for _, current := range []string{"2.0.0", "3.0.0"} {
+		version = current
+		t.Cleanup(func() { version = "1.0.0" })
+		program, cache := installed(t)
+		if err := upgrade(serve(t, "2.0.0", "new", sum([]byte("new"))), program, cache, running); err != nil {
+			t.Fatal(err)
+		}
+		if got := read(t, program); got != "old" {
+			t.Errorf("%s: program is %q", current, got)
+		}
+		if left, _ := os.ReadDir(cache); len(left) != 3 {
+			t.Errorf("%s: the cache went: %v", current, left)
+		}
 	}
 }

@@ -17,6 +17,7 @@ import (
 const (
 	settleAttempts = 30
 	settleWait     = 100 * time.Millisecond
+	temporaryName  = ".unpack-"
 )
 
 // install unpacks payload into the new directory dir, which appears whole or not at all: two first starts at once
@@ -30,7 +31,7 @@ func install(payload []byte, sum, dir string) error {
 	if err := os.MkdirAll(parent, 0o700); err != nil {
 		return err
 	}
-	temporary, err := os.MkdirTemp(parent, ".unpack-")
+	temporary, err := os.MkdirTemp(parent, temporaryName)
 	if err != nil {
 		return err
 	}

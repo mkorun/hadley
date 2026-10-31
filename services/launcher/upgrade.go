@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -12,23 +13,24 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	releasesURL = "https://api.github.com/repos/mkorun/hadley/releases?per_page=30"
+	releasesURL = "https://api.github.com/repos/mkorun/hadley/releases?per_page=100"
 	downloadURL = "https://github.com/mkorun/hadley/releases/download"
 	// Far more than a program, and a limit on what a wrong answer can fill the memory with.
 	maxDownload    = 512 << 20
 	upgradeTimeout = 15 * time.Minute
 )
 
-var releaseVersion = regexp.MustCompile(`^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$`)
+// releaseTag is the tag release.yml requires. A release under another name is none, and its version goes into a URL.
+var releaseTag = regexp.MustCompile(`^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$`)
 
 type release struct {
 	Tag        string `json:"tag_name"`
-	Draft      bool   `json:"draft"`
 	Prerelease bool   `json:"prerelease"`
 }
 
@@ -74,20 +76,58 @@ func (s source) fetch(url string) ([]byte, error) {
 	return body, nil
 }
 
-// latest is the version a program of version current upgrades to: the newest of the releases, which GitHub lists newest
-// first, a prerelease only for a prerelease.
+// latest is the highest version of the releases, a prerelease only for a program of a prerelease.
 func latest(releases []release, current string) (string, error) {
+	found := ""
 	for _, r := range releases {
-		if r.Draft || (r.Prerelease && !strings.Contains(current, "-")) {
+		if !releaseTag.MatchString(r.Tag) || (r.Prerelease && !strings.Contains(current, "-")) {
 			continue
 		}
-		found := strings.TrimPrefix(r.Tag, "v")
-		if !releaseVersion.MatchString(found) {
-			return "", fmt.Errorf("the release %q has no version", r.Tag)
+		if candidate := r.Tag[1:]; found == "" || older(found, candidate) {
+			found = candidate
 		}
-		return found, nil
 	}
-	return "", errors.New("there is no release yet")
+	if found == "" {
+		return "", errors.New("there is no release yet")
+	}
+	return found, nil
+}
+
+// older says whether version a comes before version b, by the order of Semantic Versioning: numbers as numbers, and a
+// prerelease before its release.
+func older(a, b string) bool {
+	aCore, aPre, aIsPre := strings.Cut(a, "-")
+	bCore, bPre, bIsPre := strings.Cut(b, "-")
+	if order := compareFields(strings.Split(aCore, "."), strings.Split(bCore, ".")); order != 0 {
+		return order < 0
+	}
+	if aIsPre != bIsPre {
+		return aIsPre
+	}
+	return compareFields(strings.Split(aPre, "."), strings.Split(bPre, ".")) < 0
+}
+
+// compareFields compares dotted fields in turn: numbers by value and before words, and a shorter list before a longer.
+func compareFields(a, b []string) int {
+	for i := range min(len(a), len(b)) {
+		aNumber, aErr := strconv.Atoi(a[i])
+		bNumber, bErr := strconv.Atoi(b[i])
+		var order int
+		switch {
+		case aErr == nil && bErr == nil:
+			order = cmp.Compare(aNumber, bNumber)
+		case aErr == nil:
+			order = -1
+		case bErr == nil:
+			order = 1
+		default:
+			order = cmp.Compare(a[i], b[i])
+		}
+		if order != 0 {
+			return order
+		}
+	}
+	return cmp.Compare(len(a), len(b))
 }
 
 // checksumOf reads the line of name in SHA256SUMS.
@@ -108,9 +148,9 @@ func programName(version string) string {
 	return name
 }
 
-// upgrade puts the program of the latest release in the place of program, once its checksum fits, and deletes what the
-// versions before it unpacked below cache.
-func upgrade(from source, program, cache string) error {
+// upgrade puts the program of the latest release in the place of program, once its checksum fits, and deletes what
+// older versions unpacked below cache; running is what this one unpacked.
+func upgrade(from source, program, cache, running string) error {
 	list, err := from.fetch(from.releases)
 	if err != nil {
 		return err
@@ -123,7 +163,7 @@ func upgrade(from source, program, cache string) error {
 	if err != nil {
 		return err
 	}
-	if newest == version {
+	if !older(version, newest) {
 		fmt.Printf("hadley %s is the latest version\n", version)
 		return nil
 	}
@@ -149,7 +189,7 @@ func upgrade(from source, program, cache string) error {
 	if err := replace(program, body); err != nil {
 		return err
 	}
-	removeVersions(cache)
+	removeVersions(cache, running)
 	fmt.Printf("hadley %s is now %s\n", version, newest)
 	return nil
 }
@@ -174,14 +214,16 @@ func replace(program string, body []byte) error {
 	return swap(file.Name(), program)
 }
 
-// removeVersions deletes what is in cache. It only frees space: a directory another hadley still runs from may stay,
-// and a directory that is gone is unpacked again.
-func removeVersions(cache string) {
+// removeVersions deletes the versions in cache other than running, which another hadley may still run from, as may a
+// first start from its unpacking. It only frees space, so a failure does not matter.
+func removeVersions(cache, running string) {
 	entries, err := os.ReadDir(cache)
 	if err != nil {
 		return
 	}
 	for _, entry := range entries {
-		os.RemoveAll(filepath.Join(cache, entry.Name()))
+		if entry.Name() != running && !strings.HasPrefix(entry.Name(), temporaryName) {
+			os.RemoveAll(filepath.Join(cache, entry.Name()))
+		}
 	}
 }

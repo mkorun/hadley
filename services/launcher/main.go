@@ -46,10 +46,11 @@ func run(args []string) error {
 		return err
 	}
 	removeOld(program)
+	name := version + "-" + payloadSum[:12]
 	if len(args) == 1 && args[0] == "upgrade" {
-		return upgrade(github(), program, cache)
+		return upgrade(github(), program, cache, name)
 	}
-	dir := filepath.Join(cache, version+"-"+payloadSum[:12])
+	dir := filepath.Join(cache, name)
 	if _, err := os.Lstat(dir); errors.Is(err, fs.ErrNotExist) {
 		fmt.Fprintln(os.Stderr, firstStart)
 		if err := install(payload, payloadSum, dir); err != nil {

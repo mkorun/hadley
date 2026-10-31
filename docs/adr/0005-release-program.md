@@ -17,7 +17,8 @@ the checksum it holds, and puts it in `~/.local/bin`. The npm package stays as i
 - A program runs only from a directory of the user alone, with its parts there, and runs nothing it did not bring:
   it hides `BUN_*` variables from Bun, which also reads no `.env`, no `bunfig.toml` of the site and downloads nothing.
 - `hadley upgrade` is the program's own: it replaces itself with the latest release, checked against that release's
-  `SHA256SUMS`, and empties its directory in the cache. A prerelease also takes prereleases.
+  `SHA256SUMS`, if that is newer. It deletes what older versions unpacked and keeps the running version's, which
+  another hadley may be using. A prerelease also takes prereleases.
 - The programs carry Pagefind without its dictionaries for Chinese and Japanese. The npm package keeps them.
 - The programs need glibc. On musl hadley installs with npm.
 - `check.yml` builds the programs and runs the smoke test with each on its own system; `release.yml` publishes those
@@ -35,7 +36,8 @@ Reasons (probes of 2026-10-31, the Windows program on a real Windows machine):
 
 Costs accepted: a second Go program in the gate and an unsigned download: Windows warns about a program from a browser
 until it is signed and has earned a reputation, and macOS does for a program that does not come through
-`install.sh`. A version leaves its directory in the cache until `hadley upgrade` deletes it. Search in Chinese and
+`install.sh`. A version leaves its directory in the cache until the second `hadley upgrade` after it. On Windows a
+crash between the two renames of an upgrade leaves the program under the name `hadley.exe.old`. Search in Chinese and
 Japanese is weaker in a program than with the package.
 
 Revisit if: Japanese or Chinese sites need Pagefind's dictionaries; a program can be signed; or Bun or Node.js can run
