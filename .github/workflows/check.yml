@@ -43,7 +43,21 @@ jobs:
         run: brew install exiftool && brew install --cask font-noto-sans
         timeout-minutes: 10
       - if: runner.os == 'Windows'
-        run: choco install exiftool noto --yes --no-progress
+        run: choco install exiftool --yes --no-progress
+        timeout-minutes: 10
+      # the release of Noto Sans the font-noto-sans cask of macOS installs, at its checksum; Chocolatey's noto
+      # package downloads from a place that is gone
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $zip = "$env:RUNNER_TEMP\NotoSans.zip"
+          Invoke-WebRequest -OutFile $zip `
+            https://github.com/notofonts/latin-greek-cyrillic/releases/download/NotoSans-v2.015/NotoSans-v2.015.zip
+          if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne '0c34df072a3fa7efbb7cbf34950e1f971a4447cffe365d3a359e2d4089b958f5') {
+            throw "$zip is not the NotoSans-v2.015.zip it should be"
+          }
+          Expand-Archive $zip "$env:RUNNER_TEMP\NotoSans"
+          Copy-Item "$env:RUNNER_TEMP\NotoSans\NotoSans\unhinted\ttf\NotoSans-*.ttf" "$env:WINDIR\Fonts"
         timeout-minutes: 10
       - run: bun install --frozen-lockfile
         timeout-minutes: 5
