@@ -6,6 +6,9 @@ push to `main`, every pull request and every release. Linux and macOS pass; Wind
 fail the check: many of its tests expect paths with `/` and file modes and times as Linux and macOS have them. The
 release files of the comments service are built on Linux only (`scripts/build-forms.ts`).
 
+The programs of a release ([ADR 0005](adr/0005-release-program.md)) are built on Linux too, for Linux and macOS on x64
+and arm64 and for Windows on x64, and each runs the smoke test on its own system. On Linux they need glibc.
+
 What differs between the systems is handled in one place, `packages/hadley/lib/platform.ts`, and keeps a site from
 building on one system but not on another:
 

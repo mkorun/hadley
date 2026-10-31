@@ -2,16 +2,35 @@
 
 ## Install
 
-hadley runs on [Node.js](https://nodejs.org) 24 or later.
+hadley is one program, and it needs nothing else installed.
+
+On Linux, macOS and in WSL:
+
+```sh
+curl -fsSL https://hadley.sh/install.sh | sh
+```
+
+puts it in `~/.local/bin`. Running the line again updates it.
+
+On Windows, download `hadley-<version>-windows-amd64.exe` from the
+[releases](https://github.com/mkorun/hadley/releases), name it `hadley.exe` and put it in a folder on your `PATH`.
+The program is not signed yet, so Windows warns about it the first time.
+
+`hadley version` prints the version that runs. The first start takes a few seconds: the program unpacks what it carries
+into your cache directory (`~/.cache/hadley`, `~/Library/Caches/hadley`, `%LOCALAPPDATA%\hadley`), about 200 MB. That
+directory can be deleted at any time; to remove hadley, delete it and the program.
+
+### With Node.js
+
+Where there is no program (Linux with musl), or with Node.js 24 or later at hand, hadley installs as a package:
 
 ```sh
 npm install --global @mkorun/hadley
 ```
 
-`bun add --global @mkorun/hadley` installs it too; the command still starts with Node.js. A checkout of the repository
-runs on [Bun](https://bun.sh) 1.4 as well ([CONTRIBUTING.md](../CONTRIBUTING.md)).
-
-`hadley version` prints the version that runs.
+`bun add --global @mkorun/hadley` installs it too; the command still starts with Node.js. The package carries Pagefind's
+dictionaries for Chinese and Japanese, which the program leaves out, and search in those languages is better with it. A
+checkout of the repository runs on [Bun](https://bun.sh) 1.4 as well ([CONTRIBUTING.md](../CONTRIBUTING.md)).
 
 ## A new site
 

@@ -24,11 +24,12 @@ HTML it writes. [Vite](https://vite.dev), [sharp](https://sharp.pixelplumbing.co
 
 ## Quick start
 
-hadley runs on [Node.js](https://nodejs.org) 24 or later; a checkout of this repository also on Bun 1.4
-([bun.sh](https://bun.sh)).
+hadley is one program, and it needs nothing else installed. On Windows, download it from the
+[releases](https://github.com/mkorun/hadley/releases). With Node.js 24 or later, `npm install --global @mkorun/hadley`
+installs the package instead.
 
 ```sh
-npm install --global @mkorun/hadley
+curl -fsSL https://hadley.sh/install.sh | sh
 hadley init my-site                   # hems with its sample blog; --theme punch for a personal site
 cd my-site
 hadley dev                            # http://localhost:8000

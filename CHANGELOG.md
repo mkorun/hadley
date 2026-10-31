@@ -11,6 +11,8 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 - CI on Linux, macOS and Windows: Linux and macOS pass, Windows does not yet (docs/platforms.md).
 - A release workflow: the gate, the comments service and the package, each release approved by hand and published with
   a provenance attestation.
+- A program for Linux, macOS and Windows that needs nothing else installed, and `install.sh` for Linux and macOS
+  (docs/getting-started.md).
 
 ### Fixed
 

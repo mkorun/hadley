@@ -1,7 +1,7 @@
 # Go in hadley
 
-Go is used for the comments service (`services/forms/`). The base is the
-[Google Go Style Guide](https://google.github.io/styleguide/go/): the
+Go is used for the comments service (`services/forms/`) and the program of a release (`services/launcher/`). The base
+is the [Google Go Style Guide](https://google.github.io/styleguide/go/): the
 [guide](https://google.github.io/styleguide/go/guide) (normative), the
 [decisions](https://google.github.io/styleguide/go/decisions) and the
 [best practices](https://google.github.io/styleguide/go/best-practices); it ranks clarity, simplicity, concision,
