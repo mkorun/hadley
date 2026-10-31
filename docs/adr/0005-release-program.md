@@ -32,7 +32,7 @@ Reasons (probes of 2026-10-31, the Windows program on a real Windows machine):
   tested and attested.
 
 Costs accepted: a second Go program in the gate and an unsigned download: Windows warns about a program from a browser
-until it is signed or comes through a package manager, and macOS does for a program that does not come through
+until it is signed and has earned a reputation, and macOS does for a program that does not come through
 `install.sh`. A version leaves its directory in the cache until someone deletes it. Search in Chinese and Japanese is
 weaker in a program than with the package.
 
