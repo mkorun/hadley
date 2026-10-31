@@ -28,7 +28,7 @@ describe('check-templates', () => {
     } finally {
       console.log = log
     }
-    assert.match(lines.join('\n'), /partials\/unused\.sort: \{@raw comment\.textHtml\} writes a value as HTML/)
+    assert.match(lines.join('\n'), /partials[\\/]unused\.sort: \{@raw comment\.textHtml\} writes a value as HTML/)
   })
 
   it('checks the themes too, and has nothing to check without sites and themes', () => {

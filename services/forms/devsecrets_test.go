@@ -8,6 +8,7 @@ import (
 )
 
 func TestDevSecretsAreMadeOnceAndKept(t *testing.T) {
+	notOnWindows(t)
 	dir := filepath.Join(t.TempDir(), "forms")
 	first, err := LoadDevSecrets(dir)
 	if err != nil || len(first.AdminToken) != 64 || len(first.HMACSecret) != 64 || first.AdminToken == first.HMACSecret {
@@ -43,6 +44,7 @@ func TestDevSecretsRefuseAFileOthersCanRead(t *testing.T) {
 
 // review 2026-10-27 (second): starts at the same time get the same secrets, never a half-written file
 func TestDevSecretsMadeOnceUnderConcurrency(t *testing.T) {
+	notOnWindows(t)
 	dir := t.TempDir()
 	results := make([]DevSecrets, 20)
 	errs := make([]error, 20)

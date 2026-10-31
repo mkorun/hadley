@@ -34,6 +34,7 @@ func TestQueueFreezesUntilDropped(t *testing.T) {
 
 // review 2026-10-31 (before going public): the queue, which holds email addresses, was readable by every local user
 func TestQueueFileIsTheServicesAlone(t *testing.T) {
+	notOnWindows(t)
 	q := &queue{dir: t.TempDir()}
 	if err := q.add([]byte(`{"id":"a"}`), 1e6, 1e6); err != nil {
 		t.Fatal(err)

@@ -18,7 +18,16 @@
  * failed, 2 usage error.
  */
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
@@ -227,7 +236,9 @@ async function main(args: string[]): Promise<number> {
   if (!binary && git(['status', '--porcelain']))
     console.log('(uncommitted changes are not in a fresh clone, so not tested)')
 
-  const root = mkdtempSync(join(tmpdir(), 'hadley-smoke-'))
+  // the temporary directory by its long name: below a Windows short name (C:\Users\RUNNER~1), bun install
+  // --frozen-lockfile finds changes in a lockfile that has none
+  const root = mkdtempSync(join(realpathSync.native(tmpdir()), 'hadley-smoke-'))
   const clone = join(root, 'hadley')
   const bun = process.execPath
   try {

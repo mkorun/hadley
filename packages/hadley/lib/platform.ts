@@ -4,7 +4,8 @@
  * is found on the PATH, and whether a file's mode can say who may read it. Everything else in hadley names paths
  * with `/`, as URLs and the output directory do.
  */
-import { accessSync, constants, existsSync, readdirSync, statSync } from 'node:fs'
+import { accessSync, constants, existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
+import { readdir } from 'node:fs/promises'
 import { delimiter, isAbsolute, join, sep } from 'node:path'
 
 const windows = process.platform === 'win32'
@@ -14,6 +15,13 @@ const caseBlind = windows || process.platform === 'darwin'
 /** A relative path as the file system gives it (readdir, relative), with `/` between its segments. */
 export const slashed = (path: string, separator: string = sep): string =>
   separator === '/' ? path : path.split(separator).join('/')
+
+/**
+ * Every path below `dir`, files and directories, with `/`. Read below the directory's real path: Bun on Windows reads
+ * nothing below a directory it is given as a junction, a link the owner may have made (AGENTS.md, "Security").
+ */
+export const pathsBelow = async (dir: string): Promise<string[]> =>
+  (await readdir(realpathSync(dir), { recursive: true })).map((path) => slashed(path))
 
 /**
  * Whether `name` is a file an operating system leaves in a directory, which hadley neither reads nor publishes:

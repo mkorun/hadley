@@ -8,10 +8,10 @@
  */
 import { createHash } from 'node:crypto'
 import { realpathSync } from 'node:fs'
-import { copyFile, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import type { Output } from './output.ts'
-import { isSystemFile, slashed } from './platform.ts'
+import { isSystemFile, pathsBelow } from './platform.ts'
 
 export interface ThemeFile {
   source: string // its path in theme/
@@ -27,7 +27,7 @@ export interface ThemeFile {
  */
 export async function themeOutputs(themeDir: string): Promise<Map<string, string>> {
   const outputs = new Map<string, string>()
-  for (const source of (await readdir(themeDir, { recursive: true })).map((name) => slashed(name)).sort()) {
+  for (const source of (await pathsBelow(themeDir)).sort()) {
     const top = source.split('/')[0]
     if (source.split('/').some(isSystemFile)) continue
     if (top === 'templates' || top === 'i18n' || top === 'highlighting' || source === 'theme.lima') continue
@@ -142,7 +142,8 @@ export async function writeTheme(
     await mkdir(dirname(destFile), { recursive: true })
     if (file.bytes !== undefined) await writeFile(destFile, file.bytes)
     else if (file.source.endsWith('.ts')) await writeFile(destFile, await compile(await readFile(sourceFile, 'utf-8')))
-    else await copyFile(sourceFile, destFile)
+    // read and written, not copied: Windows gives a copy its source's modification time, so it would never be newer
+    else await writeFile(destFile, await readFile(sourceFile))
     written++
   }
   return written

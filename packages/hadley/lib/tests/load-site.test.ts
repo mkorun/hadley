@@ -136,7 +136,7 @@ describe('what the site holds besides its pages', () => {
     await site('meta', { 'articles/[a]/a.md': page('title: A\n') })
     await mkdir(join(dir, 'sites', 'meta', 'content', 'meta', 'persons'), { recursive: true })
     await writeFile(join(dir, 'sites', 'meta', 'content', 'meta', 'persons', 'x.lima'), `name: ${'x'.repeat(16385)}\n`)
-    await assert.rejects(loadSite(join('sites', 'meta'), true), /content\/meta\/persons\/x\.lima:1: /)
+    await assert.rejects(loadSite(join('sites', 'meta'), true), /content[\\/]meta[\\/]persons[\\/]x\.lima:1: /)
   })
 
   // review 2026-10-24 (Fable): a required field missing was logged, and the page published

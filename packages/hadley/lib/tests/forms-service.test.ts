@@ -20,18 +20,28 @@ const program = (path: string, mode = 0o755) => {
   return path
 }
 
+// Windows runs any file by its name (lib/platform.ts, isProgram); what it cannot run there is a directory
+const windows = process.platform === 'win32'
+const noProgram = (path: string): string => {
+  if (windows) mkdirSync(path, { recursive: true })
+  else program(path, 0o644)
+  return path
+}
+// the name onPath looks for: on Windows with .exe
+const FORMS = windows ? 'hadley-forms.exe' : 'hadley-forms'
+
 describe('formsProgram', () => {
   it('takes dev.forms when it is set, and stops when it cannot be run', () => {
     const configured = program(join(dir, 'own', 'forms'))
     assert.equal(formsProgram(configured, ''), configured)
-    assert.throws(() => formsProgram(program(join(dir, 'plain'), 0o644), ''), /dev\.forms: .*plain is no program/)
+    assert.throws(() => formsProgram(noProgram(join(dir, 'plain')), ''), /dev\.forms: .*plain is no program/)
     assert.throws(() => formsProgram(join(dir, 'missing'), ''), /dev\.forms: .*missing is no program/)
   })
 
   it('finds the first hadley-forms on the PATH that can be run, else none', () => {
-    program(join(dir, 'a', 'hadley-forms'), 0o644)
-    const found = program(join(dir, 'b', 'hadley-forms'))
-    program(join(dir, 'c', 'hadley-forms'))
+    noProgram(join(dir, 'a', FORMS))
+    const found = program(join(dir, 'b', FORMS))
+    program(join(dir, 'c', FORMS))
     const path = [join(dir, 'a'), '', join(dir, 'b'), join(dir, 'c')].join(delimiter)
     assert.equal(formsProgram(undefined, path), found)
     assert.equal(formsProgram(undefined, join(dir, 'a')), undefined)
@@ -40,14 +50,11 @@ describe('formsProgram', () => {
   // review 2026-10-27: a relative directory was checked from hadley's directory and run from the site's
   it('skips a relative directory of the PATH', () => {
     const cwd = process.cwd()
-    program(join(dir, 'tools', 'hadley-forms'))
+    program(join(dir, 'tools', FORMS))
     process.chdir(dir)
     try {
       assert.equal(formsProgram(undefined, 'tools'), undefined)
-      assert.equal(
-        formsProgram(undefined, ['tools', join(dir, 'tools')].join(delimiter)),
-        join(dir, 'tools', 'hadley-forms'),
-      )
+      assert.equal(formsProgram(undefined, ['tools', join(dir, 'tools')].join(delimiter)), join(dir, 'tools', FORMS))
     } finally {
       process.chdir(cwd)
     }

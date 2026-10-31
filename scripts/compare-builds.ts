@@ -36,6 +36,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve, sep } from 'node:path'
+import { slashed } from '../packages/hadley/lib/platform.ts'
 
 const BUILD_TIMEOUT_MS = 10 * 60 * 1000
 const SITE_ROOT_SKIP = new Set(['.hadley', '.git', 'dist'])
@@ -123,11 +124,11 @@ export function copySite(source: string, destination: string): void {
   })
 }
 
-/** Maps each output path, relative to .hadley/, to the SHA-256 of its bytes. */
+/** Maps each output path, relative to .hadley/ and with `/`, to the SHA-256 of its bytes. */
 export function collectOutput(hadleyDir: string): Map<string, string> {
   const files = new Map<string, string>()
   const add = (file: string) => {
-    files.set(relative(hadleyDir, file), createHash('sha256').update(readFileSync(file)).digest('hex'))
+    files.set(slashed(relative(hadleyDir, file)), createHash('sha256').update(readFileSync(file)).digest('hex'))
   }
   const publish = join(hadleyDir, 'publish')
   const walk = (dir: string) => {

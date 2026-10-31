@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdtemp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { build } from '../../index.ts'
 import loadSite from '../load-site.ts'
 import { fallingBehind, relink, siteHref, sourceFiles, sourcesOf, type Source } from '../sources.ts'
@@ -19,6 +19,17 @@ const run = (cwd: string, ...args: string[]) => {
     timeout: 30_000,
   })
   assert.equal(done.status, 0, done.stderr?.toString())
+}
+
+/** What git writes to stdout for `args`, given `input`. */
+const output = (cwd: string, input: string, ...args: string[]) => {
+  const done = spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@test.example', ...args], {
+    cwd,
+    input,
+    timeout: 30_000,
+  })
+  assert.equal(done.status, 0, done.stderr?.toString())
+  return done.stdout.toString().trim()
 }
 
 async function files(root: string, all: Record<string, string>) {
@@ -103,7 +114,10 @@ describe('the sources of config.lima', () => {
     const [source] = sourcesOf(config({ pages: { a: null, b: { urlPath: '/b/', linktext: 'B' } } }), '/site')
     assert.deepEqual(source!.pages, { 'docs-a': { urlPath: '/docs/a/' }, 'docs-b': { urlPath: '/b/', linktext: 'B' } })
     assert.equal(source!.checkout, undefined)
-    assert.equal(sourcesOf(config({ checkout: '../repo', pages: { a: null } }), '/site/x')[0]!.checkout, '/site/repo')
+    assert.equal(
+      sourcesOf(config({ checkout: '../repo', pages: { a: null } }), '/site/x')[0]!.checkout,
+      resolve('/site/repo'),
+    )
   })
 
   it('take a dot in the name of a page between two of its parts', () => {
@@ -416,6 +430,29 @@ describe('a site with a source', () => {
         quiet(() => build(root, 'publish')),
         /the link \.\.\/\.\.\/outside\.md leaves the repository/,
       )
+  })
+
+  // a picture is written into the bundle under the last segment of its path, where Windows reads a backslash as a
+  // separator: `..\\..\\escape.png` wrote a file of the repository outside the cache, and outside the site
+  it('fails a published page whose link holds a backslash, and writes no file of it outside the cache', async () => {
+    const repo = join(dir, 'repo-backslash')
+    await mkdir(repo)
+    run(repo, 'init', '--quiet')
+    // from the bundle's folder in the cache up to dir; a tree can name such a file, a Windows checkout cannot
+    const escape = `${'..\\'.repeat(8)}escape.png`
+    const blob = (text: string) => output(repo, text, 'hash-object', '-w', '--stdin')
+    const page = blob(`# A\n\n![x](<${escape}>)\n`)
+    const docs = output(repo, `100644 blob ${page}\ta.md\n100644 blob ${blob('png')}\t${escape}\n`, 'mktree')
+    const commit = output(repo, '', 'commit-tree', output(repo, `040000 tree ${docs}\tdocs\n`, 'mktree'), '-m', 'a')
+    run(repo, 'update-ref', 'HEAD', commit)
+    run(repo, 'tag', 'v1')
+    const root = await site('site-backslash', 'repo-backslash', 'v1', '      a:\n')
+    const failed = await quiet(() => build(root, 'publish')).then(
+      () => 'published',
+      (error: unknown) => String(error),
+    )
+    assert.ok(!existsSync(join(dir, 'escape.png')), 'a file of the repository outside the site')
+    assert.match(failed, /the link \S*escape\.png holds a backslash/)
   })
 
   it('reads its files again for another checkout', async () => {

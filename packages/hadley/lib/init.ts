@@ -5,7 +5,7 @@
  */
 import { copyFile, cp, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { isSystemFile, lf, slashed } from './platform.ts'
+import { isSystemFile, lf, pathsBelow } from './platform.ts'
 import { fileURLToPath } from 'node:url'
 
 const PACKAGE = fileURLToPath(new URL('..', import.meta.url))
@@ -168,9 +168,9 @@ export async function init(dir: string, languages: readonly string[], theme: str
 
   const dropped = written.filter((language) => !languages.includes(language))
   const content = join(starterDir, 'content')
-  for (const path of (await readdir(content, { recursive: true })).sort()) {
-    if (slashed(path).split('/').some(isSystemFile) || !(await stat(join(content, path))).isFile()) continue
-    const target = targetOf(slashed(path).split('/'), languages, defaultLanguage)
+  for (const path of (await pathsBelow(content)).sort()) {
+    if (path.split('/').some(isSystemFile) || !(await stat(join(content, path))).isFile()) continue
+    const target = targetOf(path.split('/'), languages, defaultLanguage)
     if (target === null) continue
     const to = join(dir, 'content', ...target.segments)
     await mkdir(dirname(to), { recursive: true })
