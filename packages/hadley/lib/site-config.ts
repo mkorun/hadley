@@ -1,7 +1,7 @@
 /**
  * What a site says of itself before any page is read: its meta files (content/meta, which config.lima and front
  * matter reference as %persons/…), config.lima, the fields it declares for its theme, a language's values, and the
- * theme's texts. A file LIMA rejects stops the build, with its path.
+ * theme's texts. A file Lima rejects stops the build, with its path.
  */
 import { readdir, readFile } from 'node:fs/promises'
 import { join as joinPath } from 'node:path'

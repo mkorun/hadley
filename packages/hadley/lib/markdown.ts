@@ -1,4 +1,4 @@
-/** A page's Markdown twin: public LIMA front matter and canonical Markanto with its destinations made absolute. */
+/** A page's Markdown twin: public Lima front matter and canonical Markanto with its destinations made absolute. */
 import { format, type Document } from '@markantolang/parser'
 import { readDestination, type Built, type Use } from '../case/index.ts'
 import type { Page, Site } from './site.ts'

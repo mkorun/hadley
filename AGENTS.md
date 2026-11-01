@@ -4,7 +4,7 @@ Rules for every agent (and human) working in this repository. `CLAUDE.md` import
 
 ## What hadley is
 
-hadley is a static site generator with its own parts: LIMA for metadata, Markanto (through `case`) for content, galley
+hadley is a static site generator with its own parts: Lima for metadata, Markanto (through `case`) for content, galley
 for templates, quad for HTML. It runs on Bun and Node.js. The whole system stays small enough to be understood at once;
 that is the design, not a phase. So:
 

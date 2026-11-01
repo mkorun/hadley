@@ -29,7 +29,7 @@ bun scripts/check-writes.ts
 # Reads the templates of the themes, and of the sites in sites/ where there are any; never builds them.
 bun scripts/check-templates.ts
 
-# The starters' content and the documentation: LIMA front matter, canonical Markanto (oxfmt leaves them alone,
+# The starters' content and the documentation: Lima front matter, canonical Markanto (oxfmt leaves them alone,
 # .oxfmtrc.json).
 bun scripts/check-content.ts
 

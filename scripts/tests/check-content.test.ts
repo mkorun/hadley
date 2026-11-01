@@ -15,7 +15,7 @@ describe('checkPage', () => {
     assert.equal(finding?.canonical, page('# T\n\n**Strong** text.\n'))
   })
 
-  it('reads the front matter with the starter’s meta files, and reports what LIMA refuses', () => {
+  it('reads the front matter with the starter’s meta files, and reports what Lima refuses', () => {
     const front = 'author: $(persons/odile)\n'
     assert.equal(checkPage(page('# T\n', front), { 'persons/odile': { name: 'Odile' } }), undefined)
     assert.match(checkPage(page('# T\n', 'a: [[1]]\n'), {})?.problem ?? '', /^front matter: /)

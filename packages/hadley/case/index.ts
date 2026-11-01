@@ -1,5 +1,5 @@
 // case — Hadley document parser
-// Frontmatter extraction (LIMA) + Markanto parsing in one pass.
+// Frontmatter extraction (Lima) + Markanto parsing in one pass.
 
 import { parse as parseMarkanto, type ParseResult } from '@markantolang/parser'
 import { editorBlocks, renderMarkanto } from './markanto-native-renderer.ts'
@@ -32,7 +32,7 @@ export function parseDocument(rawDoc: string, options: CaseOptions): ParsedDocum
   if (title !== undefined) metadata.title = title
   if (subtitle !== undefined) metadata.subtitle = subtitle
   completeMetadata(metadata, options)
-  // Every reason the document is not what its source says is a parse error: a front matter LIMA rejected (it is
+  // Every reason the document is not what its source says is a parse error: a front matter Lima rejected (it is
   // then empty), an error diagnostic of an invalid document (error recovery rendered the rest), and a parser budget
   // exhausted (there is no tree at all). Each diagnostic's `range` is shifted by baseOffset into the same
   // file-absolute coordinate space as BlockToken, so a caller can test which block an error falls in.

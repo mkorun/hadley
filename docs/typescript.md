@@ -71,7 +71,7 @@ literal in RE2 syntax; `scripts/check-writes.ts` finds file-system writes only i
 with what it writes (a build claims its files in `lib/output.ts` first); `scripts/check-templates.ts` compiles every
 template and partial under `sites/*/theme/templates` and finds no `{@raw}` the build would refuse (without sites, it
 checks nothing); `scripts/check-content.ts` finds the starters' content and the documentation (`docs/`, `README.md`)
-in canonical Markanto, with front matter in LIMA; `scripts/check-links.ts` finds every relative link of the
+in canonical Markanto, with front matter in Lima; `scripts/check-links.ts` finds every relative link of the
 documentation leading to a file git tracks, and every anchor naming a heading as GitHub and hadley both name it; the
 tests pass under `bun test` and under `node --test` (ADR 0002), and those that use `TMPDIR` leave
 it empty (a test that writes elsewhere is not caught); `gitleaks` finds no secret in the history or in what is staged,

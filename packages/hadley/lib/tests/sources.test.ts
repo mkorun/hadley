@@ -174,11 +174,11 @@ describe('the sources of config.lima', () => {
     for (const [docs, message] of [
       [{}, /gives pages, data or both/],
       [{ root: 'pages', data: { tool: 'facts.lima' } }, /root and urlPath belong to its pages/],
-      [{ data: {} }, /data names LIMA files of docs/],
+      [{ data: {} }, /data names Lima files of docs/],
       [{ data: { Tool: 'facts.lima' } }, /Tool is named with lower-case letters and digits/],
-      [{ data: { tool: 'facts.json' } }, /data\.tool is the name of a LIMA file of docs/],
-      [{ data: { tool: '../facts.lima' } }, /data\.tool is the name of a LIMA file of docs/],
-      [{ data: { tool: 'sub/facts.lima' } }, /data\.tool is the name of a LIMA file of docs/],
+      [{ data: { tool: 'facts.json' } }, /data\.tool is the name of a Lima file of docs/],
+      [{ data: { tool: '../facts.lima' } }, /data\.tool is the name of a Lima file of docs/],
+      [{ data: { tool: 'sub/facts.lima' } }, /data\.tool is the name of a Lima file of docs/],
     ] as const)
       assert.throws(() => sourcesOf(data(docs), '/site'), message)
     assert.throws(
@@ -392,7 +392,7 @@ describe('a site with a source', () => {
     )
   })
 
-  it('stops at a data file that is no LIMA', async () => {
+  it('stops at a data file that is no Lima', async () => {
     const repo = await repository('repo-data-bad', '# A\n')
     await writeFile(join(repo, 'docs', 'facts.lima'), 'version 1.2.0\n')
     run(repo, 'add', '.')
@@ -409,7 +409,7 @@ describe('a site with a source', () => {
     })
     await assert.rejects(
       quiet(() => build(root, 'publish')),
-      /sources\.tool\.data\.tool: docs\/facts\.lima at v2 is no LIMA/,
+      /sources\.tool\.data\.tool: docs\/facts\.lima at v2 is no Lima/,
     )
   })
 

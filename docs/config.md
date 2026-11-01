@@ -1,6 +1,6 @@
 # config.lima
 
-A site's `config.lima`, in [LIMA](https://limaformat.dev), says what the site is and how hadley builds it. A value
+A site's `config.lima`, in [Lima](https://limaformat.dev), says what the site is and how hadley builds it. A value
 hadley reads and cannot use stops the build.
 
 ## site
@@ -104,8 +104,8 @@ A field's `template` is a galley template that makes the field's HTML from its v
 `html.fields.<field>`. It escapes what it writes, as a theme's template does, and cannot include partials.
 
 A page may write a field by any of its names, in another language or a gendered form: `größe: 3`, `題名: …`,
-`autor:in: Noa`, `autor*in: Noa` and `autor·in: Noa` are LIMA keys as they stand, and a name with a space or another
-character LIMA keys do not hold is quoted, `"first name": Noa`. A name counts as it is spelled (`Autor` is not `autor`),
+`autor:in: Noa`, `autor*in: Noa` and `autor·in: Noa` are Lima keys as they stand, and a name with a space or another
+character Lima keys do not hold is quoted, `"first name": Noa`. A name counts as it is spelled (`Autor` is not `autor`),
 in Unicode's composed form: a `ü` typed as `u` and a combining mark is the `ü` of config.lima. Another name belongs to
 one field and is no field's own name, or the build stops. A page that gives one field twice, by two of its names or in
 two forms of one, keeps the first and has a problem.

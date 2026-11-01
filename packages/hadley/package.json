@@ -1,7 +1,7 @@
 {
   "name": "@mkorun/hadley",
   "version": "0.1.0",
-  "description": "A static site generator: Markanto for content, LIMA for metadata, galley for templates",
+  "description": "A static site generator: Markanto for content, Lima for metadata, galley for templates",
   "keywords": [
     "static-site-generator",
     "ssg",

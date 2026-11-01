@@ -118,16 +118,16 @@ describe('frontmatter', () => {
     assert.ok(m.date instanceof Date)
   })
 
-  it('parses LIMA inline arrays', () => {
+  it('parses Lima inline arrays', () => {
     assert.deepEqual(meta('---\ntags: [a, b, c]\n---').tags, ['a', 'b', 'c'])
   })
 
-  it('parses LIMA block arrays', () => {
+  it('parses Lima block arrays', () => {
     assert.deepEqual(meta('---\ntags:\n  - one\n  - two\n---').tags, ['one', 'two'])
   })
 
-  it('parses LIMA maps', () => {
-    // LIMA makes objects without a prototype; the values are what counts here
+  it('parses Lima maps', () => {
+    // Lima makes objects without a prototype; the values are what counts here
     assert.deepEqual(
       { ...meta('---\nauthor:\n  name: Alice\n  url: https://example.com\n---').author },
       {
@@ -203,11 +203,11 @@ describe('aliases', () => {
     assert.equal(meta('---\ntitle: Hello\n---', { aliases: { titel: 'title' } }).title, 'Hello')
   })
 
-  it('takes a gendered name with a colon, which LIMA reads as a key', () => {
+  it('takes a gendered name with a colon, which Lima reads as a key', () => {
     assert.equal(meta('---\nautor:in: Noa\n---', { aliases: { 'autor:in': 'author' } }).author, 'Noa')
   })
 
-  // LIMA Core 1.2: keys in any script, and with * or · after their first character, need no quotes
+  // Lima Core 1.2: keys in any script, and with * or · after their first character, need no quotes
   it('takes names in other scripts and gendered with * or ·, unquoted', () => {
     const aliases = { größe: 'size', 題名: 'title', 'autor*in': 'author', autor·in: 'editor' }
     const m = meta('---\ngröße: 3\n題名: Hallo\nautor*in: Noa\nautor·in: Ada\n---', { aliases })

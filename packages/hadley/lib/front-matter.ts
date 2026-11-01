@@ -144,7 +144,7 @@ export function readFrontMatter(front: Record<string, unknown>, schema: FieldSch
 
 /**
  * The fields of the front matter, checked once: each is one hadley reads or one config.lima declares (`declared`),
- * and of its kind: a text is a text, a date a date (LIMA reads one as a Date, a quoted one stays a text that must
+ * and of its kind: a text is a text, a date a date (Lima reads one as a Date, a quoted one stays a text that must
  * parse), tags one text or a list of them, a flag true or false. An empty field is left out. Any other field, and a
  * field of another kind, is a problem of the page, as a parse error is, and left out.
  */
@@ -164,7 +164,7 @@ function checkMetadata(raw: Record<string, unknown>, problems: Fault[], declared
     }
   }
   const wrong = (field: string, what: string) => {
-    // LIMA reads 1984 or true unquoted as a number or a flag, which a title may well be meant as
+    // Lima reads 1984 or true unquoted as a number or a flag, which a title may well be meant as
     const scalar = typeof metadata[field] === 'number' || typeof metadata[field] === 'boolean'
     problems.push({
       message: `the front matter field ${field} is not ${what}${scalar ? ' (in quotes, it is a text)' : ''}`,

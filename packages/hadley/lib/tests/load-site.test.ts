@@ -148,8 +148,8 @@ describe('the front matter of a page', () => {
 })
 
 describe('what the site holds besides its pages', () => {
-  // review 2026-10-24 (Fable): a locale file LIMA rejected became {}, so every t.* rendered empty
-  it('stops at a theme text file LIMA rejects, or one missing for a language of the site', async () => {
+  // review 2026-10-24 (Fable): a locale file Lima rejected became {}, so every t.* rendered empty
+  it('stops at a theme text file Lima rejects, or one missing for a language of the site', async () => {
     await site('texts', { 'articles/[a]/a.md': page('title: A\n'), 'articles/[a]/en/a.md': page('title: A\n') })
     await mkdir(join(dir, 'sites', 'texts', 'theme', 'i18n'), { recursive: true })
     await writeFile(join(dir, 'sites', 'texts', 'theme', 'i18n', 'de.lima'), 'nav:\n  back: Zurück\n')
@@ -164,7 +164,7 @@ describe('what the site holds besides its pages', () => {
     assert.deepEqual(locales.en, { nav: { back: 'Zurück', skip: 'Skip' } })
   })
 
-  it('stops at a file of content/meta LIMA rejects, instead of leaving it out', async () => {
+  it('stops at a file of content/meta Lima rejects, instead of leaving it out', async () => {
     await site('meta', { 'articles/[a]/a.md': page('title: A\n') })
     await mkdir(join(dir, 'sites', 'meta', 'content', 'meta', 'persons'), { recursive: true })
     await writeFile(join(dir, 'sites', 'meta', 'content', 'meta', 'persons', 'x.lima'), `name: ${'x'.repeat(16385)}\n`)

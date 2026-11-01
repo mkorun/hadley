@@ -14,7 +14,7 @@ content/
     [about]/about.md
     @errors/[404]/404.md     the error pages, at /errors/404/
   meta/
-    persons/ada.lima         a person (themes.md, "Persons"), and other LIMA the pages refer to
+    persons/ada.lima         a person (themes.md, "Persons"), and other Lima the pages refer to
 theme/                       the site's theme (themes.md)
 .hadley/                     what hadley builds and caches; not part of the site
 ```

@@ -111,7 +111,7 @@ The first preview of hadley on npm, under the tag `next`, before the first relea
 
 ### What hadley does
 
-- **Content** in [Markanto](https://markanto.org), **metadata** in [LIMA](https://limaformat.dev) (Core 1.2),
+- **Content** in [Markanto](https://markanto.org), **metadata** in [Lima](https://limaformat.dev) (Core 1.2),
   **templates** in galley, the **HTML** formatted by quad; Vite, sharp, Shiki and Pagefind for the rest.
 - **Bundles:** a page is a folder with its text, its pictures and its other languages; **several languages** make one
   site, each page linked to its versions.

@@ -306,8 +306,8 @@ describe('hostile content, through a whole publish build', () => {
     await assert.rejects(publish('no-title'), /evil\.md: has no title/)
   })
 
-  // review 2026-10-24 (p1): a front matter LIMA rejected was dropped, and the draft it held was published
-  it('fails a page whose front matter LIMA rejects, instead of publishing it without one', async () => {
+  // review 2026-10-24 (p1): a front matter Lima rejected was dropped, and the draft it held was published
+  it('fails a page whose front matter Lima rejects, instead of publishing it without one', async () => {
     await site('bad-lima', page(`title: T\nstatus: draft\nlong: ${'x'.repeat(16385)}\n`, 'Text.\n'))
     await assert.rejects(publish('bad-lima'), /evil\.md:5: front matter: Lima: scalar exceeds maximum length/)
   })

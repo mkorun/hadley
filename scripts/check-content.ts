@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * Checks the content of the starters (packages/hadley/starters/<name>/content/, the pages git tracks) as hadley reads
- * it: the front matter is LIMA, with the starter's meta files for its references, and the rest is Markanto in its
+ * it: the front matter is Lima, with the starter's meta files for its references, and the rest is Markanto in its
  * canonical form, the one form Markanto writes for each meaning (`**strong**`, not `__strong__`). Markanto knows no
  * front matter, so it sees only what follows it. The documentation (docs/, README.md) is held to the same form, as
  * hadley.sh builds its pages from it.

@@ -15,7 +15,7 @@ export interface PreparedDocument {
   md: string
   metadata: Record<string, any>
   baseOffset: number
-  /** Why the front matter is not what it says: LIMA rejected it (it is then empty), or it gives a field twice; a
+  /** Why the front matter is not what it says: Lima rejected it (it is then empty), or it gives a field twice; a
    * published page fails on it. */
   frontMatterErrors?: ParseErrorInfo[]
 }
@@ -26,7 +26,7 @@ export function prepareDocument(rawDoc: string, options: CaseOptions): PreparedD
   let md = rawDoc.slice(bom)
 
   /**
-   * Extract frontmatter (LIMA)
+   * Extract frontmatter (Lima)
    */
   let frontMeta: Record<string, any> = {}
   let frontMatterError: ParseErrorInfo | undefined
@@ -78,7 +78,7 @@ export function prepareDocument(rawDoc: string, options: CaseOptions): PreparedD
   const errors: ParseErrorInfo[] = frontMatterError ? [frontMatterError] : []
   const aliases = options.aliases ?? {}
   const givenAs = new Map<string, string>()
-  // without a prototype, as LIMA makes its maps: a key __proto__ stays a key
+  // without a prototype, as Lima makes its maps: a key __proto__ stays a key
   const named: Record<string, any> = Object.create(null)
   for (const key of Object.keys(frontMeta)) {
     const composed = key.normalize('NFC')

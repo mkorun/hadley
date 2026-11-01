@@ -1,6 +1,6 @@
 # Content
 
-A page is a Markdown file of a bundle (site.md): its front matter in [LIMA](https://limaformat.dev) between `---`
+A page is a Markdown file of a bundle (site.md): its front matter in [Lima](https://limaformat.dev) between `---`
 lines, then its text in [Markanto](https://markanto.org). Content is untrusted: hadley writes what it says escaped,
 and a page cannot make hadley read outside its bundle or write outside the site's output.
 

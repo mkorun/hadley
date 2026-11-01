@@ -22,7 +22,7 @@ sources:
       config:
         linktext: config.lima
         description: Everything config.lima says about a site.
-    data:                                     # LIMA files of path, for the templates (optional)
+    data:                                     # Lima files of path, for the templates (optional)
       hadley: facts.lima
 ```
 
@@ -41,11 +41,11 @@ The block editor does not edit a page of a source: its text belongs to its repos
 
 ## Data
 
-Each entry of `data` names a LIMA file in `path`, or at the root of the repository without one, under the name the
+Each entry of `data` names a Lima file in `path`, or at the root of the repository without one, under the name the
 templates read it by: `hadley: facts.lima` is `docs/facts.lima`, and a template writes its `version` as
 `{ site.data.hadley.version }` (themes.md). A name is a lower-case letter and then lower-case letters and digits, and
 no two sources give the same one; a file is one of `path` itself, not of a folder in it, named as a page is and ending
-in `.lima`. The file is read at `ref` as the pages are, as LIMA Core in strict mode (no references); a file that does
+in `.lima`. The file is read at `ref` as the pages are, as Lima Core in strict mode (no references); a file that does
 not parse stops the build. Its values are the same in every language, and a template writes them escaped, as any
 value.
 

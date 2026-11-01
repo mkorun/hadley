@@ -21,7 +21,7 @@ const NAME = /^[a-z0-9][a-z0-9-]*$/
 // the name of a file of its folder without .md: a dot only between two parts, so never .., nor a hidden file
 const PAGE = /^[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)*$/
 const PICTURE = /\.(png|jpe?g|webp|avif|gif|svg)$/i
-// the name templates read a data file by, site.data.<name>, and the file: a LIMA file of the folder, named as a page is
+// the name templates read a data file by, site.data.<name>, and the file: a Lima file of the folder, named as a page is
 const DATA_NAME = /^[a-z][a-z0-9]*$/
 const DATA_FILE = /^[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)*\.lima$/
 // a repository on GitHub, whose files GitHub shows at /blob/<ref>/<path>; no user, no password
@@ -96,11 +96,11 @@ export function sourcesOf(config: Config, siteDir: string): Source[] {
     const dataFiles: Record<string, string> = {}
     if (data !== undefined) {
       if (data === null || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).length === 0)
-        throw new Error(`${where}.data names LIMA files of ${files}, each under the name templates read it by`)
+        throw new Error(`${where}.data names Lima files of ${files}, each under the name templates read it by`)
       for (const [key, file] of Object.entries(data)) {
         if (!DATA_NAME.test(key)) throw new Error(`${where}.data: ${key} is named with lower-case letters and digits`)
         if (!text(file) || !DATA_FILE.test(file))
-          throw new Error(`${where}.data.${key} is the name of a LIMA file of ${files}, such as facts.lima`)
+          throw new Error(`${where}.data.${key} is the name of a Lima file of ${files}, such as facts.lima`)
         dataFiles[key] = `${folder === '' ? '' : `${folder}/`}${file}`
       }
     }
@@ -387,14 +387,14 @@ export function sourceFiles(source: Source, siteDir: string): SourceFiles {
   return { dir, problems }
 }
 
-/** The values of a source's data file `name`, read from its folder in the cache as LIMA Core in strict mode. */
+/** The values of a source's data file `name`, read from its folder in the cache as Lima Core in strict mode. */
 export function readSourceData(source: Source, name: string, file: string, dir: string): unknown {
   const text = readFileSync(join(dir, 'data', `${name}.lima`), 'utf8')
   try {
     return parseCore(text, { strict: true })
   } catch (error) {
     throw new Error(
-      `config.lima: sources.${source.name}.data.${name}: ${file} at ${source.ref} is no LIMA: ${(error as Error).message}`,
+      `config.lima: sources.${source.name}.data.${name}: ${file} at ${source.ref} is no Lima: ${(error as Error).message}`,
     )
   }
 }
