@@ -5,12 +5,23 @@ set -euo pipefail
 cd "$(dirname "$0")"
 bin=node_modules/.bin
 
+# The tools come through mise, pinned here. A worker's VM has no mise: it takes Go and shellcheck from its PATH, and
+# leaves out what needs what it lacks (gitleaks, the network of govulncheck); the host's gate and hook check its work.
+if command -v mise >/dev/null; then has_mise=1; else has_mise=; fi
+with_go() {
+  if [[ -n "$has_mise" ]]; then mise exec go -- "$@"; else command "$@"; fi
+}
+
 "$bin/oxfmt" --check
 
-# No secret in the history or in what is staged; gitleaks through mise, pinned here, .gitleaks.toml its exceptions.
-gitleaks() { mise exec gitleaks@8.30.1 -- gitleaks "$@" --redact --no-banner --log-level warn; }
-gitleaks git .
-gitleaks git . --pre-commit --staged
+# No secret in the history or in what is staged; .gitleaks.toml holds its exceptions.
+if [[ -n "$has_mise" ]]; then
+  gitleaks() { mise exec gitleaks@8.30.1 -- gitleaks "$@" --redact --no-banner --log-level warn; }
+  gitleaks git .
+  gitleaks git . --pre-commit --staged
+else
+  echo 'check.sh: gitleaks is left out without mise'
+fi
 
 "$bin/tsc" --noEmit -p .
 
@@ -47,14 +58,14 @@ TMPDIR="$test_tmp" bun run test --timeout 30000
 # The same tests on Node.js (ADR 0002).
 TMPDIR="$test_tmp" node --test 'packages/hadley/**/tests/*.test.ts' 'scripts/tests/*.test.ts'
 
-# The comments service (docs/go.md, "Gate"), with Go through mise; its contract tests run against the binary built
+# The comments service (docs/go.md, "Gate"); its contract tests run against the binary built
 # here, which lies outside TMPDIR. govulncheck reads the vulnerability database from the network.
 go_bin=$(mktemp -d)
 trap 'rm -rf "$test_tmp" "$go_bin"' EXIT
 (
   cd services/forms
-  go() { mise exec go -- go "$@"; }
-  unformatted=$(mise exec go -- gofmt -l .)
+  go() { with_go go "$@"; }
+  unformatted=$(with_go gofmt -l .)
   if [[ -n "$unformatted" ]]; then
     printf 'gofmt would change: %s\n' "$unformatted" >&2
     exit 1
@@ -67,7 +78,7 @@ trap 'rm -rf "$test_tmp" "$go_bin"' EXIT
   go vet ./...
   go tool -modfile=tools.mod staticcheck ./...
   TMPDIR="$test_tmp" go test -race -count=1 ./...
-  go tool -modfile=tools.mod govulncheck ./...
+  if [[ -n "$has_mise" ]]; then go tool -modfile=tools.mod govulncheck ./...; fi
   go build -o "$go_bin/hadley-forms" ./cmd/hadley-forms
 )
 # hadley-forms does not start on Windows (lock_other.go, docs/platforms.md), so its contract tests have nothing to
@@ -82,8 +93,8 @@ fi
 # has no dependencies for govulncheck to look at. A release runs on what it installs with, so shellcheck reads that too.
 (
   cd services/launcher
-  go() { mise exec go -- go "$@"; }
-  unformatted=$(mise exec go -- gofmt -l .)
+  go() { with_go go "$@"; }
+  unformatted=$(with_go gofmt -l .)
   if [[ -n "$unformatted" ]]; then
     printf 'gofmt would change: %s\n' "$unformatted" >&2
     exit 1
@@ -98,12 +109,12 @@ fi
   # a part of it is Windows only, and any system can read that; the tool itself is built for this one
   GOOS=windows go vet ./...
   staticcheck=$(go tool -n -modfile=../forms/tools.mod staticcheck)
-  GOOS=windows mise exec go -- "$staticcheck" ./...
+  GOOS=windows with_go "$staticcheck" ./...
   TMPDIR="$test_tmp" go test -race -count=1 ./...
 )
 # install.sh does not run on Windows.
 if [[ "$OSTYPE" != msys && "$OSTYPE" != cygwin ]]; then
-  mise exec shellcheck@0.11.0 -- shellcheck install/install.sh
+  if [[ -n "$has_mise" ]]; then mise exec shellcheck@0.11.0 -- shellcheck install/install.sh; else shellcheck install/install.sh; fi
 fi
 
 leftover=$(find "$test_tmp" -mindepth 1 -print -quit)

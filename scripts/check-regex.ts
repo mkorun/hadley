@@ -66,7 +66,9 @@ export function main(): number {
     console.error('check-regex: no regular expressions found; the parser or the file list is wrong')
     return 2
   }
-  const re2 = spawnSync('mise', ['exec', 'go', '--', 'go', 'run', 'scripts/re2check/main.go'], {
+  // a worker's VM has no mise, and Go on its PATH
+  const [run, ...args] = spawnSync('mise', ['--version']).error ? ['go'] : ['mise', 'exec', 'go', '--', 'go']
+  const re2 = spawnSync(run!, [...args, 'run', 'scripts/re2check/main.go'], {
     input: JSON.stringify(patterns),
     encoding: 'utf8',
     timeout: 120_000,
