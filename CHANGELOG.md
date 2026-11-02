@@ -6,6 +6,11 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- `robots.txt`: hadley writes it with the sitemap line, unless the site or theme has its own; `robots: signal:` in
+  `config.lima` adds a `Content-Signal` line, off until set.
+
 ## [0.1.0] — 2026-11-01
 
 The first release of hadley: what the previews below brought, with nothing new since the last of them.
