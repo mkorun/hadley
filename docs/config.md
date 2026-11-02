@@ -72,6 +72,19 @@ navigations as `navigations.main`, `navigations.footer`, the featured articles a
 | `theme` | the theme's settings (themes.md, "Settings") |
 | `dev` | the dev server: `port`, `https`, `editor` and more ([dev-server.md](dev-server.md)) |
 
+### robots
+
+```lima
+robots:
+  signal: search=yes, ai-input=no, ai-train=no
+```
+
+Adds `Content-Signal` to the generated `robots.txt`; it stays off until set. The value is a comma-separated list of
+`name=yes` or `name=no`, each name at most once: `search` means indexing and search results, excluding AI-generated
+summaries; `ai-input` means using content as input to AI answers; `ai-train` means training or fine-tuning models
+([Content Signals](https://contentsignals.org/)). These are requests to crawlers, not a technical lock. A site or
+theme's own `robots.txt` takes precedence ([deploy.md](deploy.md)).
+
 ### og images
 
 With `og: enabled: true`, hadley makes `og-default.jpg` for the site and an `og.jpg` for every article and essay,

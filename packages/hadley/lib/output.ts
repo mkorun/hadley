@@ -1,9 +1,10 @@
 // Every file a build writes into its output directory belongs to one owner: a page, one of a page's files, the site
-// (sitemap, feed, llms.txt, …) or the theme; a directory may belong to one owner as a whole (the search index). A
-// second owner of a path stops the build with both named, so nothing hadley writes silently replaces something else
-// it wrote. The build claims every page, theme and site file before it builds anything (index.ts), and a page's own
-// files as it builds them, before any page is rendered; list() is then everything the output directory holds. Paths
-// inside it are written with `/` on every system, as a URL names them; only claim() gives one of the file system.
+// (sitemap, feed, llms.txt, robots.txt, …) or the theme; a directory may belong to one owner as a whole (the search
+// index). A second owner of a path stops the build with both named, so nothing hadley writes silently replaces
+// something else it wrote. The build claims every page, theme and site file before it builds anything (index.ts),
+// and a page's own files as it builds them, before any page is rendered; robots.txt is claimed after them, if neither
+// site nor theme writes it. list() is then everything the output directory holds. Paths inside it are written with
+// `/` on every system, as a URL names them; only claim() gives one of the file system.
 // Two paths that differ only in case or in Unicode normalisation stop the build too, and so does a segment in the
 // form of a Windows short name (`PROGRA~1`): macOS or Windows could write them as one.
 

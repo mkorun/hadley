@@ -27,6 +27,7 @@ import { settle } from './lib/problems.ts'
 import { buildCovers, buildFiles, buildOgImages, checkSitePaths, pageOwner, planOgImages } from './lib/page-files.ts'
 import { errorCopies } from './lib/error-pages.ts'
 import { renderContent, type BlockEditorHook } from './lib/render-content.ts'
+import { robotsTxt } from './lib/robots.ts'
 import { linksJson, metaJson, siteJson, sitelinksJson } from './lib/site-data.ts'
 import { runPagefind } from './lib/search.ts'
 import { highlightingThemes, underMaintenance } from './lib/site-config.ts'
@@ -183,6 +184,10 @@ export async function build(
   doneCover(`${covers.built} new · ${covers.cached} cached`, settle(covers.problems, isPublish))
   planOgImages(filesOptions)
 
+  // A site file is claimed as the pages' files are built; either it or the theme's wins over generated robots.txt.
+  const robots = !maintenance && !output.writesFile('robots.txt')
+  if (robots) output.claim('robots.txt', 'site: robots.txt')
+
   const donePaths = logger.step('check site paths')
   const pathProblems = checkSitePaths(filesOptions, files.requests, assetNames)
   donePaths(`${files.requests.size} pages`, settle(pathProblems, isPublish))
@@ -246,6 +251,11 @@ export async function build(
     const sitemap = sitemapXml(site)
     await write('sitemap.xml', 'site: sitemap', sitemap.text)
     doneSitemap(`${sitemap.count} URLs`)
+    if (robots) {
+      const doneRobots = logger.step('generate robots.txt')
+      await write('robots.txt', 'site: robots.txt', robotsTxt(site))
+      doneRobots()
+    }
   }
 
   if (feeds.length > 0) {

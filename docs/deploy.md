@@ -15,6 +15,7 @@ builds the site for publishing into `.hadley/publish/`:
 | `feed.xml`, `de/feed.xml` | the feeds, when `rss` is on |
 | `pagefind/` | the search index, when `search` is on |
 | `sitemap.xml`, `llms.txt` | the published pages that search engines and language models may read |
+| `robots.txt` | allows crawling and points to `sitemap.xml`; a site or theme file at this path is published unchanged instead; optional content signals come from [config.lima](config.md#robots) |
 | `<path>/index.html.md` | each page in `llms.txt` as Markdown, when `markdown` is on (below) |
 | the theme's `static/` | at the root: `favicon.svg`, `robots.txt` and the like |
 

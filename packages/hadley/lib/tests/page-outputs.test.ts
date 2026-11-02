@@ -14,13 +14,14 @@ import { runPagefind } from '../search.ts'
 // What a publish build writes and lists for a page (page.outputs in lib/load-site.ts): an archived page keeps its URL
 // but is listed and linked nowhere and not indexed; a note has no page of its own, so nothing lists or links it.
 
-const CONFIG = `site:
+const SITE_CONFIG = `site:
   origin: https://outputs.example
   default:
     language: de
     title: Outputs
     claim: A claim
-rss:
+`
+const CONFIG = `${SITE_CONFIG}rss:
   enabled: true
 navigations:
   footer: [alt, notiz, aktuell]
@@ -75,8 +76,8 @@ async function publish(
 ): Promise<{ searchable: string[] }> {
   const root = join(dir, 'sites', name)
   for (const [file, text] of Object.entries({
-    ...content,
     'pages/[home]/home.md': page('title: Start\nurlPath: /\ntemplate: home\n'),
+    ...content,
   })) {
     await mkdir(join(root, 'content', file, '..'), { recursive: true })
     await writeFile(join(root, 'content', file), text)
@@ -123,6 +124,85 @@ after(async () => {
   process.chdir(cwd)
   // a service ends in its own time after it is told to, and Windows removes no directory a process runs in
   await rm(dir, { recursive: true, force: true, maxRetries: 10 })
+})
+
+describe('robots.txt', () => {
+  const template = '<!doctype html><title>{ meta.title }</title>{@raw html.markup}'
+
+  it('write robots.txt with crawling allowed and the sitemap, without a content signal by default', async () => {
+    assert.equal(
+      await readFile(out('robots.txt'), 'utf8'),
+      'User-agent: *\nAllow: /\n\nSitemap: https://outputs.example/sitemap.xml\n',
+    )
+  })
+
+  it("write the owner's content signal immediately after User-agent", async () => {
+    const signal = 'search=yes, ai-input=no, ai-train=no'
+    await publish(
+      'signal',
+      { 'pages/[home]/home.md': page('title: Start\nurlPath: /\ntemplate: home\n', '[Robots](/robots.txt)\n') },
+      'publish',
+      template,
+      `${SITE_CONFIG}robots:\n  signal: ${signal}\n`,
+    )
+    assert.equal(
+      await readFile(join(dir, 'sites', 'signal', '.hadley', 'publish', 'robots.txt'), 'utf8'),
+      `User-agent: *\nContent-Signal: ${signal}\nAllow: /\n\nSitemap: https://outputs.example/sitemap.xml\n`,
+    )
+  })
+
+  for (const source of ['site', 'theme'])
+    it(`publish a ${source}'s own robots.txt unchanged instead of generating one`, async () => {
+      const name = `robots-${source}`
+      const text = Buffer.from('User-agent: *\r\nDisallow: /private/\r\n# own file, no final newline')
+      const root = join(dir, 'sites', name)
+      const file = source === 'site' ? 'content/pages/[home]/robots.txt' : 'theme/static/robots.txt'
+      await mkdir(join(root, file, '..'), { recursive: true })
+      await writeFile(join(root, file), text)
+      const content =
+        source === 'site'
+          ? { 'pages/[home]/home.md': page('title: Start\nurlPath: /\ntemplate: home\n', '[Robots](robots.txt)\n') }
+          : {}
+      const error = process.stderr.write.bind(process.stderr)
+      let warnings = ''
+      process.stderr.write = (text) => {
+        warnings += String(text)
+        return true
+      }
+      try {
+        await publish(name, content, 'publish', template, `${SITE_CONFIG}robots:\n  signal: ai-train=no\n`)
+      } finally {
+        process.stderr.write = error
+      }
+      assert.equal(warnings, '')
+      assert.deepEqual(await readFile(join(root, '.hadley', 'publish', 'robots.txt')), text)
+    })
+
+  it('write robots.txt in a dev build as well', async () => {
+    await publish('robots-dev', {}, 'dev', template, SITE_CONFIG)
+    assert.equal(
+      await readFile(join(dir, 'sites', 'robots-dev', '.hadley', 'dev', 'robots.txt'), 'utf8'),
+      'User-agent: *\nAllow: /\n\nSitemap: https://outputs.example/sitemap.xml\n',
+    )
+  })
+
+  it("use the default language's origin, just as the sitemap does, even without a usable site origin", async () => {
+    for (const [name, origin, site] of [
+      ['missing', '', ''],
+      ['invalid', 'not-a-url', '  origin: not-a-url\n'],
+      [
+        'language',
+        'https://language.example',
+        '  origin: https://site.example\n  de:\n    origin: https://language.example\n',
+      ],
+    ] as const) {
+      const config = `site:\n${site}  default:\n    language: de\n    title: Test\n`
+      await publish(name, {}, 'publish', template, config)
+      const read = (file: string) => readFile(join(dir, 'sites', name, '.hadley', 'publish', file), 'utf8')
+      assert.ok((await read('sitemap.xml')).includes(`<loc>${origin}/</loc>`))
+      assert.equal(await read('robots.txt'), `User-agent: *\nAllow: /\n\nSitemap: ${origin}/sitemap.xml\n`)
+    }
+  })
 })
 
 describe('the outputs of a page in a publish build', () => {

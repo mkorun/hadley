@@ -138,6 +138,47 @@ describe('the switches of config.lima', () => {
   })
 })
 
+describe('robots.signal in config.lima', () => {
+  const dirs: string[] = []
+  after(() => dirs.forEach((dir) => rmSync(dir, { recursive: true, force: true })))
+  const read = (lima: string) => {
+    const dir = mkdtempSync(join(tmpdir(), 'hadley-robots-config-'))
+    dirs.push(dir)
+    writeFileSync(join(dir, 'config.lima'), lima)
+    return readConfig(dir, {})
+  }
+
+  it("keeps the owner's value and leaves the signal unset without one", async () => {
+    for (const signal of ['search=yes, ai-input=no, ai-train=no', 'ai-train=yes', 'ai-input=yes,search=no']) {
+      const config = await read(`robots:\n  signal: ${signal}\n`)
+      assert.equal(config.robots.signal, signal)
+    }
+    assert.equal((await read('site:\n  origin: https://test.example\n')).robots, undefined)
+    assert.equal((await read('robots: {}\n')).robots.signal, undefined)
+  })
+
+  for (const [name, value] of [
+    ['an unknown name', 'images=yes'],
+    ['a bad state', 'ai-train=maybe'],
+    ['a repeated name', 'search=yes, search=no'],
+    ['a line break', '"search=yes\\nAllow: /"'],
+    ['a carriage return', '"search=yes\\rAllow: /"'],
+    ['a Unicode line separator', '"search=yes\u2028Allow: /"'],
+    ['a Unicode paragraph separator', '"search=yes\u2029Allow: /"'],
+    ['an empty value', '""'],
+    ['a trailing comma', 'search=yes,'],
+    ['a non-text value', 'true'],
+    ['a list', '[search=yes]'],
+  ])
+    it(`stops with robots.signal named for ${name}`, async () => {
+      await assert.rejects(read(`robots:\n  signal: ${value}\n`), /config\.lima: robots\.signal/)
+    })
+
+  it('stops for a robots value that is not a block', async () => {
+    await assert.rejects(read('robots: true\n'), /config\.lima: robots is a block/)
+  })
+})
+
 // 2026-10-29: two fields could claim one name, and a name could be another field's, both without a word
 
 describe('the other names of a field (metadata.<field>.aliases)', () => {

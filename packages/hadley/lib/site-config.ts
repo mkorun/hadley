@@ -64,7 +64,28 @@ const SWITCHES = ['comments', 'maintenance', 'markdown', 'og', 'rss', 'search', 
 export async function readConfig(siteDir: string, partials: Record<string, unknown>): Promise<Config> {
   const config = (await limaFile(joinPath(siteDir, 'config.lima'), partials)) as Config
   for (const name of SWITCHES) switchOf(config, name)
+  checkRobots(config)
   return config
+}
+
+function checkRobots(config: Config): void {
+  const block: unknown = config.robots
+  if (block === undefined) return
+  if (!isRecord(block)) throw new Error('config.lima: robots is a block with signal: name=yes or name=no')
+  const signal = block.signal
+  if (signal === undefined) return
+  const fail = (): never => {
+    throw new Error(
+      'config.lima: robots.signal is a comma-separated list of search, ai-input or ai-train with =yes or =no, each at most once',
+    )
+  }
+  if (typeof signal !== 'string' || /[\r\n\u2028\u2029]/.test(signal)) return fail()
+  const names = new Set<string>()
+  for (const part of signal.split(',')) {
+    const match = /^(search|ai-input|ai-train)=(yes|no)$/.exec(part.trim())
+    if (!match || names.has(match[1]!)) return fail()
+    names.add(match[1]!)
+  }
 }
 
 function switchOf(config: Config, name: (typeof SWITCHES)[number]): void {
