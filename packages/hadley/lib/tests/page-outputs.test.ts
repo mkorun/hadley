@@ -386,6 +386,28 @@ describe('the outputs of a page in a publish build', () => {
     assert.match(await page_('en/feed/index.html'), /<p class="feed">\/en\/feed\.xml:\[English\|\/en\/a\/\]<\/p>/)
   })
 
+  // Michael 2026-11-03: a page of its own lists all writing, the drafts too while the dev server shows them
+  it('give every page the article list, on the home page without the featured articles, in a dev build with drafts', async () => {
+    const template =
+      '<!DOCTYPE html><html><head><title>{ meta.title }</title></head><body>' +
+      '<p class="list">{#each articleList as item}[{ item.title }|{ item.isDraft }]{/each}</p></body></html>'
+    const content = {
+      'articles/[a]/a.md': page('title: Eins\n'),
+      'articles/[b]/b.md': '---\ntitle: Zwei\nstatus: draft\n---\nText.\n',
+    }
+    const config = `${SITE_CONFIG}featured_articles:\n  - id: a\n`
+    const list = async (mode: 'publish' | 'dev', path: string) => {
+      const html = await readFile(join(dir, 'sites', `list-${mode}`, '.hadley', mode, path), 'utf8')
+      return /<p class="list">(.*)<\/p>/.exec(html)?.[1]
+    }
+    await publish('list-publish', content, 'publish', template, config)
+    assert.equal(await list('publish', 'a/index.html'), '[Eins|false]')
+    assert.equal(await list('publish', 'index.html'), '')
+    await publish('list-dev', content, 'dev', template, config)
+    assert.equal(await list('dev', 'a/index.html'), '[Zwei|true][Eins|false]')
+    assert.equal(await list('dev', 'index.html'), '[Zwei|true]')
+  })
+
   // Michael 2026-10-26: the dev server searches as the published site does
   it('write the search index in a dev build too, of the pages it lists, anew each build', async () => {
     const config = `${CONFIG}search:\n  enabled: true\n`

@@ -224,7 +224,7 @@ export function pageContext(page: Page, options: ContextOptions): Record<string,
     readingTimeMinutes: isArticle ? readingTimeMinutes(page) : 0,
     seriesData: isArticle ? seriesData(page, language) : [],
     featuredList: home?.items ?? [],
-    articleList: home ? articleList(language, home.featuredIds, locale) : [],
+    articleList: articleList(language, home?.featuredIds ?? new Set(), locale),
     ...neighbours(page, language, locale),
     navigations: language.navigations,
     // the feed of the page's language: its URL path and its articles as a list shows them
