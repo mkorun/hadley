@@ -50,6 +50,43 @@ it is saved. Each change is saved to the page's Markdown file, and the page relo
 was built is not edited, the page reloads first. The editor speaks German on a German page and English on any other.
 `hadley deploy` serves no editor.
 
+## Chat
+
+A site with the block editor can also turn on the chat: a panel in which you talk to a Claude Code session on this
+machine.
+
+```lima
+dev:
+  editor: true
+  chat: true
+```
+
+`chat: true` without `editor: true` stops `hadley dev`. The panel opens from the button at the bottom right of each
+page, and from "Ask Claude" in a block's menu, which attaches the block: the message then names the page, its source
+file and the block's lines, as the dev server built them. Claude's answers and its requests to use a tool appear in
+the panel; Allow and Deny answer a request as the terminal would. What was said stays while the dev server runs.
+
+hadley starts no agent. Claude Code starts `hadley channel` itself, from an `.mcp.json` in the directory it starts in:
+
+```json
+{ "mcpServers": { "hadley": { "command": "hadley", "args": ["channel"] } } }
+```
+
+While Claude Code's channels are a research preview, a channel that is not on Anthropic's allowlist needs the
+development flag, for a new session or one that goes on:
+
+```bash
+claude --dangerously-load-development-channels server:hadley
+claude --resume <session> --dangerously-load-development-channels server:hadley
+```
+
+`hadley channel` connects to every dev server of the same user with the chat on, so several sites can run at once.
+Each of them leaves a file with its port and a token, readable by that user alone, in `$XDG_RUNTIME_DIR/hadley/chat/`
+(else in the system's temporary directory, on Windows in `%LOCALAPPDATA%\hadley\run`), and removes it when it ends.
+Like the editor, the chat answers only a browser on this machine, on the page's own origin. From another machine,
+forward the port over SSH, `ssh -L 8000:localhost:8000 <machine>`, and open `http://localhost:8000`. `hadley deploy`
+serves no chat.
+
 ## Comments
 
 With `comments.enabled: true` in `config.lima`, the dev server starts the comments service `hadley-forms`
@@ -111,8 +148,8 @@ either, and hadley cannot tell; give it a bridged network or forward the port on
 
 A tunnel reaches the dev server from outside the network. hadley comes with none; each of these is its own program,
 and its provider terminates TLS and sees every request and page, so use it for a site without secrets. Add the
-tunnel's domain to `dev.allowedHosts`. The block editor stays off through a tunnel: it answers only under the dev
-server's own host.
+tunnel's domain to `dev.allowedHosts`. The block editor and the chat stay off through a tunnel: they answer only
+under the dev server's own host.
 
 - **cloudflared** (no account): `cloudflared tunnel --url http://localhost:8000` prints a public
   `*.trycloudflare.com` URL, new on every start; anyone who has it can open the site. Allow `.trycloudflare.com`.

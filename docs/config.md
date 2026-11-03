@@ -70,7 +70,7 @@ navigations as `navigations.main`, `navigations.footer`, the featured articles a
 | `templates` | a template for every page of a root: `templates: articles: post` (site.md) |
 | `sources` | pages from another git repository, at a commit ([sources.md](sources.md)) |
 | `theme` | the theme's settings (themes.md, "Settings") |
-| `dev` | the dev server: `port`, `https`, `editor` and more ([dev-server.md](dev-server.md)) |
+| `dev` | the dev server: `port`, `https`, `editor`, `chat` and more ([dev-server.md](dev-server.md)) |
 
 ### robots
 

@@ -22,6 +22,7 @@ what a step reports goes on the line below it when it does not fit beside it.
 | `hadley deploy` | builds the site for publishing and serves that build locally | [deploy.md](deploy.md) |
 | `hadley clean` | empties the site's `.hadley/dev/`, `.hadley/publish/` and `.hadley/cache/` |  |
 | `hadley comments` | moderates the comments of the site in production | [comments.md](comments.md) |
+| `hadley channel` | the chat's channel for Claude Code: a server Claude Code starts, not you | [dev-server.md](dev-server.md#chat) |
 | `hadley version` | prints hadley's version |  |
 | `hadley upgrade` | replaces the program with the latest release, if that is newer, and deletes what older versions unpacked; a prerelease also takes prereleases. A package updates through npm, and a program winget installed with `winget upgrade mkorun.hadley` | [getting-started.md](getting-started.md#install) |
 
