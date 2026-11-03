@@ -255,7 +255,9 @@ async function readPage(
   const html = type !== 'note'
   const linkable = html && state === 'published'
   const inSiteFiles = linkable && front.inSitemap && collectionId !== 'errors'
-  const inLlms = articleLike ? linkable && front.inSitemap : inSiteFiles && template !== 'home'
+  // llms.txt lists a published page of these; a dev build shows the twin of every one of them, drafts too
+  const llmsKind = articleLike ? front.inSitemap : front.inSitemap && collectionId !== 'errors' && template !== 'home'
+  const inLlms = linkable && llmsKind
   const page: Page = {
     id: variant !== null ? `${bundleId}_${variant}` : bundleId,
     bundleId,
@@ -281,7 +283,7 @@ async function readPage(
       feed: inSiteFiles && articleLike,
       llms: inLlms,
       // a twin of every page llms.txt lists, unless the page declines (docs/deploy.md)
-      markdown: config.markdown?.enabled === true && inLlms && front.inMarkdown,
+      markdown: config.markdown?.enabled === true && (isPublish ? inLlms : html && llmsKind) && front.inMarkdown,
       search: inSiteFiles,
       indexed: html && state !== 'archived' && metadata.noindex !== true,
     },

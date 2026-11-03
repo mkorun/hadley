@@ -24,7 +24,8 @@ builds the site for publishing into `.hadley/publish/`:
 `llms.txt` lists every published page except home and error pages, unless `sitemap: false` leaves it out. With
 `markdown: enabled: true` in `config.lima`, each of them also gets a Markdown twin, which `llms.txt` links instead of
 the HTML page: the twin of `/notes/example/` is `/notes/example/index.html.md`. `markdown: false` in a page's front
-matter leaves its twin out, and `llms.txt` links its HTML page.
+matter leaves its twin out, and `llms.txt` links its HTML page. The dev server also shows the twin of a page that is
+not published yet, such as a draft, as it will be.
 
 A twin contains public front matter — `title`, `description`, `url`, `language`, `published`, `updated`, `author` and
 `tags`, where present — followed by its title and canonical Markanto content. Its links and files use their absolute

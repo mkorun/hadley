@@ -199,6 +199,28 @@ describe('Markdown twins', () => {
     assert.deepEqual(await readFile(join(root, '.hadley', 'dev', 'source', 'index.html.md')), before)
   })
 
+  // Michael 2026-11-03: a draft's twin is part of how the page will look, so the dev server shows it
+  it('write in a dev build the twin of a page not yet published as well, and nothing more', async () => {
+    const root = await site('dev-drafts', true)
+    const built = await quietBuild(root, 'dev')
+    assert.deepEqual(
+      built.planned.filter((path) => path.endsWith('.md')),
+      [
+        'de/ziel/index.html.md',
+        'draft/index.html.md',
+        'later/index.html.md',
+        'quiet/index.html.md',
+        'seed/index.html.md',
+        'source/index.html.md',
+        'target/index.html.md',
+      ],
+    )
+    assert.match(
+      await readFile(join(root, '.hadley', 'dev', 'draft', 'index.html'), 'utf8'),
+      /href="https:\/\/markdown\.example\/draft\/index\.html\.md"/,
+    )
+  })
+
   it('stay off by default and keep llms.txt on HTML pages', async () => {
     const root = await site('off', false)
     const built = await quietBuild(root, 'publish')
