@@ -153,8 +153,11 @@ export function channelProcess(root: string, watchErrors = false) {
     stdout,
     stderr,
     diagnostics,
-    rpc(method: string, id: number, params?: object) {
-      child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method, id, ...(params ? { params } : {}) }) + '\n')
+    rpc(method: string, id: number | undefined, params?: object) {
+      child.stdin.write(
+        JSON.stringify({ jsonrpc: '2.0', method, ...(id === undefined ? {} : { id }), ...(params ? { params } : {}) }) +
+          '\n',
+      )
     },
     async close() {
       if (child.exitCode === null && child.signalCode === null) child.stdin.end()

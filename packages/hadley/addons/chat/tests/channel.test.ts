@@ -187,17 +187,33 @@ it(
       assert.ok((await stdout.next()).result)
       rpc('tools/call', 7, { name: 'reply', arguments: { message_id: 'zzzzzzzz', text: 'Unknown' } })
       assert.match(((await stdout.next()).error as { message: string }).message, /unknown message/)
-      const permission = { request_id: 'abcde', tool: 'Read', description: 'Read source', preview: '{}' }
-      rpc('notifications/claude/channel/permission_request', undefined, permission)
+      const captured = {
+        request_id: 'jdgkp',
+        tool_name: 'Write',
+        description: 'Write a file to the local filesystem.',
+        input_preview: '{ "file_path": "/tmp/x/relay-test-2.txt", "content": "relay 2 ok" }',
+      }
+      const permission = {
+        request_id: captured.request_id,
+        tool: captured.tool_name,
+        description: captured.description,
+        preview: captured.input_preview,
+      }
+      rpc('notifications/claude/channel/permission_request', undefined, captured)
       for (const fake of [first, second]) assert.deepEqual(await fake.posts.next(), permission)
-      stream.write(sse('verdict', { request_id: 'abcde', allow: true }))
+      stream.write(sse('verdict', { request_id: 'jdgkp', allow: true }))
       assert.deepEqual(await stdout.next(), {
         jsonrpc: '2.0',
         method: 'notifications/claude/channel/permission',
-        params: { request_id: 'abcde', behavior: 'allow' },
+        params: { request_id: 'jdgkp', behavior: 'allow' },
       })
-      rpc('notifications/claude/channel/permission_request', undefined, { ...permission, request_id: 'bcdef' })
-      for (const fake of [first, second]) await fake.posts.next()
+      rpc('notifications/claude/channel/permission_request', undefined, {
+        ...captured,
+        request_id: 'bcdef',
+        future_field: 'ignored',
+      })
+      for (const fake of [first, second])
+        assert.deepEqual(await fake.posts.next(), { ...permission, request_id: 'bcdef' })
       other.write(sse('verdict', { request_id: 'bcdef', allow: false }))
       assert.equal(((await stdout.next()).params as { behavior: string }).behavior, 'deny')
       stream.destroy()
@@ -220,6 +236,31 @@ it(
     }
   },
 )
+
+it('refuses a permission notification without tool_name over stdio', { timeout: 30_000 }, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'hadley-channel-permission-'))
+  const dir = rendezvousDirectory({ XDG_RUNTIME_DIR: root, LOCALAPPDATA: root })
+  const server = await fakeDevServer(dir, root, 'https://site.example')
+  const child = channelProcess(root)
+  try {
+    await server.streams.next()
+    child.rpc('notifications/claude/channel/permission_request', undefined, {
+      request_id: 'jdgkp',
+      tool: 'Write',
+      description: 'Write a file to the local filesystem.',
+      input_preview: '{}',
+    })
+    assert.match(await child.stderr.next(), /tool: expected nonempty text/)
+    // A following reply proves that the refused notification never reached the dev server.
+    child.rpc('tools/call', 1, { name: 'reply', arguments: { text: 'Still connected' } })
+    assert.equal(((await server.posts.next()) as { text: string }).text, 'Still connected')
+    assert.ok((await child.stdout.next()).result)
+  } finally {
+    await child.close()
+    await server.close()
+    rmSync(root, { recursive: true, force: true })
+  }
+})
 
 it('hadley channel --help needs no site and writes no protocol traffic', async () => {
   const child = spawn(

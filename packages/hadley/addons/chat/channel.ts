@@ -273,7 +273,13 @@ export async function runChannel(
           break
         }
         case 'notifications/claude/channel/permission_request': {
-          const data = permission(rpc.params)
+          const params = object(rpc.params)
+          const data = permission({
+            request_id: params.request_id,
+            tool: params.tool_name,
+            description: params.description,
+            preview: params.input_preview,
+          })
           await broadcast(data)
           return
         }
