@@ -98,6 +98,8 @@ test('attaches from the keyboard block menu, sends context, renders replies safe
   expect(message.block).toBeTruthy()
   await expect(panel.locator('.hc-message')).toHaveText('Explain this\nx')
   await expect(input).toHaveValue('')
+  // sent: the block is no longer attached, and its row with the remove button is gone
+  await expect(panel.locator('.hc-attachment')).toBeHidden()
   expect(
     (
       await channel.send({

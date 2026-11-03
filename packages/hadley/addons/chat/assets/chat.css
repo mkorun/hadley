@@ -46,9 +46,10 @@
   flex-shrink: 1;
 }
 
+/* !important: a later rule of the same weight that sets display (.hc-attachment: flex) would show it again */
 #hadley-chat[hidden],
 #hadley-chat [hidden] {
-  display: none;
+  display: none !important;
 }
 
 #hadley-chat * {
