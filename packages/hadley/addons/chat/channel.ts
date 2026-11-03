@@ -1,9 +1,10 @@
-import { watch } from 'node:fs'
+import { watch, type FSWatcher } from 'node:fs'
 import http, { type ClientRequest, type IncomingMessage } from 'node:http'
 import https from 'node:https'
 import { createInterface } from 'node:readline'
 import { Transform } from 'node:stream'
-import { readRendezvous, rendezvousDirectory, type Rendezvous } from './rendezvous.ts'
+import type { TLSSocket } from 'node:tls'
+import { certificateFingerprint, readRendezvous, rendezvousDirectory, type Rendezvous } from './rendezvous.ts'
 import {
   MAX_BYTES,
   message,
@@ -27,23 +28,61 @@ interface Connection {
   record: Rendezvous
   request?: ClientRequest | undefined
   response?: IncomingMessage | undefined
-  secure: boolean
   connected: boolean
   retryAt: number
   failures: number
 }
 
+/** Send the token only after TLS has matched the leaf certificate recorded by the dev server. */
+export function channelRequest(record: Rendezvous, path: string, body?: string): ClientRequest {
+  const secure = record.origin.startsWith('https:')
+  const request = (secure ? https : http).request(new URL(path, record.origin), {
+    method: body === undefined ? 'GET' : 'POST',
+    // A fresh TLS socket always emits secureConnect; no pooled connection bypasses the pin check.
+    agent: false,
+    ...(secure ? { rejectUnauthorized: false } : {}),
+    headers: { 'X-Hadley-Token': record.token, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+  })
+  if (secure) {
+    request.once('socket', (socket) => {
+      const tls = socket as TLSSocket
+      tls.once('secureConnect', () => {
+        try {
+          const certificate = tls.getPeerCertificate().raw
+          if (!certificate || certificateFingerprint(certificate) !== record.fingerprint)
+            throw new Error('dev server certificate does not match the rendezvous fingerprint')
+          // Only this pin authorizes the certificate. No HTTP bytes precede this check.
+          request.end(body)
+        } catch (error) {
+          request.destroy(error instanceof Error ? error : new Error(String(error)))
+        }
+      })
+    })
+  } else request.end(body)
+  return request
+}
+
 /** Claude Code owns stdio and the lifetime. Nothing starts when this module is imported. */
-export async function runChannel(): Promise<void> {
-  const dir = rendezvousDirectory()
+export async function runChannel(
+  watchDirectory: (dir: string, listener: () => void) => FSWatcher = watch,
+): Promise<void> {
   const connections = new Map<number, Connection>()
   const routes = new Map<string, Connection>()
   const requests = new Set<ClientRequest>()
   let stopped = false
+  let watcher: FSWatcher | undefined
+  const reported = new Map<string, string>()
   const diagnostic = (error: unknown) =>
     console.error(`hadley channel: ${error instanceof Error ? error.message : error}`)
   const write = (data: object) => process.stdout.write(JSON.stringify({ jsonrpc: '2.0', ...data }) + '\n')
   const notify = (method: string, params: object) => write({ method, params })
+
+  function reportOnce(key: string, error: unknown): void {
+    const message = error instanceof Error ? error.message : String(error)
+    if (reported.get(key) === message) return
+    reported.set(key, message)
+    diagnostic(message)
+  }
 
   function receive(connection: Connection, event: string, value: unknown): void {
     if (event === 'message') {
@@ -64,13 +103,7 @@ export async function runChannel(): Promise<void> {
 
   function connect(connection: Connection): void {
     const { record } = connection
-    const transport = connection.secure ? https : http
-    const request = transport.get({
-      hostname: 'localhost',
-      port: record.port,
-      path: '/__hadley/channel/events',
-      headers: { 'X-Hadley-Token': record.token },
-    })
+    const request = channelRequest(record, '/__hadley/channel/events')
     connection.request = request
     requests.add(request)
     // Only the handshake times out; an idle channel is a healthy long-lived SSE connection.
@@ -87,14 +120,7 @@ export async function runChannel(): Promise<void> {
       connection.retryAt = Date.now() + Math.min(30_000, 1_000 * 2 ** Math.min(connection.failures++, 5))
       if (error && !stopped) diagnostic(`port ${record.port}: ${error.message}`)
     }
-    request.once('error', (error: NodeJS.ErrnoException) => {
-      // TLS-only Vite closes a plaintext handshake. The rendezvous format has no transport field.
-      if (error.code === 'ECONNRESET' && !connection.secure) {
-        diagnostic(`port ${record.port}: plaintext handshake closed; reconnecting with TLS`)
-        connection.secure = true
-      }
-      finish(error)
-    })
+    request.once('error', finish)
     request.once('response', (response) => {
       clearTimeout(timeout)
       if (response.statusCode !== 200 || !response.headers['content-type']?.startsWith('text/event-stream')) {
@@ -122,9 +148,34 @@ export async function runChannel(): Promise<void> {
 
   function rescan(): void {
     if (stopped) return
-    const records = readRendezvous(rendezvousDirectory())
+    const dir = rendezvousDirectory()
+    const records = readRendezvous(dir, reportOnce)
+    if (!watcher) {
+      try {
+        const current = watchDirectory(dir, scan)
+        watcher = current
+        current.on('error', (error) => {
+          reportOnce('watch', error)
+          current.close()
+          if (watcher === current) watcher = undefined
+        })
+      } catch (error) {
+        reportOnce('watch', error)
+      }
+    }
     for (const [port, connection] of connections) {
-      if (!records.some((record) => record.port === port && record.token === connection.record.token)) {
+      if (
+        !records.some(
+          (record) =>
+            record.port === port &&
+            record.token === connection.record.token &&
+            record.origin === connection.record.origin &&
+            record.fingerprint === connection.record.fingerprint &&
+            record.pid === connection.record.pid &&
+            record.site === connection.record.site &&
+            record.root === connection.record.root,
+        )
+      ) {
         connection.request?.destroy()
         connection.response?.destroy()
         connections.delete(port)
@@ -134,7 +185,7 @@ export async function runChannel(): Promise<void> {
     for (const record of records) {
       let connection = connections.get(record.port)
       if (!connection) {
-        connection = { record, secure: false, connected: false, retryAt: 0, failures: 0 }
+        connection = { record, connected: false, retryAt: 0, failures: 0 }
         connections.set(record.port, connection)
       }
       if (!connection.request && Date.now() >= connection.retryAt) connect(connection)
@@ -144,23 +195,15 @@ export async function runChannel(): Promise<void> {
   async function post(connection: Connection, data: object): Promise<void> {
     if (!connection.connected) throw new Error(`port ${connection.record.port}: channel is disconnected`)
     await new Promise<void>((resolve, reject) => {
-      const request = (connection.secure ? https : http).request(
-        {
-          hostname: 'localhost',
-          port: connection.record.port,
-          path: '/__hadley/channel',
-          method: 'POST',
-          headers: { 'X-Hadley-Token': connection.record.token, 'Content-Type': 'application/json' },
-        },
-        (response) => {
-          response.resume()
-          response.once('end', () => {
-            if (response.statusCode === 200) resolve()
-            else reject(new Error(`port ${connection.record.port}: channel POST returned HTTP ${response.statusCode}`))
-          })
-          response.once('error', reject)
-        },
-      )
+      const request = channelRequest(connection.record, '/__hadley/channel', JSON.stringify(data))
+      request.once('response', (response) => {
+        response.resume()
+        response.once('end', () => {
+          if (response.statusCode === 200) resolve()
+          else reject(new Error(`port ${connection.record.port}: channel POST returned HTTP ${response.statusCode}`))
+        })
+        response.once('error', reject)
+      })
       requests.add(request)
       const timeout = setTimeout(() => request.destroy(new Error('channel POST timed out')), 10_000)
       request.once('close', () => {
@@ -168,7 +211,6 @@ export async function runChannel(): Promise<void> {
         requests.delete(request)
       })
       request.once('error', reject)
-      request.end(JSON.stringify(data))
     })
   }
 
@@ -278,7 +320,7 @@ export async function runChannel(): Promise<void> {
   const stop = () => {
     if (stopped) return
     stopped = true
-    watcher.close()
+    watcher?.close()
     clearInterval(interval)
     for (const request of requests) request.destroy()
     for (const connection of connections.values()) connection.response?.destroy()
@@ -291,18 +333,12 @@ export async function runChannel(): Promise<void> {
     try {
       rescan()
     } catch (error) {
-      diagnostic(error)
-      process.exitCode = 1
-      stop()
+      reportOnce('directory', error)
+      watcher?.close()
+      watcher = undefined
     }
   }
   bounded.on('error', (error) => {
-    diagnostic(error)
-    process.exitCode = 1
-    stop()
-  })
-  const watcher = watch(dir, scan)
-  watcher.on('error', (error) => {
     diagnostic(error)
     process.exitCode = 1
     stop()

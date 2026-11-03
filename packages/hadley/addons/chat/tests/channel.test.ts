@@ -2,31 +2,38 @@ import assert from 'node:assert/strict'
 import { it } from 'node:test'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
-import { mkdtempSync, rmSync } from 'node:fs'
-import http, { type ServerResponse } from 'node:http'
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import http, { type IncomingMessage, type ServerResponse } from 'node:http'
+import https from 'node:https'
 import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import { fileURLToPath } from 'node:url'
-import { createRendezvous, rendezvousDirectory } from '../rendezvous.ts'
+import { certificateFingerprint, createRendezvous, rendezvousDirectory } from '../rendezvous.ts'
 import { sse } from '../protocol.ts'
-import { Inbox } from './support.ts'
+import { channelProcess, closeServer, Inbox } from './support.ts'
+import { testCertificate } from './certificate.ts'
+import { channelRequest } from '../channel.ts'
 
-async function fakeDevServer(dir: string, root: string, site: string) {
+async function fakeDevServer(
+  dir: string,
+  root: string,
+  site: string,
+  certificate?: ReturnType<typeof testCertificate>,
+) {
   const streams = new Inbox<ServerResponse>()
   const posts = new Inbox<unknown>()
   let token = ''
-  const responses = new Set<ServerResponse>()
-  const server = http.createServer((req, res) => {
+  let requestCount = 0
+  const handle = (req: IncomingMessage, res: ServerResponse) => {
+    requestCount++
     assert.equal(req.headers['x-hadley-token'], token)
     assert.equal(req.headers.origin, undefined)
     if (req.url === '/__hadley/channel/events' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream' })
       res.write(': connected\n\n')
       streams.push(res)
-      responses.add(res)
-      res.once('close', () => responses.delete(res))
     } else if (req.url === '/__hadley/channel' && req.method === 'POST') {
       let body = ''
       req.setEncoding('utf8')
@@ -41,20 +48,33 @@ async function fakeDevServer(dir: string, root: string, site: string) {
       res.writeHead(404)
       res.end()
     }
-  })
+  }
+  const secureServer = certificate ? https.createServer(certificate, handle) : undefined
+  const server = secureServer ?? http.createServer(handle)
   server.listen(0, 'localhost')
   await once(server, 'listening')
   const port = (server.address() as AddressInfo).port
-  const rendezvous = createRendezvous(port, site, root, dir)
+  const rendezvous = createRendezvous(
+    {
+      port,
+      site,
+      root,
+      origin: `${certificate ? 'https' : 'http'}://localhost:${port}`,
+      ...(certificate ? { fingerprint: certificateFingerprint(certificate.cert) } : {}),
+    },
+    dir,
+  )
   token = rendezvous.record.token
   return {
     streams,
     posts,
+    record: rendezvous.record,
+    get requestCount() {
+      return requestCount
+    },
     async close() {
       rendezvous.close()
-      for (const res of responses) res.destroy()
-      server.closeAllConnections()
-      await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())))
+      await closeServer(server)
     },
   }
 }
@@ -252,3 +272,164 @@ for (const [name, input, expected] of [
       rmSync(root, { recursive: true, force: true })
     }
   })
+
+it('uses the recorded HTTPS origin and certificate for both events and replies', { timeout: 30_000 }, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'hadley-channel-https-'))
+  const dir = rendezvousDirectory({ XDG_RUNTIME_DIR: root, LOCALAPPDATA: root })
+  const server = await fakeDevServer(dir, root, 'https://secure.example', testCertificate())
+  const path = join(dir, `${server.record.port}.json`)
+  writeFileSync(path, JSON.stringify({ ...server.record, fingerprint: '0'.repeat(64) }))
+  const channel = channelProcess(root)
+  try {
+    await channel.stderr.next((line) => line.includes('does not match the rendezvous fingerprint'))
+    assert.equal(server.requestCount, 0, 'a wrong certificate must receive neither a request nor the token')
+    channel.rpc('ping', 1)
+    assert.equal((await channel.stdout.next()).id, 1)
+    writeFileSync(path, JSON.stringify(server.record))
+    const stream = await server.streams.next()
+    stream.write(
+      sse('message', { id: 'abcdefgh', text: 'Secure', site: server.record.site, url: server.record.site + '/' }),
+    )
+    assert.equal((await channel.stdout.next()).method, 'notifications/claude/channel')
+    channel.rpc('tools/call', 2, { name: 'reply', arguments: { message_id: 'abcdefgh', text: 'Pinned reply' } })
+    assert.equal(((await server.posts.next()) as { text: string }).text, 'Pinned reply')
+    assert.ok((await channel.stdout.next()).result)
+    const requestsBefore = server.requestCount
+    const request = channelRequest(
+      { ...server.record, fingerprint: '0'.repeat(64) },
+      '/__hadley/channel',
+      JSON.stringify({ id: 'ijklmnop', to: 'abcdefgh', text: 'Must not arrive' }),
+    )
+    request.setTimeout(10_000, () => request.destroy(new Error('test request timed out')))
+    const error = await new Promise<Error>((resolve, reject) => {
+      request.once('error', resolve)
+      request.once('response', (response) => {
+        response.resume()
+        reject(new Error('a mismatched certificate received the POST'))
+      })
+    })
+    assert.match(error.message, /does not match the rendezvous fingerprint/)
+    assert.equal(server.requestCount, requestsBefore, 'POST must check its own TLS socket before sending the token')
+  } finally {
+    await channel.close()
+    await server.close()
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+it(
+  'keeps a session alive across bad records and retries a broken directory without repeated diagnostics',
+  { timeout: 30_000 },
+  async () => {
+    const root = mkdtempSync(join(tmpdir(), 'hadley-channel-rescan-'))
+    const dir = rendezvousDirectory({ XDG_RUNTIME_DIR: root, LOCALAPPDATA: root })
+    const server = await fakeDevServer(dir, root, 'https://first.example')
+    const bad = join(dir, '1.json')
+    writeFileSync(bad, '{', { mode: 0o600 })
+    const shared = join(dir, '2.json')
+    writeFileSync(shared, JSON.stringify({ ...server.record, port: 2, origin: 'http://localhost:2' }), { mode: 0o600 })
+    if (process.platform !== 'win32') chmodSync(shared, 0o644)
+    else writeFileSync(shared, '{}')
+    const channel = channelProcess(root)
+    let second: Awaited<ReturnType<typeof fakeDevServer>> | undefined
+    try {
+      const stream = await server.streams.next()
+      await channel.stderr.next((line) => line.includes('1.json:'))
+      await channel.stderr.next((line) => line.includes('2.json:'))
+      // A new server forces another scan of the same bad files.
+      second = await fakeDevServer(dir, root, 'https://second.example')
+      await second.streams.next()
+      if (process.platform !== 'win32') {
+        chmodSync(dir, 0o755)
+        writeFileSync(bad, '{')
+        await channel.stderr.next((line) => line.includes(`${dir} must belong`))
+      }
+      stream.write(
+        sse('message', {
+          id: 'abcdefgh',
+          text: 'Still connected',
+          site: server.record.site,
+          url: server.record.site + '/',
+        }),
+      )
+      assert.equal((await channel.stdout.next()).method, 'notifications/claude/channel')
+      // Existing streams continue to work, and the next periodic rescan discovers a repaired record.
+      if (process.platform !== 'win32') chmodSync(dir, 0o700)
+      writeFileSync(bad, JSON.stringify({ ...server.record, port: 1, origin: 'http://localhost:1', pid: 0 }))
+      await channel.stderr.next((line) => line.includes('1.json: pid:'))
+      channel.rpc('ping', 1)
+      assert.equal((await channel.stdout.next()).id, 1)
+      assert.equal(channel.diagnostics.filter((line) => line.includes('1.json: rendezvous: invalid JSON')).length, 1)
+      assert.equal(channel.diagnostics.filter((line) => line.includes('2.json:')).length, 1)
+      if (process.platform !== 'win32')
+        assert.equal(channel.diagnostics.filter((line) => line.includes(`${dir} must belong`)).length, 1)
+    } finally {
+      if (process.platform !== 'win32') chmodSync(dir, 0o700)
+      const closed = await Promise.allSettled([channel.close(), server.close(), second?.close()])
+      rmSync(root, { recursive: true, force: true })
+      for (const result of closed) if (result.status === 'rejected') throw result.reason
+    }
+  },
+)
+
+it('continues polling after watcher creation and asynchronous watcher failures', { timeout: 30_000 }, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'hadley-channel-watch-'))
+  const dir = rendezvousDirectory({ XDG_RUNTIME_DIR: root, LOCALAPPDATA: root })
+  const server = await fakeDevServer(dir, root, 'https://first.example')
+  const channel = channelProcess(root, true)
+  let second: Awaited<ReturnType<typeof fakeDevServer>> | undefined
+  try {
+    await server.streams.next()
+    await channel.stderr.next((line) => line.includes('test watcher could not start'))
+    await channel.stderr.next((line) => line.includes('test watcher failed'))
+    second = await fakeDevServer(dir, root, 'https://second.example')
+    const stream = await second.streams.next()
+    stream.write(
+      sse('message', {
+        id: 'abcdefgh',
+        text: 'Polling works',
+        site: second.record.site,
+        url: second.record.site + '/',
+      }),
+    )
+    assert.equal((await channel.stdout.next()).method, 'notifications/claude/channel')
+    assert.equal(channel.diagnostics.filter((line) => line.includes('test watcher could not start')).length, 1)
+    assert.equal(channel.diagnostics.filter((line) => line.includes('test watcher failed')).length, 1)
+  } finally {
+    await channel.close()
+    await server.close()
+    await second?.close()
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+it(
+  'keeps MCP alive when the rendezvous directory is initially invalid and discovers servers after repair',
+  { timeout: 30_000 },
+  async () => {
+    const root = mkdtempSync(join(tmpdir(), 'hadley-channel-directory-'))
+    const dir = rendezvousDirectory({ XDG_RUNTIME_DIR: root, LOCALAPPDATA: root })
+    rmSync(dir, { recursive: true })
+    writeFileSync(dir, 'not a directory')
+    const channel = channelProcess(root)
+    let server: Awaited<ReturnType<typeof fakeDevServer>> | undefined
+    try {
+      await channel.stderr.next((line) => line.includes('not a regular directory'))
+      channel.rpc('ping', 1)
+      assert.equal((await channel.stdout.next()).id, 1)
+      rmSync(dir)
+      mkdirSync(dir, { recursive: true, mode: 0o700 })
+      server = await fakeDevServer(dir, root, 'https://repaired.example')
+      const stream = await server.streams.next()
+      stream.write(
+        sse('message', { id: 'abcdefgh', text: 'Repaired', site: server.record.site, url: server.record.site + '/' }),
+      )
+      assert.equal((await channel.stdout.next()).method, 'notifications/claude/channel')
+      assert.equal(channel.diagnostics.filter((line) => line.includes('not a regular directory')).length, 1)
+    } finally {
+      const closed = await Promise.allSettled([channel.close(), server?.close()])
+      rmSync(root, { recursive: true, force: true })
+      for (const result of closed) if (result.status === 'rejected') throw result.reason
+    }
+  },
+)

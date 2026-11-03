@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes, X509Certificate } from 'node:crypto'
 import { lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
@@ -11,6 +11,8 @@ export interface Rendezvous {
   site: string
   root: string
   pid: number
+  origin: string
+  fingerprint?: string
 }
 
 /** The private directories hadley owns; the system temporary directory itself may be shared. */
@@ -51,8 +53,12 @@ export function rendezvousDirectory(env: NodeJS.ProcessEnv = process.env): strin
   return paths[paths.length - 1]
 }
 
+/** Lowercase SHA-256 of the leaf certificate's DER, independent of PEM formatting or trust stores. */
+export const certificateFingerprint = (certificate: Buffer): string =>
+  createHash('sha256').update(new X509Certificate(certificate).raw).digest('hex')
+
 export function parseRendezvous(value: unknown): Rendezvous {
-  const record = object(value, ['port', 'token', 'site', 'root', 'pid'])
+  const record = object(value, ['port', 'token', 'site', 'root', 'pid', 'origin', 'fingerprint'])
   if (!Number.isInteger(record.port) || Number(record.port) < 1 || Number(record.port) > 65535)
     throw new Error('port: expected a port from 1 to 65535')
   if (!Number.isSafeInteger(record.pid) || Number(record.pid) < 1) throw new Error('pid: expected a positive integer')
@@ -60,7 +66,24 @@ export function parseRendezvous(value: unknown): Rendezvous {
   if (!/^[a-f0-9]{64}$/.test(token)) throw new Error('token: expected 32 random bytes in hex')
   const root = text(record.root, 'root')
   if (!isAbsolute(root)) throw new Error('root: expected an absolute site directory')
-  return { port: Number(record.port), token, site: origin(record.site), root, pid: Number(record.pid) }
+  const local = text(record.origin, 'origin')
+  if (local !== `http://localhost:${record.port}` && local !== `https://localhost:${record.port}`)
+    throw new Error('origin: expected http or https on localhost with the record port')
+  const result: Rendezvous = {
+    port: Number(record.port),
+    token,
+    site: origin(record.site),
+    root,
+    pid: Number(record.pid),
+    origin: local,
+  }
+  if (local.startsWith('https:')) {
+    const fingerprint = text(record.fingerprint, 'fingerprint')
+    if (!/^[a-f0-9]{64}$/.test(fingerprint))
+      throw new Error('fingerprint: expected a SHA-256 certificate digest in hex')
+    result.fingerprint = fingerprint
+  } else if (record.fingerprint !== undefined) throw new Error('fingerprint: only allowed with https')
+  return result
 }
 
 export function alive(pid: number): boolean {
@@ -81,7 +104,7 @@ function readRecord(path: string): Rendezvous {
   return parseRendezvous(parseJson(source, 'rendezvous'))
 }
 
-export function readRendezvous(dir: string): Rendezvous[] {
+export function readRendezvous(dir: string, report: (path: string, error: Error) => void): Rendezvous[] {
   assertPrivate(dir, true)
   const records: Rendezvous[] = []
   for (const name of readdirSync(dir)) {
@@ -94,15 +117,16 @@ export function readRendezvous(dir: string): Rendezvous[] {
     } catch (error) {
       // A server can end between readdir and readFile.
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue
-      throw new Error(`chat: ${path}: ${error instanceof Error ? error.message : error}`)
+      report(path, new Error(`chat: ${path}: ${error instanceof Error ? error.message : error}`))
     }
   }
   return records
 }
 
-export function createRendezvous(port: number, site: string, root: string, dir = rendezvousDirectory()) {
+export function createRendezvous(options: Omit<Rendezvous, 'pid' | 'token'>, dir = rendezvousDirectory()) {
   assertPrivate(dir, true)
-  const record = parseRendezvous({ port, site, root, pid: process.pid, token: randomBytes(32).toString('hex') })
+  const record = parseRendezvous({ ...options, pid: process.pid, token: randomBytes(32).toString('hex') })
+  const { port } = record
   const path = join(dir, `${port}.json`)
   // A leftover file is replaced only after its shape and permissions have been checked.
   try {

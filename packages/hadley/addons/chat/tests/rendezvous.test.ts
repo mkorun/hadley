@@ -20,11 +20,13 @@ import {
   alive,
   assertPrivate,
   createRendezvous,
+  certificateFingerprint,
   directories,
   parseRendezvous,
   readRendezvous,
   rendezvousDirectory,
 } from '../rendezvous.ts'
+import { testCertificate } from './certificate.ts'
 
 let dir: string
 beforeEach(() => {
@@ -32,18 +34,21 @@ beforeEach(() => {
 })
 afterEach(() => rmSync(dir, { recursive: true, force: true }))
 
+const options = () => ({ port: 8000, site: 'https://site.example', root: dir, origin: 'http://localhost:8000' })
+const noError = (_path: string, error: Error) => assert.fail(error.message)
+
 it('creates private directories and files, validates the record and removes it idempotently', () => {
   const runtime = rendezvousDirectory({ XDG_RUNTIME_DIR: dir, LOCALAPPDATA: dir })
-  const created = createRendezvous(8000, 'https://site.example', dir, runtime)
+  const created = createRendezvous(options(), runtime)
   try {
-    assert.deepEqual(readRendezvous(runtime), [created.record])
+    assert.deepEqual(readRendezvous(runtime, noError), [created.record])
     assert.deepEqual(parseRendezvous(JSON.parse(readFileSync(join(runtime, '8000.json'), 'utf8'))), created.record)
     if (process.platform !== 'win32') {
       for (const path of directories({ XDG_RUNTIME_DIR: dir, LOCALAPPDATA: dir }))
         assert.equal(statSync(path).mode & 0o777, 0o700)
       assert.equal(statSync(join(runtime, '8000.json')).mode & 0o777, 0o600)
     }
-    assert.throws(() => createRendezvous(8000, 'https://site.example', dir, runtime), /running server/)
+    assert.throws(() => createRendezvous(options(), runtime), /running server/)
   } finally {
     created.close()
     created.close()
@@ -67,39 +72,37 @@ it('refuses shared directories, other owners and symlinks rather than repairing 
   assert.throws(() => rendezvousDirectory({ XDG_RUNTIME_DIR: dir, LOCALAPPDATA: dir }), /not a regular directory/)
 })
 
-it('skips a dead pid, rejects malformed or shared files, and replaces a stale record', async () => {
+it('skips dead, malformed and shared records, and replaces a stale record', async () => {
   const child = spawn(process.execPath, ['-e', ''], { timeout: 10_000 })
   await once(child, 'exit')
   assert.equal(alive(child.pid!), false)
   const runtime = rendezvousDirectory({ XDG_RUNTIME_DIR: dir, LOCALAPPDATA: dir })
   const path = join(runtime, '8000.json')
-  const record = { port: 8000, token: 'a'.repeat(64), root: dir, site: 'https://site.example', pid: child.pid }
+  const record = { ...options(), token: 'a'.repeat(64), pid: child.pid }
   writeFileSync(path, JSON.stringify(record), { mode: 0o600 })
-  assert.deepEqual(readRendezvous(runtime), [])
-  const created = createRendezvous(8000, record.site, dir, runtime)
+  assert.deepEqual(readRendezvous(runtime, noError), [])
+  const created = createRendezvous(options(), runtime)
   created.close()
-  writeFileSync(path, '{\"token\":\"do-not-repeat-this\"', { mode: 0o600 })
-  assert.throws(
-    () => readRendezvous(runtime),
-    (error: Error) => {
-      assert.match(error.message, /rendezvous: invalid JSON/)
-      assert.ok(!error.message.includes('do-not-repeat-this'))
-      return true
-    },
-  )
+  const errors: Error[] = []
+  const scan = () => readRendezvous(runtime, (_path, error) => errors.push(error))
+  writeFileSync(path, '{"token":"do-not-repeat-this"', { mode: 0o600 })
+  assert.deepEqual(scan(), [])
+  assert.match(errors.pop()!.message, /rendezvous: invalid JSON/)
   writeFileSync(path, '{}', { mode: 0o600 })
-  assert.throws(() => readRendezvous(runtime), /8000\.json: port/)
+  assert.deepEqual(scan(), [])
+  assert.match(errors.pop()!.message, /8000\.json: port/)
   if (process.platform !== 'win32') {
     writeFileSync(path, JSON.stringify(record))
     chmodSync(path, 0o644)
-    assert.throws(() => readRendezvous(runtime), /inaccessible to others/)
+    assert.deepEqual(scan(), [])
+    assert.match(errors.pop()!.message, /inaccessible to others/)
   }
 })
 
 it('removes rendezvous files on normal process exit', async () => {
   const runtime = rendezvousDirectory({ XDG_RUNTIME_DIR: dir, LOCALAPPDATA: dir })
   const module = fileURLToPath(new URL('../rendezvous.ts', import.meta.url))
-  const source = `import { createRendezvous } from ${JSON.stringify(module)}; createRendezvous(8000, 'https://site.example', ${JSON.stringify(dir)}, ${JSON.stringify(runtime)})`
+  const source = `import { createRendezvous } from ${JSON.stringify(module)}; createRendezvous(${JSON.stringify(options())}, ${JSON.stringify(runtime)})`
   const child = spawn(process.execPath, ['--input-type=module', '-e', source], { timeout: 10_000, stdio: 'pipe' })
   let stderr = ''
   child.stderr.on('data', (chunk: Buffer) => {
@@ -121,4 +124,54 @@ it('chooses the platform runtime paths and refuses relative environment paths', 
   const paths = directories({}, 'linux')
   assert.equal(paths[1], join(paths[0], 'chat'))
   assert.match(paths[0], /hadley-/)
+})
+
+it('validates the explicit local origin and requires a SHA-256 pin only for HTTPS', () => {
+  const base = { ...options(), pid: process.pid, token: 'a'.repeat(64) }
+  assert.deepEqual(parseRendezvous(base), base)
+  const fingerprint = certificateFingerprint(testCertificate().cert)
+  const secure = { ...base, origin: 'https://localhost:8000', fingerprint }
+  assert.deepEqual(parseRendezvous(secure), secure)
+  for (const origin of [
+    undefined,
+    null,
+    '',
+    'http://other.example:8000',
+    'http://localhost:8001',
+    'ftp://localhost:8000',
+    'http://localhost:8000/',
+    'http://localhost:8000?x',
+    'http://user@localhost:8000',
+    'http://localhost:8000#x',
+    'http://127.0.0.1:8000',
+  ])
+    assert.throws(() => parseRendezvous({ ...base, origin }), /origin/)
+  for (const fingerprint of [undefined, null, '', 'a'.repeat(63), 'G'.repeat(64), 'A'.repeat(64), 'AA:BB'])
+    assert.throws(() => parseRendezvous({ ...secure, fingerprint }), /fingerprint/)
+  assert.throws(() => parseRendezvous({ ...base, fingerprint }), /only allowed with https/)
+})
+
+it('keeps a good server when another record is bad, too large or later repaired', () => {
+  const runtime = rendezvousDirectory({ XDG_RUNTIME_DIR: dir, LOCALAPPDATA: dir })
+  const good = createRendezvous(options(), runtime)
+  const path = join(runtime, '8010.json')
+  const errors: Error[] = []
+  const scan = () => readRendezvous(runtime, (_path, error) => errors.push(error))
+  try {
+    writeFileSync(path, '{', { mode: 0o600 })
+    assert.deepEqual(scan(), [good.record])
+    assert.match(errors.pop()!.message, /8010\.json: rendezvous: invalid JSON/)
+    writeFileSync(path, 'x'.repeat(1_048_577))
+    assert.deepEqual(scan(), [good.record])
+    assert.match(errors.pop()!.message, /record too large/)
+    const repaired = { ...good.record, port: 8010, origin: 'http://localhost:8010' }
+    writeFileSync(path, JSON.stringify(repaired))
+    assert.deepEqual(
+      scan().map((record) => record.port),
+      [8000, 8010],
+    )
+    assert.equal(errors.length, 0)
+  } finally {
+    good.close()
+  }
 })

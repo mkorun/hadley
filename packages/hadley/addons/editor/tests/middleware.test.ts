@@ -1163,8 +1163,13 @@ it('reads split UTF-8 bytes as one body and refuses malformed UTF-8', async () =
   const chunks = Array.from(bytes, (byte) => Buffer.from([byte]))
   const request = Readable.from(chunks) as unknown as IncomingMessage
   assert.equal(await readBody(request, 'en'), source)
-  const malformed = Readable.from([Buffer.from([0xc3, 0x28])]) as unknown as IncomingMessage
-  await assert.rejects(readBody(malformed, 'en'), /not valid UTF-8/)
+  for (const [lang, message] of [
+    ['en', 'request body is not valid UTF-8'],
+    ['de', 'Anfrage enthält kein gültiges UTF-8'],
+  ] as const) {
+    const malformed = Readable.from([Buffer.from([0xc3, 0x28])]) as unknown as IncomingMessage
+    await assert.rejects(readBody(malformed, lang), { message })
+  }
 })
 
 // 2026-11-05: a page's title and subtitle are edited where the theme shows them, from their line or the front matter

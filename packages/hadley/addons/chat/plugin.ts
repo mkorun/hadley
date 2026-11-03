@@ -5,7 +5,7 @@ import { isAbsolute, relative, resolve } from 'node:path'
 import type { Plugin } from 'vite'
 import { blockIdMap, readBody } from '../editor/plugin.ts'
 import { lf, slashed } from '../../lib/platform.ts'
-import { createRendezvous, rendezvousDirectory } from './rendezvous.ts'
+import { certificateFingerprint, createRendezvous, rendezvousDirectory } from './rendezvous.ts'
 import {
   chatInput,
   message,
@@ -45,7 +45,13 @@ function stream(res: ServerResponse): void {
   res.write(': connected\n\n')
 }
 
-export function chatPlugin(options: { root: string; site: string; port: number }) {
+export function chatPlugin(options: {
+  root: string
+  site: string
+  port: number
+  origin: string
+  certificate?: Buffer
+}) {
   const site = origin(options.site)
   const root = resolve(options.root)
   // Check the private directory before the server starts; publish only once it is listening.
@@ -188,7 +194,16 @@ export function chatPlugin(options: { root: string; site: string; port: number }
       return rendezvous?.record.token
     },
     start() {
-      rendezvous = createRendezvous(options.port, site, root, dir)
+      rendezvous = createRendezvous(
+        {
+          port: options.port,
+          site,
+          root,
+          origin: options.origin,
+          ...(options.certificate ? { fingerprint: certificateFingerprint(options.certificate) } : {}),
+        },
+        dir,
+      )
     },
     close() {
       channel?.end()

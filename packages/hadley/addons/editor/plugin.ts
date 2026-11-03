@@ -118,7 +118,7 @@ export async function readBody(
       try {
         resolve(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(Buffer.concat(chunks)))
       } catch {
-        reject(new Error('request body is not valid UTF-8'))
+        reject(new Error(t(lang, 'requestBodyInvalidUtf8')))
       }
     })
     req.on('error', (error) => {

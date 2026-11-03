@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict'
+import { spawn } from 'node:child_process'
+import { createInterface } from 'node:readline'
+import { fileURLToPath } from 'node:url'
+import https from 'node:https'
 import { EventEmitter, once } from 'node:events'
 import http, { type IncomingMessage, type ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
@@ -29,6 +33,14 @@ export class Inbox<T> {
   }
 }
 
+/** Bun 1.4.0 (scripts/build-binary.ts) needs close to start before connections are forced closed. */
+export async function closeServer(server: Pick<http.Server, 'close' | 'closeAllConnections'>): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()))
+    server.closeAllConnections()
+  })
+}
+
 export async function devServer(root: string) {
   type Middleware = (req: IncomingMessage, res: ServerResponse, next: () => void) => void
   let middleware: Middleware | undefined
@@ -50,7 +62,7 @@ export async function devServer(root: string) {
   await once(server, 'listening')
   const port = (server.address() as AddressInfo).port
   origin = `http://localhost:${port}`
-  chat = chatPlugin({ root, site: 'https://site.example', port })
+  chat = chatPlugin({ root, site: 'https://site.example', port, origin })
   const configure = chat.plugin.configureServer
   assert.equal(typeof configure, 'function')
   if (typeof configure !== 'function') throw new Error('expected a configureServer hook')
@@ -71,8 +83,7 @@ export async function devServer(root: string) {
     token: chat.token!,
     async close() {
       chat.close()
-      server.closeAllConnections()
-      await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())))
+      await closeServer(server)
     },
   }
 }
@@ -92,7 +103,11 @@ export async function post(
 
 export async function events(origin: string, path: string, headers: Record<string, string> = {}) {
   const inbox = new Inbox<{ event: string; data: unknown }>()
-  const request = http.get(origin + path, { headers })
+  const secure = new URL(origin).protocol === 'https:'
+  const request = (secure ? https : http).get(origin + path, {
+    headers,
+    ...(secure ? { rejectUnauthorized: false } : {}),
+  })
   const [response] = (await once(request, 'response')) as [IncomingMessage]
   assert.equal(response.statusCode, 200)
   response.setEncoding('utf8')
@@ -104,6 +119,49 @@ export async function events(origin: string, path: string, headers: Record<strin
     close() {
       response.destroy()
       request.destroy()
+    },
+  }
+}
+
+export function channelProcess(root: string, watchErrors = false) {
+  const module = fileURLToPath(new URL('../channel.ts', import.meta.url))
+  const watcher = `import { watch } from 'node:fs'; import { runChannel } from ${JSON.stringify(module)};
+    let attempt = 0;
+    await runChannel((dir, listener) => {
+      if (++attempt === 1) throw new Error('test watcher could not start');
+      const watcher = watch(dir, listener);
+      queueMicrotask(() => watcher.emit('error', new Error('test watcher failed')));
+      return watcher;
+    });`
+  const child = spawn(process.execPath, watchErrors ? ['--input-type=module', '-e', watcher] : [module], {
+    env: { ...process.env, XDG_RUNTIME_DIR: root, LOCALAPPDATA: root },
+    stdio: 'pipe',
+    timeout: 25_000,
+  })
+  const exited = once(child, 'exit')
+  const stdout = new Inbox<Record<string, unknown>>()
+  const stderr = new Inbox<string>()
+  const diagnostics: string[] = []
+  const output = createInterface({ input: child.stdout })
+  const errors = createInterface({ input: child.stderr })
+  output.on('line', (line) => stdout.push(JSON.parse(line) as Record<string, unknown>))
+  errors.on('line', (line) => {
+    diagnostics.push(line)
+    stderr.push(line)
+  })
+  return {
+    stdout,
+    stderr,
+    diagnostics,
+    rpc(method: string, id: number, params?: object) {
+      child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method, id, ...(params ? { params } : {}) }) + '\n')
+    },
+    async close() {
+      if (child.exitCode === null && child.signalCode === null) child.stdin.end()
+      const [code] = await exited
+      output.close()
+      errors.close()
+      assert.equal(code, 0, diagnostics.join('\n'))
     },
   }
 }

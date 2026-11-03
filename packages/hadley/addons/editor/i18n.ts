@@ -42,6 +42,7 @@ type Key =
   | 'notFound'
   | 'requestBodyTooLarge'
   | 'requestBodyTooSlow'
+  | 'requestBodyInvalidUtf8'
 
 const MESSAGES: Record<Lang, Record<Key, string>> = {
   de: {
@@ -72,6 +73,7 @@ const MESSAGES: Record<Lang, Record<Key, string>> = {
     notFound: 'nicht gefunden',
     requestBodyTooLarge: 'Anfrage zu groß',
     requestBodyTooSlow: 'Anfrage kam nicht rechtzeitig an',
+    requestBodyInvalidUtf8: 'Anfrage enthält kein gültiges UTF-8',
   },
   en: {
     assetNotFound: 'Asset not found',
@@ -101,6 +103,7 @@ const MESSAGES: Record<Lang, Record<Key, string>> = {
     notFound: 'not found',
     requestBodyTooLarge: 'request body too large',
     requestBodyTooSlow: 'request body did not arrive in time',
+    requestBodyInvalidUtf8: 'request body is not valid UTF-8',
   },
 }
 

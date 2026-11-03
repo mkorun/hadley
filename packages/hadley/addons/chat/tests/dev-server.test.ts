@@ -2,16 +2,17 @@ import assert from 'node:assert/strict'
 import { it } from 'node:test'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer, type AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import { fileURLToPath } from 'node:url'
-import { directories } from '../rendezvous.ts'
-import { Inbox, post } from './support.ts'
+import { certificateFingerprint, directories, parseRendezvous } from '../rendezvous.ts'
+import { channelProcess, events, Inbox, post } from './support.ts'
+import { testCertificate } from './certificate.ts'
 
-async function start(config: string) {
+async function start(config: string, certificate?: ReturnType<typeof testCertificate>) {
   const root = mkdtempSync(join(tmpdir(), 'hadley-chat-dev-'))
   const env = { ...process.env, XDG_RUNTIME_DIR: root, XDG_CONFIG_HOME: root, LOCALAPPDATA: root }
   const probe = createServer().listen(0, 'localhost')
@@ -19,10 +20,19 @@ async function start(config: string) {
   const port = (probe.address() as AddressInfo).port
   await new Promise<void>((resolve) => probe.close(() => resolve()))
   writeFileSync(join(root, 'config.lima'), `site:\n  origin: https://site.example\ndev:\n${config}`)
+  if (certificate) {
+    mkdirSync(join(root, 'hadley'), { mode: 0o700 })
+    writeFileSync(join(root, 'test-cert.pem'), certificate.cert, { mode: 0o600 })
+    writeFileSync(join(root, 'test-key.pem'), certificate.key, { mode: 0o600 })
+    writeFileSync(
+      join(root, 'hadley', 'config.lima'),
+      'dev:\n  https:\n    cert: ../test-cert.pem\n    key: ../test-key.pem\n',
+    )
+  }
   const source = `import { startDevServer } from ${JSON.stringify(fileURLToPath(new URL('../../../lib/dev-server.ts', import.meta.url)))};
     try {
       await startDevServer({ siteDir: ${JSON.stringify(root)}, outputMode: 'dev',
-        serve: { port: ${port}, https: false, host: false }, noBuild: true, noWatch: true });
+        serve: { port: ${port}, https: ${certificate !== undefined}, host: false }, noBuild: true, noWatch: true });
       console.log('TEST_READY');
     } catch (error) { console.error(error.message); process.exitCode = 1 }`
   const child = spawn(process.execPath, ['--input-type=module', '-e', source], { env, stdio: 'pipe', timeout: 20_000 })
@@ -41,7 +51,7 @@ async function start(config: string) {
     env,
     exited,
     lines,
-    origin: `http://localhost:${port}`,
+    origin: `${certificate ? 'https' : 'http'}://localhost:${port}`,
     errors: () => errors,
     async close() {
       if (child.exitCode === null && child.signalCode === null) {
@@ -66,7 +76,10 @@ it(
         const record = join(paths[paths.length - 1], `${dev.port}.json`)
         assert.ok(existsSync(record))
         assert.equal((await post(dev.origin, '/__hadley/chat', { text: 'hello', page: '/' })).status, 503)
-        const token = (JSON.parse(readFileSync(record, 'utf8')) as { token: string }).token
+        const info = parseRendezvous(JSON.parse(readFileSync(record, 'utf8')))
+        assert.equal(info.origin, dev.origin)
+        assert.equal(info.fingerprint, undefined)
+        const token = info.token
         const controller = new AbortController()
         try {
           const stream = await fetch(dev.origin + '/__hadley/channel/events', {
@@ -108,3 +121,39 @@ it('loads no chat without dev.chat, and refuses chat without editor before servi
     await invalid.close()
   }
 })
+
+it(
+  'publishes the HTTPS origin and exact certificate pin used by the real dev server',
+  { timeout: 30_000 },
+  async () => {
+    const certificate = testCertificate()
+    const dev = await start('  editor: true\n  chat: true\n', certificate)
+    let channel: ReturnType<typeof channelProcess> | undefined
+    let browser: Awaited<ReturnType<typeof events>> | undefined
+    try {
+      await dev.lines.next((line) => line === 'TEST_READY')
+      const paths = directories(dev.env)
+      const record = parseRendezvous(
+        JSON.parse(readFileSync(join(paths[paths.length - 1], `${dev.port}.json`), 'utf8')),
+      )
+      assert.equal(record.origin, dev.origin)
+      assert.equal(record.fingerprint, certificateFingerprint(certificate.cert))
+      browser = await events(dev.origin, '/__hadley/chat/events')
+      channel = channelProcess(dev.root)
+      await browser.inbox.next((entry) => entry.event === 'status' && (entry.data as { connected: boolean }).connected)
+      channel.rpc('tools/call', 1, { name: 'reply', arguments: { text: 'HTTPS reply' } })
+      assert.ok((await channel.stdout.next()).result)
+      assert.equal(
+        ((await browser.inbox.next((entry) => entry.event === 'reply')).data as { text: string }).text,
+        'HTTPS reply',
+      )
+    } finally {
+      try {
+        await channel?.close()
+      } finally {
+        browser?.close()
+        await dev.close()
+      }
+    }
+  },
+)

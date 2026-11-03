@@ -1,3 +1,9 @@
+/**
+ * For panel implementations, `GET /__hadley/chat/events` starts with an SSE `history` event: an array of at most 200
+ * `{ event, data }` entries, including the author's `message` entries. Historical `permission` entries also have
+ * `open`, whether they can still be answered. Live events are `reply`, `permission` and `status`; `status` has
+ * `{ connected: true }` or `{ connected: false }` and follows the history with the current connection state.
+ */
 import { randomInt } from 'node:crypto'
 
 export interface Message {

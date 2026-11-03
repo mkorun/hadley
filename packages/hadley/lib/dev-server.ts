@@ -99,6 +99,8 @@ export async function startDevServer({
           root: siteDir,
           site: siteConfig?.site?.origin,
           port: serve.port,
+          origin,
+          ...(https ? { certificate: https.cert } : {}),
         })
       : undefined
   const servicePort = commentsPort(serve.port)
