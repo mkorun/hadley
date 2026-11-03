@@ -13,7 +13,10 @@ test('the drawing is part of the page, and its file is never loaded', async ({ p
   await expect(figure.locator('svg[data-svg-narrow]')).toBeHidden()
   await expect(figure.locator('[data-svg-wide] svg title')).toHaveText('Wide chart')
   // the accent of the theme reaches the mark through its class
-  const fill = await figure.locator('[data-svg-wide] rect.fig-accent').evaluate((rect) => getComputedStyle(rect).fill)
+  const fill = await figure
+    .locator('[data-svg-wide] rect.fig-accent')
+    .evaluate((rect) => rect.ownerDocument.defaultView?.getComputedStyle(rect).fill ?? '')
+  expect(fill).toMatch(/^rgb/)
   expect(fill).not.toBe('rgb(0, 0, 0)')
   await figure.locator('[data-svg-wide] > button').click()
   // chart.svg and chart.narrow.svg are published beside the page, for its Markdown twin; the page itself needs neither
