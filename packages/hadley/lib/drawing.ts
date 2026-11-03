@@ -239,8 +239,10 @@ function parse(text: string): Element {
   const fail = (message: string, position = at): never => {
     throw new DrawingError(lineAt(position), message)
   }
-  const decode = (raw: string, position: number) =>
-    raw.replace(/&([^;\s&]*);?/g, (whole, entity: string) => {
+  // `start`: where `raw` begins in the file, so that a fault names the line of the reference itself
+  const decode = (raw: string, start: number) =>
+    raw.replace(/&([^;\s&]*);?/g, (whole, entity: string, offset: number) => {
+      const position = start + offset
       if (!whole.endsWith(';')) fail('a `&` that is no character reference', position)
       const named = ENTITIES.get(entity)
       if (named !== undefined) return named
@@ -315,7 +317,7 @@ function parse(text: string): Element {
       if (raw.includes('<')) fail(`<${name}>: a \`<\` in the value of ${attr}`)
       if (seen.has(attr)) fail(`<${name}>: the attribute ${attr} twice`)
       seen.add(attr)
-      node.attrs.push([attr, decode(raw, at)])
+      node.attrs.push([attr, decode(raw, at + 1)])
       at = end + 1
     }
     // content, up to the matching end tag
@@ -416,6 +418,7 @@ export function readDrawing(text: string, prefix: string): Drawing {
       }
       // a browser reads a presentation value as CSS, where a backslash escapes: `u\72l(` is `url(`
       if (value.includes('\\')) throw new DrawingError(node.line, `${where}: a backslash in its value`)
+      if (value.includes('/*')) throw new DrawingError(node.line, `${where}: a CSS comment in its value`)
       if (/javascript:/i.test(value)) throw new DrawingError(node.line, `${where}: a URL or script in its value`)
       // a value may name an element of the drawing as url(#id), and call nothing but what FUNCTIONS holds
       const prefixed = value.replace(URL_REFERENCE, (_whole, id: string) => `url(#${own(node, id)})`)

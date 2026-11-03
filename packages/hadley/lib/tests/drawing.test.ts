@@ -112,6 +112,8 @@ describe('drawing: what stops the build', () => {
   test('a CSS escape, a function that loads, ARIA that points out of the drawing', () => {
     refused('<svg><rect fill="u\\72l(/x.svg#g)"/></svg>', 'line 1: <rect> fill: a backslash in its value')
     refused('<svg><rect id="g" fill="u\\72l(#g)"/></svg>', 'line 1: <rect> fill: a backslash in its value')
+    refused('<svg><rect stroke="\\75rl(x.svg)"/></svg>', 'line 1: <rect> stroke: a backslash in its value')
+    refused('<svg><rect fill="u/**/rl(x.svg)"/></svg>', 'line 1: <rect> fill: a CSS comment in its value')
     refused(
       `<svg><rect mask="image-set('/m.png' 1x)"/></svg>`,
       'line 1: <rect> mask: the function image-set in its value',
@@ -149,6 +151,15 @@ describe('drawing: what stops the build', () => {
       )
     refused('<svg><text>a & b</text></svg>', 'line 1: a `&` that is no character reference')
     refused('<svg><text>&#0;</text></svg>', 'line 1: the character reference &#0; names no character')
+    // the line of the reference itself, in a text or a value over several lines
+    refused(
+      '<svg><text>ok\n&bogus;</text></svg>',
+      'line 2: the entity &bogus; (only &amp; &lt; &gt; &quot; &apos; and numbers)',
+    )
+    refused(
+      '<svg><text x="1\n\n&bogus;">x</text></svg>',
+      'line 3: the entity &bogus; (only &amp; &lt; &gt; &quot; &apos; and numbers)',
+    )
     refused('<svg><text><![CDATA[x]]></text></svg>', 'line 1: a CDATA section')
     refused('<svg><?php echo 1 ?></svg>', 'line 1: a processing instruction (`<?…`)')
     refused('<svg><g>loose</g></svg>', 'line 1: <g>: text outside <text>, <tspan>, <title> and <desc>')

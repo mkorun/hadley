@@ -91,9 +91,11 @@ markers, with their geometry and presentation attributes, `id`, `class`, `role`,
 a shape only a `title` or `desc`. A value may call colour, arithmetic and transform functions and `var()`, and name
 nothing but an `#id` of the same file (`url(#id)`, `<use href="#id">`); an id is a letter or `_`, then letters,
 digits, `_` and `-`. Anything else stops the build, with the file and the line: a script, an event attribute,
-`<style>`, a `style` attribute, `<foreignObject>`, `<image>`, a link, a URL, a backslash in a value, a DOCTYPE or an
-entity. hadley removes nothing silently. It gives the `id`s of each drawing a prefix of their own with a `.`, which no
-other id of the page has, and names the drawing with its alt text. A drawing over 32 KB (32,768 bytes) is reported.
+`<style>`, a `style` attribute, `<foreignObject>`, `<image>`, a link, a URL, a backslash or a CSS comment in a value, a
+DOCTYPE or an entity. hadley leaves out only comments, the XML declaration and the SVG namespaces, which a page does not
+need, and the root's `role`, `aria-label`, `aria-labelledby` and `aria-hidden`: the alt text names the drawing. It
+gives the `id`s of each drawing a prefix of their own with a `.`, which no other id of the page has. A drawing over
+32 KB (32,768 bytes) is reported.
 
 **Media.** `<m video preview=poster.jpg>[The walk](walk.mp4)</m>` shows a video with its poster, `<m audio>` a
 sound with its picture; `<m embed>[Demo](https://example.com/embed)</m>` an embed over https.
