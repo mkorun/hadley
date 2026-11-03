@@ -20,7 +20,8 @@ import {
 
 const INSTRUCTIONS =
   'Messages come from the site author in the hadley block editor as <channel source="hadley" …>. ' +
-  'file is relative to the site in site; url is the page the author is reading. ' +
+  'file is relative to root, the absolute directory the dev server serves; site is the production origin. ' +
+  'Work in root and nowhere else for this message; url is the page the author is reading. ' +
   'Answer only with reply, passing message_id: the author reads the panel, not the terminal. ' +
   'Re-read a file before changing it; the author edits it in the editor at the same time.'
 
@@ -227,10 +228,17 @@ export async function runChannel(
     const id = rpc.id
     if (id !== undefined && typeof id !== 'string' && typeof id !== 'number') throw new Error('invalid JSON-RPC id')
     try {
+      const params = rpc.params === undefined ? {} : object(rpc.params)
+      if (params._meta !== undefined) {
+        try {
+          object(params._meta)
+        } catch {
+          throw new Error('_meta: expected a JSON object')
+        }
+      }
       let result: object
       switch (rpc.method) {
         case 'initialize': {
-          const params = object(rpc.params)
           result = {
             protocolVersion: text(params.protocolVersion, 'protocolVersion'),
             capabilities: { experimental: { 'claude/channel': {}, 'claude/channel/permission': {} }, tools: {} },
@@ -256,7 +264,7 @@ export async function runChannel(
           }
           break
         case 'tools/call': {
-          const params = object(rpc.params, ['name', 'arguments'])
+          object(params, ['name', 'arguments', '_meta'])
           if (params.name !== 'reply') throw new Error('unknown tool: expected reply')
           const args = object(params.arguments, ['message_id', 'text'])
           const data = reply({
@@ -273,7 +281,6 @@ export async function runChannel(
           break
         }
         case 'notifications/claude/channel/permission_request': {
-          const params = object(rpc.params)
           const data = permission({
             request_id: params.request_id,
             tool: params.tool_name,

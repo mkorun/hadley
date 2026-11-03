@@ -130,7 +130,7 @@ export function chatPlugin(options: {
       let id: string
       do id = newId()
       while (ids.has(id))
-      const data = message({ id, text: input.text, site, url: new URL(input.page, site).href, ...attachment })
+      const data = message({ id, text: input.text, site, root, url: new URL(input.page, site).href, ...attachment })
       ids.set(id, 'message')
       remember({ event: 'message', data })
       emit(channel, 'message', data)

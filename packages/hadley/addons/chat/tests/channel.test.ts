@@ -114,7 +114,7 @@ it(
     try {
       child.stdin.write('{bad json}\n')
       assert.equal((await stdout.next()).id, null)
-      rpc('initialize', 1, { protocolVersion: '2025-06-18' })
+      rpc('initialize', 1, { protocolVersion: '2025-06-18', _meta: { progressToken: 1 } })
       const init = await stdout.next()
       assert.equal(init.jsonrpc, '2.0')
       const result = init.result as { protocolVersion: string; capabilities: unknown; instructions: string }
@@ -123,18 +123,41 @@ it(
         experimental: { 'claude/channel': {}, 'claude/channel/permission': {} },
         tools: {},
       })
-      for (const instruction of ['<channel source="hadley"', 'relative', 'reply', 'message_id', 'Re-read'])
+      for (const instruction of [
+        '<channel source="hadley"',
+        'relative to root',
+        'nowhere else',
+        'reply',
+        'message_id',
+        'Re-read',
+      ])
         assert.ok(result.instructions.includes(instruction))
+      for (const method of [
+        'initialize',
+        'tools/list',
+        'tools/call',
+        'ping',
+        'notifications/initialized',
+        'notifications/claude/channel/permission_request',
+      ]) {
+        for (const _meta of [null, [], 1, 'invalid']) {
+          rpc(method, 20, { _meta })
+          assert.deepEqual((await stdout.next()).error, { code: -32602, message: '_meta: expected a JSON object' })
+        }
+      }
+      rpc('tools/call', 21, { name: 'reply', arguments: { text: 'Invalid', _meta: {} } })
+      assert.match(((await stdout.next()).error as { message: string }).message, /unknown field: _meta/)
       rpc('server/discover', 2)
       assert.deepEqual((await stdout.next()).error, { code: -32601, message: 'method not found: server/discover' })
-      rpc('tools/list', 3)
+      rpc('tools/list', 3, { _meta: {} })
       assert.equal(((await stdout.next()).result as { tools: { name: string }[] }).tools[0].name, 'reply')
-      rpc('ping', 4)
+      rpc('ping', 4, { _meta: {} })
       assert.deepEqual((await stdout.next()).result, {})
       let stream = await first.streams.next()
       const data = {
         id: 'abcdefgh',
         text: 'Explain this',
+        root,
         site: 'https://first.example',
         url: 'https://first.example/page/',
         file: 'content/page/index.md',
@@ -151,6 +174,7 @@ it(
           content: data.text,
           meta: {
             message_id: data.id,
+            root,
             site: data.site,
             url: data.url,
             file: data.file,
@@ -166,6 +190,7 @@ it(
         sse('message', {
           id: 'ijklmnop',
           text: 'Other site',
+          root,
           site: 'https://second.example',
           url: 'https://second.example/',
         }),
@@ -173,10 +198,15 @@ it(
       const otherMessage = (await stdout.next()).params as { meta: Record<string, string> }
       assert.deepEqual(otherMessage.meta, {
         message_id: 'ijklmnop',
+        root,
         site: 'https://second.example',
         url: 'https://second.example/',
       })
-      rpc('tools/call', 5, { name: 'reply', arguments: { message_id: data.id, text: 'Answer' } })
+      rpc('tools/call', 5, {
+        _meta: { progressToken: 1 },
+        name: 'reply',
+        arguments: { message_id: data.id, text: 'Answer' },
+      })
       const targeted = (await first.posts.next()) as { id: string; to: string; text: string }
       assert.match(targeted.id, /^[a-z0-9]{8}$/)
       assert.equal(targeted.to, data.id)
@@ -199,7 +229,7 @@ it(
         description: captured.description,
         preview: captured.input_preview,
       }
-      rpc('notifications/claude/channel/permission_request', undefined, captured)
+      rpc('notifications/claude/channel/permission_request', undefined, { ...captured, _meta: {} })
       for (const fake of [first, second]) assert.deepEqual(await fake.posts.next(), permission)
       stream.write(sse('verdict', { request_id: 'jdgkp', allow: true }))
       assert.deepEqual(await stdout.next(), {
@@ -329,7 +359,13 @@ it('uses the recorded HTTPS origin and certificate for both events and replies',
     writeFileSync(path, JSON.stringify(server.record))
     const stream = await server.streams.next()
     stream.write(
-      sse('message', { id: 'abcdefgh', text: 'Secure', site: server.record.site, url: server.record.site + '/' }),
+      sse('message', {
+        id: 'abcdefgh',
+        text: 'Secure',
+        root: server.record.root,
+        site: server.record.site,
+        url: server.record.site + '/',
+      }),
     )
     assert.equal((await channel.stdout.next()).method, 'notifications/claude/channel')
     channel.rpc('tools/call', 2, { name: 'reply', arguments: { message_id: 'abcdefgh', text: 'Pinned reply' } })
@@ -389,6 +425,7 @@ it(
         sse('message', {
           id: 'abcdefgh',
           text: 'Still connected',
+          root: server.record.root,
           site: server.record.site,
           url: server.record.site + '/',
         }),
@@ -429,6 +466,7 @@ it('continues polling after watcher creation and asynchronous watcher failures',
       sse('message', {
         id: 'abcdefgh',
         text: 'Polling works',
+        root: second.record.root,
         site: second.record.site,
         url: second.record.site + '/',
       }),
@@ -463,7 +501,13 @@ it(
       server = await fakeDevServer(dir, root, 'https://repaired.example')
       const stream = await server.streams.next()
       stream.write(
-        sse('message', { id: 'abcdefgh', text: 'Repaired', site: server.record.site, url: server.record.site + '/' }),
+        sse('message', {
+          id: 'abcdefgh',
+          text: 'Repaired',
+          root: server.record.root,
+          site: server.record.site,
+          url: server.record.site + '/',
+        }),
       )
       assert.equal((await channel.stdout.next()).method, 'notifications/claude/channel')
       assert.equal(channel.diagnostics.filter((line) => line.includes('not a regular directory')).length, 1)

@@ -70,6 +70,7 @@ it('resolves blocks on the server, refuses stale sources and browser-supplied pa
       id,
       text: 'Explain',
       site: 'https://site.example',
+      root: dir,
       url: 'https://site.example/page/',
       block: 'block',
       file: 'page.md',

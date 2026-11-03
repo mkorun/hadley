@@ -141,7 +141,7 @@ it(
       browser = await events(dev.origin, '/__hadley/chat/events')
       channel = channelProcess(dev.root)
       await browser.inbox.next((entry) => entry.event === 'status' && (entry.data as { connected: boolean }).connected)
-      channel.rpc('tools/call', 1, { name: 'reply', arguments: { text: 'HTTPS reply' } })
+      channel.rpc('tools/call', 1, { _meta: { progressToken: 1 }, name: 'reply', arguments: { text: 'HTTPS reply' } })
       assert.ok((await channel.stdout.next()).result)
       assert.equal(
         ((await browser.inbox.next((entry) => entry.event === 'reply')).data as { text: string }).text,

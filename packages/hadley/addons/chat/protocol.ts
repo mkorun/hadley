@@ -5,11 +5,13 @@
  * `{ connected: true }` or `{ connected: false }` and follows the history with the current connection state.
  */
 import { randomInt } from 'node:crypto'
+import { isAbsolute } from 'node:path'
 
 export interface Message {
   id: string
   text: string
   site: string
+  root: string
   url: string
   file?: string
   block?: string
@@ -93,11 +95,13 @@ export function chatInput(value: unknown): ChatInput {
 }
 
 export function message(value: unknown): Message {
-  const record = object(value, ['id', 'text', 'site', 'url', 'file', 'block', 'lines'])
+  const record = object(value, ['id', 'text', 'site', 'root', 'url', 'file', 'block', 'lines'])
   const site = origin(record.site)
   const url = text(record.url, 'url')
   if (new URL(url).origin !== site) throw new Error('url: expected a URL in site')
-  const result: Message = { id: matching(record.id, 'id', ID), text: text(record.text, 'text'), site, url }
+  const root = text(record.root, 'root')
+  if (!isAbsolute(root)) throw new Error('root: expected an absolute site directory')
+  const result: Message = { id: matching(record.id, 'id', ID), text: text(record.text, 'text'), site, root, url }
   if (record.block !== undefined) result.block = text(record.block, 'block')
   if (record.file !== undefined) {
     const file = text(record.file, 'file')

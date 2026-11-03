@@ -1,9 +1,16 @@
 import assert from 'node:assert/strict'
 import { it } from 'node:test'
+import { resolve } from 'node:path'
 import { chatInput, message, newId, parseJson, permission, reply, sse, sseParser, verdict } from '../protocol.ts'
 
 it('validates every channel message shape and refuses missing or unknown fields', () => {
-  const data = { id: newId(), text: 'Hello', site: 'https://site.example', url: 'https://site.example/page/' }
+  const data = {
+    id: newId(),
+    text: 'Hello',
+    root: resolve('site'),
+    site: 'https://site.example',
+    url: 'https://site.example/page/',
+  }
   assert.deepEqual(message(data), data)
   assert.deepEqual(reply({ id: newId(), to: data.id, text: 'Answer' }).to, data.id)
   assert.deepEqual(verdict({ request_id: 'abcde', allow: false }), { request_id: 'abcde', allow: false })
@@ -15,6 +22,10 @@ it('validates every channel message shape and refuses missing or unknown fields'
     null,
     [],
     { ...data, id: 'old' },
+    { ...data, root: undefined },
+    { ...data, root: 'relative/site' },
+    { ...data, root: '' },
+    { ...data, root: 123 },
     { ...data, file: '../secret' },
     { ...data, lines: '5-1' },
     { ...data, site: 'file:///' },

@@ -65,6 +65,8 @@ dev:
 page, and from "Ask Claude" in a block's menu, which attaches the block: the message then names the page, its source
 file and the block's lines, as the dev server built them. Claude's answers and its requests to use a tool appear in
 the panel; Allow and Deny answer a request as the terminal would. What was said stays while the dev server runs.
+Each message names `root`, the absolute directory the dev server serves; `file` is relative to `root`. Claude works
+in that directory and nowhere else for that message.
 
 hadley starts no agent. Claude Code starts `hadley channel` itself, from an `.mcp.json` in the directory it starts in:
 
