@@ -1157,6 +1157,16 @@ describe('registerPageBlocks', () => {
   })
 })
 
+it('reads split UTF-8 bytes as one body and refuses malformed UTF-8', async () => {
+  const source = JSON.stringify({ text: 'Nähe ☕' })
+  const bytes = Buffer.from(source)
+  const chunks = Array.from(bytes, (byte) => Buffer.from([byte]))
+  const request = Readable.from(chunks) as unknown as IncomingMessage
+  assert.equal(await readBody(request, 'en'), source)
+  const malformed = Readable.from([Buffer.from([0xc3, 0x28])]) as unknown as IncomingMessage
+  await assert.rejects(readBody(malformed, 'en'), /not valid UTF-8/)
+})
+
 // 2026-11-05: a page's title and subtitle are edited where the theme shows them, from their line or the front matter
 describe('the head of a page', () => {
   const post = (url: string, body: unknown) =>

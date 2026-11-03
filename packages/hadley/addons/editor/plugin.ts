@@ -97,7 +97,7 @@ export async function readBody(
   maxMs = 10_000,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    let data = ''
+    const chunks: Buffer[] = []
     let size = 0
     const late = setTimeout(() => {
       reject(new Error(t(lang, 'requestBodyTooSlow')))
@@ -110,12 +110,16 @@ export async function readBody(
         reject(new Error(t(lang, 'requestBodyTooLarge')))
         req.destroy()
       } else {
-        data += chunk.toString('utf-8')
+        chunks.push(chunk)
       }
     })
     req.on('end', () => {
       clearTimeout(late)
-      resolve(data)
+      try {
+        resolve(new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(Buffer.concat(chunks)))
+      } catch {
+        reject(new Error('request body is not valid UTF-8'))
+      }
     })
     req.on('error', (error) => {
       clearTimeout(late)

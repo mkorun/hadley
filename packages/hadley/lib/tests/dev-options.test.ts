@@ -6,7 +6,7 @@ import { createServer, type AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { networkUrls, wslNetworking } from '../dev-addresses.ts'
-import { devOptions, localOrigin, portInUse, siteEditor, sitePort } from '../dev-options.ts'
+import { devOptions, localOrigin, portInUse, siteChat, siteEditor, sitePort } from '../dev-options.ts'
 import { devCertificate } from '../dev-https.ts'
 import { languageRecord } from '../site-config.ts'
 import { readUserConfig } from '../user-config.ts'
@@ -57,6 +57,15 @@ describe('the options of hadley dev', () => {
     assert.equal(siteEditor({ dev: { editor: true } }), true)
     for (const editor of ['true', 1, 'yes'])
       assert.throws(() => siteEditor({ dev: { editor } }), /config\.lima: dev\.editor is true or false/)
+  })
+
+  it('requires a boolean dev.chat and an enabled block editor', () => {
+    assert.equal(siteChat(null), false)
+    assert.equal(siteChat({ dev: { chat: false } }), false)
+    assert.equal(siteChat({ dev: { chat: true, editor: true } }), true)
+    assert.throws(() => siteChat({ dev: { chat: 'true', editor: true } }), /dev\.chat is true or false/)
+    assert.throws(() => siteChat({ dev: { chat: true } }), /requires dev\.editor: true/)
+    assert.throws(() => siteChat({ dev: { chat: true, editor: false } }), /requires dev\.editor: true/)
   })
 
   it('tell a port something answers on from a free one', async () => {

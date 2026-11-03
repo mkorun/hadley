@@ -7,6 +7,7 @@
  * any page a browser shows could call it.
  */
 import { isIP } from 'node:net'
+import { timingSafeEqual } from 'node:crypto'
 
 /** Why a request is refused, with its status, or undefined. */
 export function refusal(
@@ -16,7 +17,11 @@ export function refusal(
     headers: Record<string, string | string[] | undefined>
   },
   remoteAddress: string | undefined,
-  allowed: { origin: string; hosts: readonly string[] }, // hosts: names, and `.domain` for a domain and its subdomains
+  allowed: {
+    origin: string
+    hosts: readonly string[] // names, and `.domain` for a domain and its subdomains
+    channelToken?: string | undefined
+  },
 ): { status: number; reason: string } | undefined {
   const url = request.url ?? '/'
   // a browser asks for a path; an absolute address (`GET http://host/path`) would be read as a path only behind this
@@ -50,13 +55,27 @@ export function refusal(
   if (path.startsWith('/__open-in-editor')) return { status: 404, reason: 'a path for no one' }
 
   const loopback = remoteAddress === '127.0.0.1' || remoteAddress === '::1' || remoteAddress === '::ffff:127.0.0.1'
+  if (path === '/__hadley/channel' || path.startsWith('/__hadley/channel/')) {
+    const token = request.headers['x-hadley-token']
+    const expected = allowed.channelToken
+    if (
+      !loopback ||
+      request.headers.origin !== undefined ||
+      !expected ||
+      typeof token !== 'string' ||
+      Buffer.byteLength(token) !== Buffer.byteLength(expected) ||
+      !timingSafeEqual(Buffer.from(token), Buffer.from(expected))
+    )
+      return { status: 403, reason: 'a channel request without local token authentication' }
+    return undefined
+  }
   const ownHost = host === new URL(allowed.origin).host
   if (request.method === 'POST' && path.startsWith('/__hadley/')) {
     if (!loopback || !ownHost || request.headers.origin !== allowed.origin)
       return { status: 403, reason: 'an editor write from another machine or origin' }
   }
   // a browser sends no Origin with a GET of its own origin, but one, and Sec-Fetch-Site, with a request of another
-  if (request.method !== 'POST' && path.startsWith('/__hadley/block/')) {
+  if (request.method !== 'POST' && (path.startsWith('/__hadley/block/') || path === '/__hadley/chat/events')) {
     const origin = request.headers.origin
     const site = request.headers['sec-fetch-site']
     if (

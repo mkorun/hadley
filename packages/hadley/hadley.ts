@@ -68,6 +68,7 @@ directory upwards, that holds a config.lima.
 
 Commands:
   init [dir]         A new site: a theme with its starter (--language, --theme, --blank)
+  channel            Chat channel for Claude Code (stdio; started from .mcp.json)
   dev                Dev server + file watcher (http://localhost:8000, or dev.port of config.lima)
   dev comments       Comment moderation TUI against local dev service
   deploy             Publish build + local server
@@ -128,6 +129,13 @@ hadley clean — Clear build directories
 
   Use after deleting content pages to remove stale build output.`.trim(),
 
+  channel: `
+hadley channel — Chat channel for Claude Code
+
+  Claude Code starts this MCP server over stdio from .mcp.json; do not start it by hand.
+  It connects to every dev server of this user with dev.chat: true (docs/dev-server.md).
+  Standard output is the protocol; diagnostics go to standard error.`.trim(),
+
   comments: `
 hadley comments — Comment moderation TUI (production)
 
@@ -178,6 +186,12 @@ try {
       } catch (error) {
         fail(error)
       }
+      break
+    }
+
+    case 'channel': {
+      if (rest.length) fail('hadley channel takes no arguments (hadley channel --help)')
+      await (await import('./addons/chat/channel.ts')).runChannel()
       break
     }
 
@@ -247,7 +261,9 @@ try {
     }
 
     default: {
-      fail(`hadley has no command ${command}: init, dev, deploy, clean, comments, version, upgrade (hadley --help)`)
+      fail(
+        `hadley has no command ${command}: init, dev, channel, deploy, clean, comments, version, upgrade (hadley --help)`,
+      )
     }
   }
 } catch (error) {

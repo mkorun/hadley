@@ -7,7 +7,7 @@ import { createServer as createViteServer, createLogger, type InlineConfig } fro
 import { parse as limaparse } from '@limaformat/lima'
 import { build } from '../index.ts'
 import { networkUrls, qrCode, wslNetworking } from './dev-addresses.ts'
-import { commentsPort, localOrigin, portInUse, siteEditor, type DevOptions } from './dev-options.ts'
+import { commentsPort, localOrigin, portInUse, siteChat, siteEditor, type DevOptions } from './dev-options.ts'
 import { refusal } from './dev-guard.ts'
 import { devCertificate } from './dev-https.ts'
 import { clearScreen, logger } from './logger.ts'
@@ -93,6 +93,14 @@ export async function startDevServer({
   const hasComments = forms !== undefined
   // the block editor, loaded only when config.lima turns it on, and only for `hadley dev`
   const editor = outputMode === 'dev' && siteEditor(siteConfig) ? await import('../addons/editor/index.ts') : undefined
+  const chat =
+    outputMode === 'dev' && siteChat(siteConfig)
+      ? (await import('../addons/chat/plugin.ts')).chatPlugin({
+          root: siteDir,
+          site: siteConfig?.site?.origin,
+          port: serve.port,
+        })
+      : undefined
   const servicePort = commentsPort(serve.port)
   // a port taken stops before anything starts: Vite would only stop later, and a comments service could be another's
   const ports: [number, string][] = [[serve.port, 'the dev server']]
@@ -233,7 +241,13 @@ export async function startDevServer({
       {
         name: 'hadley-guard',
         configureServer(server) {
-          const allowed = { origin, hosts: allowedHosts }
+          const allowed = {
+            origin,
+            hosts: allowedHosts,
+            get channelToken() {
+              return chat?.token
+            },
+          }
           server.middlewares.use((req, res, next) => {
             const refused = refusal(req, req.socket.remoteAddress, allowed)
             if (!refused) return next()
@@ -243,6 +257,7 @@ export async function startDevServer({
           })
         },
       },
+      ...(chat ? [chat.plugin] : []),
       ...(editor ? [editor.blockEditorPlugin()] : []),
       {
         name: 'hadley-static',
@@ -316,7 +331,22 @@ export async function startDevServer({
       },
     ],
   }
-  const vite = await startVite(makeVite, { port: serve.port, stallMs: VITE_STALL_MS, bound: portInUse, warn: devWarn })
+  const vite = await startVite(makeVite, {
+    port: serve.port,
+    stallMs: VITE_STALL_MS,
+    bound: portInUse,
+    warn: devWarn,
+  }).catch((error) => {
+    chat?.close()
+    throw error
+  })
+  try {
+    chat?.start()
+  } catch (error) {
+    chat?.close()
+    await vite.close()
+    throw error
+  }
 
   devLog(`Ready at ${origin}`)
   for (const url of network) devLog(`        ${url}`)
@@ -447,6 +477,7 @@ export async function startDevServer({
     if (buildTimer) clearTimeout(buildTimer)
     for (const w of watchers) w.close()
     commentsProcess?.kill()
+    chat?.close()
     try {
       await Promise.race([vite.close(), new Promise((r) => setTimeout(r, 2000))])
     } catch (err) {

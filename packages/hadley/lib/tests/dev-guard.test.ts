@@ -102,3 +102,43 @@ describe('what the dev server keeps to itself', () => {
     assert.equal(get('/__hadley/block/1', 'x.trycloudflare.com')?.status, 403)
   })
 })
+
+it('guards chat reads and writes exactly as editor source and writes', () => {
+  for (const [method, url] of [
+    ['GET', '/__hadley/chat/events'],
+    ['POST', '/__hadley/chat'],
+    ['POST', '/__hadley/chat/verdict'],
+  ]) {
+    const headers = { host: 'localhost:8000', origin: allowed.origin }
+    assert.equal(refusal({ method, url, headers }, '127.0.0.1', allowed), undefined)
+    for (const remote of ['192.168.1.3', '::ffff:192.168.1.3'])
+      assert.equal(refusal({ method, url, headers }, remote, allowed)?.status, 403)
+    for (const foreign of [
+      { ...headers, origin: 'https://evil.example' },
+      { ...headers, host: 'x.trycloudflare.com' },
+    ])
+      assert.equal(refusal({ method, url, headers: foreign }, '127.0.0.1', allowed)?.status, 403)
+  }
+})
+
+it('requires a local channel with a token, without any Origin, independently of browser guards', () => {
+  const auth = { ...allowed, channelToken: 'a'.repeat(64) }
+  for (const [method, url] of [
+    ['GET', '/__hadley/channel/events'],
+    ['POST', '/__hadley/channel'],
+  ]) {
+    const headers = { host: 'localhost:8000', 'x-hadley-token': auth.channelToken }
+    for (const remote of ['127.0.0.1', '::1', '::ffff:127.0.0.1'])
+      assert.equal(refusal({ method, url, headers }, remote, auth), undefined)
+    assert.equal(refusal({ method, url, headers }, '192.168.1.2', auth)?.status, 403)
+    assert.equal(refusal({ method, url, headers }, '127.0.0.1', allowed)?.status, 403)
+    for (const extra of [
+      { 'x-hadley-token': 'bad' },
+      { 'x-hadley-token': 'b'.repeat(64) },
+      { origin: allowed.origin },
+      { origin: '' },
+      { 'x-hadley-token': ['a'.repeat(64)] },
+    ])
+      assert.equal(refusal({ method, url, headers: { ...headers, ...extra } }, '127.0.0.1', auth)?.status, 403)
+  }
+})

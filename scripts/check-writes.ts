@@ -21,10 +21,12 @@ export const CHECKED = [
   'packages/hadley/index.ts',
   'packages/hadley/hadley.ts',
   'packages/hadley/addons/editor/*.ts',
+  'packages/hadley/addons/chat/*.ts',
 ]
 
 /** The modules that write, and what. */
 export const WRITERS: Record<string, string> = {
+  'packages/hadley/addons/chat/rendezvous.ts': 'private runtime directories and per-port chat rendezvous files',
   'packages/hadley/index.ts': 'the site files the plan claims, meta.json, links.json and the caches in .hadley/',
   'packages/hadley/lib/build-files.ts': "the files of a page's bundle it copies, claimed as they are copied",
   'packages/hadley/lib/images.ts':

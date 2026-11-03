@@ -80,9 +80,16 @@ claude --dangerously-load-development-channels server:hadley
 claude --resume <session> --dangerously-load-development-channels server:hadley
 ```
 
+`hadley channel --help` describes the stdio command; it needs no site directory.
+
+For panel implementations, `GET /__hadley/chat/events` starts with an SSE `history` event: an array of at most 200
+`{ event, data }` entries, including the author's `message` entries. Historical `permission` entries also have
+`open`, whether they can still be answered. Live events are `reply`, `permission` and `status`; `status` has
+`{ connected: true }` or `{ connected: false }` and follows the history with the current connection state.
+
 `hadley channel` connects to every dev server of the same user with the chat on, so several sites can run at once.
 Each of them leaves a file with its port and a token, readable by that user alone, in `$XDG_RUNTIME_DIR/hadley/chat/`
-(else in the system's temporary directory, on Windows in `%LOCALAPPDATA%\hadley\run`), and removes it when it ends.
+(else in the system's temporary directory, on Windows in `%LOCALAPPDATA%\hadley\run\chat`), and removes it when it ends.
 Like the editor, the chat answers only a browser on this machine, on the page's own origin. From another machine,
 forward the port over SSH, `ssh -L 8000:localhost:8000 <machine>`, and open `http://localhost:8000`. `hadley deploy`
 serves no chat.

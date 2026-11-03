@@ -38,6 +38,15 @@ export function siteEditor(config: { dev?: { editor?: unknown } } | null): boole
   return editor
 }
 
+/** Whether chat is enabled; it requires the block editor. */
+export function siteChat(config: { dev?: { editor?: unknown; chat?: unknown } } | null): boolean {
+  const chat = config?.dev?.chat
+  if (chat === undefined) return false
+  if (typeof chat !== 'boolean') throw new Error(`config.lima: dev.chat is true or false, not ${chat}`)
+  if (chat && !siteEditor(config)) throw new Error('config.lima: dev.chat: true requires dev.editor: true')
+  return chat
+}
+
 /**
  * The options of `args`, with `port` (the site's) unless `--port` gives another, and the arguments that are none of
  * them; a `--port` that is not a port stops.
