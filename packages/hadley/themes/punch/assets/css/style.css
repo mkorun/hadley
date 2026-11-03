@@ -1508,14 +1508,15 @@ sub {
   width: auto;
   max-width: 100%;
 }
-[data-svg-narrow] {
+/* as specific as the rule above at least, or that one shows the narrow drawing beside the wide one */
+.prose figure[data-svg] [data-svg-narrow] {
   display: none;
 }
 @container (width < 34rem) {
-  figure[data-svg]:has([data-svg-narrow]) [data-svg-wide] {
+  .prose figure[data-svg]:has([data-svg-narrow]) [data-svg-wide] {
     display: none;
   }
-  figure[data-svg] [data-svg-narrow] {
+  .prose figure[data-svg] [data-svg-narrow] {
     display: block;
   }
 }
