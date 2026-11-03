@@ -72,6 +72,14 @@ command below to copy.
 Each message names `root`, the absolute directory the dev server serves; `file` is relative to `root`. Claude works
 in that directory and nowhere else for that message.
 
+In an open block, **Rewrite** asks Claude for a new version of the block's text, in one of a few directions (Clearer,
+Shorter, More formal, More casual, Only fix errors) or one you type; with text selected, a right click offers the same
+for the selection, and Shift with the right click keeps the browser's own menu. Claude answers with a proposal, not a
+change: it takes the place of the block's text or of the selection in the editing field, Ctrl+Z takes it back, and
+only saving writes it to the file, as any edit. If the text has changed while Claude was answering, or the block was
+closed, the proposal waits in the panel instead, to insert, copy or discard. Each request shows how long it has been
+waiting, and each answer how long it took.
+
 hadley starts no agent. Claude Code starts `hadley channel` itself, from an `.mcp.json` in the directory it starts in:
 
 ```json
@@ -86,12 +94,16 @@ claude --dangerously-load-development-channels server:hadley
 claude --resume <session> --dangerously-load-development-channels server:hadley
 ```
 
-To let replies through without asking each time, add `mcp__hadley__reply` to `permissions.allow` in Claude Code
-settings (or choose "Yes, and don't ask again" for that tool when offered); see
+To let answers through without asking each time, add `mcp__hadley__reply` and `mcp__hadley__suggest` to
+`permissions.allow` in Claude Code settings (or choose "Yes, and don't ask again" for each tool when offered); see
 [Claude Code permissions](https://code.claude.com/docs/en/permissions). Allow and Deny in the panel answer only the
 current request and do not save a rule.
 
 Replies support paragraphs, inline code, fenced code and HTTP(S) links; other markup stays text.
+
+Set `HADLEY_CHAT_LOG` to a file in the environment Claude Code starts in, and `hadley channel` writes every line it
+exchanges with Claude Code and with each dev server to it, with a timestamp, readable by you alone; without it, nothing
+is logged. The panel's **Details** switch shows each request's timeline: sent, delivered, a permission and the answer.
 
 `hadley channel --help` describes the stdio command; it needs no site directory.
 
