@@ -1586,6 +1586,9 @@ sub {
 .fig-accent-line {
   stroke: var(--accent);
 }
+.fig-mono {
+  font-family: var(--mono);
+}
 
 address {
   font-style: normal;

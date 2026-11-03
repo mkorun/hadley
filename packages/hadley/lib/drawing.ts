@@ -101,7 +101,8 @@ const ATTRIBUTES = new Set([
   'marker-start',
   'marker-mid',
   'marker-end',
-  // no font-family, -variant or -stretch: a drawing's text is set in the page's font, which only the theme names
+  // no font-variant or -stretch, font-family only generic: a drawing's text is set in the page's font, which only the
+  // theme names
   'font-size',
   'font-weight',
   'font-style',
@@ -122,6 +123,19 @@ const ATTRIBUTES = new Set([
 
 // attributes that are text and nothing else: written escaped, never read as CSS
 const TEXT_ATTRIBUTES = new Set(['role', 'aria-label', 'aria-description', 'aria-roledescription', 'aria-hidden'])
+
+// the generic font families, unquoted (quoted, "monospace" would be the name of a font the page may load)
+const GENERIC_FAMILIES = new Set([
+  'sans-serif',
+  'serif',
+  'monospace',
+  'system-ui',
+  'ui-sans-serif',
+  'ui-serif',
+  'ui-monospace',
+])
+const genericFamilies = (value: string) =>
+  value.split(',').every((family) => GENERIC_FAMILIES.has(family.trim().toLowerCase()))
 
 // a drawing's classes are the theme's `fig-` classes (docs/themes.md, "Drawings"), so no other rule of the theme
 // reaches into it
@@ -419,6 +433,11 @@ export function readDrawing(text: string, prefix: string): Drawing {
       if (name === 'class') {
         if (!CLASSES.test(value.trim()))
           throw new DrawingError(line, `${where}: a class that is not one of the theme's fig- classes`)
+        out.push([name, value.trim()])
+        continue
+      }
+      // a generic family only, unquoted: it names the system's font and loads no file, for the file seen on its own
+      if (name === 'font-family' && genericFamilies(value)) {
         out.push([name, value.trim()])
         continue
       }

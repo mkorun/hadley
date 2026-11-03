@@ -138,6 +138,19 @@ describe('drawing: what stops the build', () => {
       '<svg><text font-stretch="condensed">A</text></svg>',
       "line 1: <text> font-stretch: a font of its own; a drawing's text is set in the page's font",
     )
+    // a generic family names the system's font and loads nothing: for the file seen on its own (2026-11-03)
+    assert.match(
+      written('<svg><text font-family="ui-monospace, Monospace" class="fig-mono">A</text></svg>'),
+      /<text font-family="ui-monospace, Monospace" class="fig-mono">/,
+    )
+    refused(
+      `<svg><text font-family="'monospace'">A</text></svg>`,
+      "line 1: <text> font-family: a font of its own; a drawing's text is set in the page's font",
+    )
+    refused(
+      '<svg><text font-family="monospace, Martian Mono">A</text></svg>',
+      "line 1: <text> font-family: a font of its own; a drawing's text is set in the page's font",
+    )
     refused(
       '<svg><rect class="hidden"/></svg>',
       "line 1: <rect> class: a class that is not one of the theme's fig- classes",

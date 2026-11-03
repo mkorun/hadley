@@ -223,8 +223,9 @@ in the dark one; so does a cover whose page sets `coverStyle: ink`. A portrait i
 the paper in the light scheme, a disc of paper in the dark one.
 
 A drawing takes its colours by class, in either scheme: `fig-ink`, `fig-soft`, `fig-muted`, `fig-ground`,
-`fig-context` and `fig-accent` set the fill of a mark, `fig-line`, `fig-rule` and `fig-accent-line` its stroke. Below a
-text width of 34rem a drawing's narrow version shows, if it has one.
+`fig-context` and `fig-accent` set the fill of a mark, `fig-line`, `fig-rule` and `fig-accent-line` its stroke;
+`fig-mono` sets a text in the theme's monospace. Below a text width of 34rem a drawing's narrow version shows, if it
+has one.
 
 Its settings:
 

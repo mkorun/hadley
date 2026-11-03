@@ -1208,6 +1208,9 @@ sub {
 .fig-accent-line {
   stroke: var(--red);
 }
+.fig-mono {
+  font-family: var(--mono);
+}
 
 address {
   font-style: normal;
