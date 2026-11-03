@@ -21,8 +21,8 @@ export const DIST = join(repo, 'dist')
 /** What tsc compiles: the command line and the library, and all they import, dynamically too. */
 const ENTRIES = ['hadley.ts', 'index.ts']
 
-/** The files beside the sources a module reads at run time, by their path in the package (lib/init.ts, the editor). */
-export const FILES = ['addons/editor/assets', 'starters', 'themes']
+/** Files read at run time beside the sources, by their path in the package (lib/init.ts, editor, chat). */
+export const FILES = ['addons/editor/assets', 'addons/chat/assets', 'starters', 'themes']
 
 /** The files of the repository the package carries, by their path in both. */
 const REPOSITORY_FILES = ['LICENSE']

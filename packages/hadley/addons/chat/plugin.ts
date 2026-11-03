@@ -81,6 +81,16 @@ export function chatPlugin(options: {
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const path = (req.url ?? '').split('?')[0]
+    if (req.method === 'GET' && (path === '/__hadley/chat.js' || path === '/__hadley/chat.css')) {
+      const name = path.endsWith('.js') ? 'chat.js' : 'chat.css'
+      const source = await readFile(new URL(`./assets/${name}`, import.meta.url), 'utf8')
+      res.writeHead(200, {
+        'Content-Type': name.endsWith('.js') ? 'application/javascript; charset=utf-8' : 'text/css; charset=utf-8',
+        'Cache-Control': 'no-store',
+      })
+      res.end(source)
+      return
+    }
     if (path === '/__hadley/channel/events' && req.method === 'GET') {
       const previous = channel
       stream(res)
@@ -175,6 +185,8 @@ export function chatPlugin(options: {
       server.middlewares.use((req, res, next) => {
         const path = (req.url ?? '').split('?')[0]
         if (
+          path !== '/__hadley/chat.js' &&
+          path !== '/__hadley/chat.css' &&
           path !== '/__hadley/chat' &&
           !path.startsWith('/__hadley/chat/') &&
           path !== '/__hadley/channel' &&

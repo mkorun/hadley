@@ -1,0 +1,283 @@
+/* The editor owns --he-* defaults; site overrides colour both tools. No animation or inline styles. */
+#hadley-chat,
+#hadley-chat-toggle {
+  box-sizing: border-box;
+  font:
+    0.875rem/1.5 ui-sans-serif,
+    system-ui,
+    sans-serif;
+  color: var(--he-text);
+  background: var(--he-bg);
+  border: 1px solid var(--he-border);
+  border-radius: 6px;
+}
+
+#hadley-chat-toggle {
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+}
+
+#hadley-chat-toggle[aria-expanded='true'] {
+  border-color: var(--he-accent-focus);
+}
+
+#hadley-chat {
+  height: calc(100dvh - 2.5rem);
+  min-height: 0;
+  width: 22rem;
+  max-width: calc(100vw - 2.5rem);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 30px var(--he-shadow);
+  isolation: isolate;
+}
+
+/* The fixed editor bar reserves its controls' actual height; the panel takes the remaining space above them. */
+#hadley-dev-bar:has(#hadley-chat) {
+  justify-content: flex-end;
+  max-height: calc(100dvh - 2.5rem);
+}
+
+#hadley-dev-bar:has(#hadley-chat) > * {
+  flex-shrink: 0;
+}
+
+#hadley-dev-bar > #hadley-chat {
+  flex-shrink: 1;
+}
+
+#hadley-chat[hidden],
+#hadley-chat [hidden] {
+  display: none;
+}
+
+#hadley-chat * {
+  box-sizing: border-box;
+}
+
+#hadley-chat header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--he-border);
+}
+
+#hadley-chat h2,
+#hadley-chat h3 {
+  margin: 0;
+  color: var(--he-text);
+  font:
+    600 1rem/1.4 ui-sans-serif,
+    system-ui,
+    sans-serif;
+  overflow-wrap: anywhere;
+}
+
+#hadley-chat p {
+  margin: 0.5rem 0;
+  color: inherit;
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#hadley-chat button,
+#hadley-chat textarea {
+  font: inherit;
+  color: var(--he-text);
+  background: var(--he-bg-deep);
+  border: 1px solid var(--he-border);
+  border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+}
+
+#hadley-chat button {
+  cursor: pointer;
+}
+
+#hadley-chat button + button {
+  margin-left: 0.5rem;
+}
+
+#hadley-chat button:hover,
+#hadley-chat-toggle:hover {
+  background: var(--he-bg-hover);
+}
+
+#hadley-chat button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+#hadley-chat :focus-visible,
+#hadley-chat-toggle:focus-visible,
+.hadley-menu-chat:focus-visible {
+  outline: 2px solid var(--he-accent-focus);
+  outline-offset: 2px;
+}
+
+#hadley-chat .hc-status {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  color: var(--he-muted);
+}
+
+#hadley-chat .hc-offline {
+  padding: 0 0.75rem 0.5rem;
+  max-height: 40%;
+  overflow: auto;
+}
+
+#hadley-chat .hc-offline code {
+  display: block;
+  margin-bottom: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+#hadley-chat .hc-messages {
+  flex: 1;
+  min-height: 3rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 0 0.75rem;
+}
+
+#hadley-chat .hc-thread,
+#hadley-chat .hc-reply,
+#hadley-chat .hc-permission {
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  background: var(--he-bg-raised);
+  border: 1px solid var(--he-border);
+  border-radius: 4px;
+}
+
+#hadley-chat .hc-reply {
+  background: var(--he-bg);
+}
+
+#hadley-chat .hc-byline,
+#hadley-chat .hc-hint,
+#hadley-chat .hc-newest-label {
+  font-size: 0.75rem;
+  color: var(--he-muted);
+}
+
+#hadley-chat .hc-newest-label {
+  min-height: 1.5em;
+  color: var(--he-accent-focus);
+  font-weight: 600;
+}
+
+#hadley-chat .hc-newest {
+  border-color: var(--he-accent-focus);
+}
+
+#hadley-chat pre,
+#hadley-chat code {
+  font:
+    0.8125rem/1.5 ui-monospace,
+    monospace;
+  color: var(--he-text);
+  background: var(--he-bg-deep);
+}
+
+#hadley-chat pre {
+  padding: 0.5rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 16rem;
+  overflow: auto;
+}
+
+#hadley-chat summary {
+  cursor: pointer;
+}
+
+#hadley-chat a {
+  color: var(--he-accent-focus);
+  text-decoration: underline;
+}
+
+#hadley-chat form {
+  border-top: 1px solid var(--he-border);
+  padding: 0.75rem;
+}
+
+#hadley-chat label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+#hadley-chat textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  min-height: 3rem;
+  max-height: 25dvh;
+}
+
+#hadley-chat .hc-attachment {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+#hadley-chat .hc-attachment span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#hadley-chat .hc-attachment button {
+  font-size: 0.75rem;
+  max-width: 50%;
+}
+
+#hadley-chat .hc-error {
+  color: var(--he-text);
+  border-left: 2px solid var(--he-danger);
+  padding-left: 0.5rem;
+}
+
+#hadley-chat .hc-error:empty {
+  display: none;
+}
+
+#hadley-block-menu .hadley-menu-chat {
+  width: auto;
+  padding-inline: 0.5rem;
+  color: var(--he-text);
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  #hadley-dev-bar:has(#hadley-chat) {
+    top: 0;
+    right: 0;
+    left: 0;
+    max-height: none;
+  }
+
+  #hadley-dev-bar:has(#hadley-chat) > :not(#hadley-chat) {
+    margin-right: 1.25rem;
+  }
+
+  #hadley-chat {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0;
+  }
+}
+
+body.hadley-edit-mode .hadley-trigger:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+  outline: 2px solid var(--he-accent-focus);
+  outline-offset: 2px;
+}

@@ -22,6 +22,7 @@ describe('the published package', () => {
   // review 2026-10-29 (documentation): the package lacked the starters and themes `hadley init` reads
   it('carries the files hadley reads beside its sources', () => {
     for (const dir of [STARTERS, THEMES]) assert.ok(FILES.includes(basename(dir)), basename(dir))
+    for (const addon of ['editor', 'chat']) assert.ok(FILES.includes(`addons/${addon}/assets`), addon)
     for (const path of FILES) assert.ok(existsSync(join(import.meta.dirname, '../../packages/hadley', path)), path)
   })
 

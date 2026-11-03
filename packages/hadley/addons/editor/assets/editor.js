@@ -32,6 +32,7 @@ const T = {
     moveUpLabel: 'Block nach oben verschieben',
     moveDownLabel: 'Block nach unten verschieben',
     deleteLabel: 'Block löschen',
+    askClaude: 'Claude fragen',
     fileChangedReload: 'Die Datei wurde extern geändert.\nSeite wird neu geladen.',
     mergeError: (status, msg) => `Fehler beim Zusammenziehen (${status}):\n${msg}`,
     moveError: (status, msg) => `Fehler beim Verschieben (${status}):\n${msg}`,
@@ -66,6 +67,7 @@ const T = {
     moveUpLabel: 'Move block up',
     moveDownLabel: 'Move block down',
     deleteLabel: 'Delete block',
+    askClaude: 'Ask Claude',
     fileChangedReload: 'The file was changed externally.\nReloading page.',
     mergeError: (status, msg) => `Error merging (${status}):\n${msg}`,
     moveError: (status, msg) => `Error moving (${status}):\n${msg}`,
@@ -118,18 +120,24 @@ function isEditMode() {
 function setEditMode(on) {
   if (on) {
     document.body.classList.add('hadley-edit-mode')
-    sessionStorage.setItem(STORAGE_KEY, '1')
   } else {
     document.body.classList.remove('hadley-edit-mode')
-    sessionStorage.removeItem(STORAGE_KEY)
     closeEditor()
     closeMenu()
+  }
+  try {
+    if (on) sessionStorage.setItem(STORAGE_KEY, '1')
+    else sessionStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // Disabling browser storage must not disable either dev tool.
   }
   toggleBtn.textContent = isEditMode() ? T.editToggleOn : T.editToggleOff
 }
 
-if (sessionStorage.getItem(STORAGE_KEY)) {
-  document.body.classList.add('hadley-edit-mode')
+try {
+  if (sessionStorage.getItem(STORAGE_KEY)) document.body.classList.add('hadley-edit-mode')
+} catch {
+  // Edit mode remains available on this page without persistence.
 }
 
 const toggleBtn = document.createElement('button')
@@ -213,6 +221,23 @@ function _mkSep() {
 const menuMergeSep = _mkSep()
 const menuMoveSep = _mkSep()
 blockMenu.append(menuMergeTopBtn, menuMergeBotBtn, menuMergeSep, menuUpBtn, menuDownBtn, menuMoveSep, menuDeleteBtn)
+// docs/dev-server.md, Chat: the script's presence enables the entry; hadley:chat carries the attachment.
+if (document.querySelector('script[src="/__hadley/chat.js"]')) {
+  const ask = _mkBtn('hadley-menu-chat', '', T.askClaude)
+  ask.textContent = T.askClaude
+  ask.addEventListener('click', () => {
+    if (!menuBlockEl) return
+    const copy = menuBlockEl.cloneNode(true)
+    copy.querySelectorAll('.hadley-trigger').forEach((trigger) => trigger.remove())
+    const detail = {
+      block: menuBlockEl.dataset.hadleyId,
+      text: copy.textContent.replace(/\s+/g, ' ').trim(),
+    }
+    closeMenu()
+    document.dispatchEvent(new CustomEvent('hadley:chat', { detail }))
+  })
+  blockMenu.append(_mkSep(), ask)
+}
 document.body.appendChild(blockMenu)
 
 function openMenu(blockEl, triggerEl) {
@@ -721,6 +746,18 @@ function attachBlockListeners() {
         el.appendChild(trigger)
       }
     }
+
+    trigger.addEventListener('click', () => {
+      if (!isEditMode() || mutationLocked || activeBlockId) return
+      openMenu(el, trigger)
+    })
+    trigger.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowDown') return
+      if (!isEditMode() || mutationLocked || activeBlockId) return
+      e.preventDefault()
+      openMenu(el, trigger)
+      blockMenu.querySelector('button:not([style*="none"])')?.focus()
+    })
 
     trigger.addEventListener('mouseenter', () => {
       cancelMenuClose() // stop a running close timer (for example after leaving the menu)

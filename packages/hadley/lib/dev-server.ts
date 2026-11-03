@@ -273,9 +273,13 @@ export async function startDevServer({
               ? '<link rel="stylesheet" href="/__hadley/editor.css">' +
                 '<script type="module" src="/__hadley/editor.js"></script>'
               : ''
+            const chatInject = chat
+              ? '<link rel="stylesheet" href="/__hadley/chat.css">' +
+                '<script type="module" src="/__hadley/chat.js"></script>'
+              : ''
             const injected = html.replace(
               '</head>',
-              editorInject + '<script type="module" src="/@vite/client"></script>' + '</head>',
+              editorInject + chatInject + '<script type="module" src="/@vite/client"></script>' + '</head>',
             )
             res.statusCode = status
             res.setHeader('Content-Type', 'text/html; charset=utf-8')
