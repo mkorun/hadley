@@ -166,8 +166,11 @@ it('keeps a good server when another record is bad, too large or later repaired'
     assert.match(errors.pop()!.message, /record too large/)
     const repaired = { ...good.record, port: 8010, origin: 'http://localhost:8010' }
     writeFileSync(path, JSON.stringify(repaired))
+    // readdir has no order: tmpfs and ext4 list the two files differently
     assert.deepEqual(
-      scan().map((record) => record.port),
+      scan()
+        .map((record) => record.port)
+        .sort((a, b) => a - b),
       [8000, 8010],
     )
     assert.equal(errors.length, 0)
