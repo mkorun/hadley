@@ -1,4 +1,4 @@
-/** A real hadley dev in a disposable site; the fake channel uses the same rendezvous and SSE as hadley channel. */
+/** A real hadley dev per test, with builds settled; the fake channel uses hadley channel's rendezvous and SSE. */
 import { test as base, expect } from '@playwright/test'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
@@ -8,7 +8,7 @@ import { createServer } from 'node:net'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { init } from '../packages/hadley/lib/init.ts'
-import { events, post } from '../packages/hadley/addons/chat/tests/support.ts'
+import { events, Inbox, post } from '../packages/hadley/addons/chat/tests/support.ts'
 import { parseRendezvous } from '../packages/hadley/addons/chat/rendezvous.ts'
 
 async function unusedPort(): Promise<number> {
@@ -48,6 +48,21 @@ async function startSite() {
   let child: ReturnType<typeof spawn>
   let exited: Promise<unknown>
   let output = ''
+  const waitForBuild = async (since = 0) => {
+    await expect
+      .poll(
+        () => {
+          if (child.exitCode !== null) throw new Error(`hadley dev stopped: ${output}`)
+          const recent = output.slice(since)
+          const start = recent.lastIndexOf('[dev]   Rebuilding (')
+          if (start === -1) return false
+          const build = recent.slice(start)
+          return build.includes('\n  done in ') && build.endsWith('[dev]   (no keyboard: not a terminal)\n')
+        },
+        { timeout: 45_000, message: 'hadley dev finishes its build and search index' },
+      )
+      .toBe(true)
+  }
   const start = async () => {
     output = ''
     child = spawn('bun', [cli, 'dev', '--port', String(port)], {
@@ -63,6 +78,7 @@ async function startSite() {
     child.stderr!.on('data', (chunk: Buffer) => {
       output += chunk.toString()
     })
+    await waitForBuild()
     await expect
       .poll(
         async () => {
@@ -77,6 +93,23 @@ async function startSite() {
         { timeout: 45_000, message: 'hadley dev builds the chat page' },
       )
       .toBe(true)
+    // Vite buffers the startup full-reload until its first client, even after the build has finished.
+    // Consume it here so the test's first navigation cannot receive that stale reload.
+    const messages = new Inbox<MessageEvent>()
+    const socket = new WebSocket(origin.replace(/^http/, 'ws'), 'vite-hmr')
+    socket.addEventListener('message', (event) => messages.push(event))
+    try {
+      await messages.next((event) => {
+        const data: unknown = JSON.parse(String(event.data))
+        return data !== null && typeof data === 'object' && 'type' in data && data.type === 'full-reload'
+      })
+    } finally {
+      if (socket.readyState !== WebSocket.CLOSED) {
+        const closed = once(socket, 'close', { signal: AbortSignal.timeout(5000) })
+        socket.close()
+        await closed
+      }
+    }
   }
   const stop = async () => {
     child.kill('SIGTERM')
@@ -107,8 +140,14 @@ async function startSite() {
         send: (data: unknown) => post(record.origin, '/__hadley/channel', data, headers),
       }
     },
-    async restart() {
+    async rebuild(write: () => Promise<void>) {
+      const since = output.length
+      await write()
+      await waitForBuild(since)
+    },
+    async restart(write?: () => Promise<void>) {
       await stop()
+      await write?.()
       await start()
     },
     async close() {

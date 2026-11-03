@@ -83,7 +83,9 @@ test('attaches from the keyboard block menu, sends context, renders replies safe
   await input.press('x')
   await expect(input).toHaveValue('Explain this\nx')
   const oldId = await block.getAttribute('data-hadley-id')
-  await writeFile(dev.source, (await readFile(dev.source, 'utf8')) + '\nAnother block after an editor change.\n')
+  await dev.rebuild(async () => {
+    await writeFile(dev.source, (await readFile(dev.source, 'utf8')) + '\nAnother block after an editor change.\n')
+  })
   await expect.poll(() => block.getAttribute('data-hadley-id')).not.toBe(oldId)
   await expect(panel.locator('.hc-attachment')).toBeVisible()
   await expect(input).toHaveValue('Explain this\nx')
@@ -294,8 +296,11 @@ test('includes assets after the editor only when chat is enabled', async ({ page
     expect(response.status()).toBe(200)
     expect(response.headers()['content-type']).toContain(type)
   }
-  await writeFile(dev.config, (await readFile(dev.config, 'utf8')).replace('chat: true', 'chat: false'))
-  await dev.restart()
+  // Leave Vite's old connection so the fixture receives the next startup reload first.
+  await page.goto('about:blank')
+  await dev.restart(async () => {
+    await writeFile(dev.config, (await readFile(dev.config, 'utf8')).replace('chat: true', 'chat: false'))
+  })
   await page.goto(dev.origin + '/panel/')
   await expect(
     page.locator('script[src="/__hadley/chat.js"], link[href="/__hadley/chat.css"], #hadley-chat'),

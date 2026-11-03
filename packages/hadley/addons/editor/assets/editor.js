@@ -221,7 +221,6 @@ function _mkSep() {
 const menuMergeSep = _mkSep()
 const menuMoveSep = _mkSep()
 blockMenu.append(menuMergeTopBtn, menuMergeBotBtn, menuMergeSep, menuUpBtn, menuDownBtn, menuMoveSep, menuDeleteBtn)
-// docs/dev-server.md, Chat: the script's presence enables the entry; hadley:chat carries the attachment.
 if (document.querySelector('script[src="/__hadley/chat.js"]')) {
   const ask = _mkBtn('hadley-menu-chat', '', T.askClaude)
   ask.textContent = T.askClaude
@@ -234,6 +233,8 @@ if (document.querySelector('script[src="/__hadley/chat.js"]')) {
       text: copy.textContent.replace(/\s+/g, ' ').trim(),
     }
     closeMenu()
+    // Contract with chat/assets/chat.js: the chat script's presence enables "Ask Claude". On document, hadley:chat
+    // carries detail: { block, text }, the block ID and its full text collapsed to one line. Neither exports a global.
     document.dispatchEvent(new CustomEvent('hadley:chat', { detail }))
   })
   blockMenu.append(_mkSep(), ask)

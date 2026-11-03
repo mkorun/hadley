@@ -91,10 +91,7 @@ settings (or choose "Yes, and don't ask again" for that tool when offered); see
 [Claude Code permissions](https://code.claude.com/docs/en/permissions). Allow and Deny in the panel answer only the
 current request and do not save a rule.
 
-Replies support paragraphs, inline code, fenced code and HTTP(S) links; other markup stays text. The editor offers
-"Ask Claude" only when the chat script is included, and dispatches `hadley:chat` on `document` with
-`detail: { block, text }`: the block ID and its full text collapsed to one line. The panel listens to that event;
-neither script exports a global.
+Replies support paragraphs, inline code, fenced code and HTTP(S) links; other markup stays text.
 
 `hadley channel --help` describes the stdio command; it needs no site directory.
 

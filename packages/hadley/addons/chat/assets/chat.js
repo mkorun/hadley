@@ -1,6 +1,6 @@
 /**
  * Browser panel, loaded after editor.js only in chat-enabled dev pages. Client texts live here, like editor.js.
- * The one editor event is documented in docs/dev-server.md, Chat. Imports in unit tests start no browser work.
+ * The editor event's contract lives at its dispatch in editor/assets/editor.js. Imports in tests start no browser work.
  */
 export const TEXT = {
   en: {
