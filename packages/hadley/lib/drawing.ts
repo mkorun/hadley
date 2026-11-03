@@ -101,12 +101,10 @@ const ATTRIBUTES = new Set([
   'marker-start',
   'marker-mid',
   'marker-end',
-  'font-family',
+  // no font-family, -variant or -stretch: a drawing's text is set in the page's font, which only the theme names
   'font-size',
   'font-weight',
   'font-style',
-  'font-variant',
-  'font-stretch',
   'text-anchor',
   'dominant-baseline',
   'alignment-baseline',
@@ -120,9 +118,14 @@ const ATTRIBUTES = new Set([
   'vector-effect',
   'shape-rendering',
   'text-rendering',
-  'class',
-  'role',
 ])
+
+// attributes that are text and nothing else: written escaped, never read as CSS
+const TEXT_ATTRIBUTES = new Set(['role', 'aria-label', 'aria-description', 'aria-roledescription', 'aria-hidden'])
+
+// a drawing's classes are the theme's `fig-` classes (docs/themes.md, "Drawings"), so no other rule of the theme
+// reaches into it
+const CLASSES = /^fig-[a-z0-9-]+(?:\s+fig-[a-z0-9-]+)*$/
 
 // the only namespaces a drawing declares, on its root; the page does not need them
 const NAMESPACES: Record<string, string> = {
@@ -161,18 +164,11 @@ const HOLDS: Record<string, ReadonlySet<string>> = {
   use: SHAPE,
 }
 
-// ARIA that names, describes or hides; an attribute that points at another element points only into the drawing
-const ARIA = new Set([
-  'aria-label',
-  'aria-labelledby',
-  'aria-describedby',
-  'aria-description',
-  'aria-roledescription',
-  'aria-hidden',
-])
+// ARIA that names, describes or hides (TEXT_ATTRIBUTES and these); its references point only into the drawing
 const ID_LISTS = new Set(['aria-labelledby', 'aria-describedby'])
 
-// the functions a value may call: colours, arithmetic, the page's custom properties, transforms; and url(#id) alone
+// the functions a presentation value may call: colours, arithmetic, transforms; and url(#id) alone. Not var(): a
+// custom property of the theme may hold a URL
 const FUNCTIONS = new Set([
   'rgb',
   'rgba',
@@ -185,7 +181,6 @@ const FUNCTIONS = new Set([
   'oklch',
   'color',
   'color-mix',
-  'var',
   'calc',
   'min',
   'max',
@@ -218,7 +213,7 @@ const ENTITIES = new Map([
 
 interface Element {
   name: string
-  attrs: [string, string][]
+  attrs: [name: string, value: string, line: number][] // line: where the value begins
   children: (Element | string)[]
   line: number
 }
@@ -232,10 +227,13 @@ export class DrawingError extends Error {
   }
 }
 
+/** How many lines a text spans, whichever line ending it uses. */
+const linesIn = (text: string) => text.split(/\r\n?|\n/).length
+
 /** Reads an SVG strictly: elements, attributes in quotes, text, comments; no DOCTYPE, no CDATA, no named entity. */
 function parse(text: string): Element {
   let at = text.startsWith('﻿') ? 1 : 0
-  const lineAt = (position: number) => text.slice(0, position).split('\n').length
+  const lineAt = (position: number) => linesIn(text.slice(0, position))
   const fail = (message: string, position = at): never => {
     throw new DrawingError(lineAt(position), message)
   }
@@ -317,7 +315,7 @@ function parse(text: string): Element {
       if (raw.includes('<')) fail(`<${name}>: a \`<\` in the value of ${attr}`)
       if (seen.has(attr)) fail(`<${name}>: the attribute ${attr} twice`)
       seen.add(attr)
-      node.attrs.push([attr, decode(raw, at + 1)])
+      node.attrs.push([attr, decode(raw, at + 1), lineAt(at + 1)])
       at = end + 1
     }
     // content, up to the matching end tag
@@ -368,37 +366,39 @@ export function readDrawing(text: string, prefix: string): Drawing {
   // every id of the file, once; a reference must name one of them
   const ids = new Set<string>()
   const collect = (node: Element) => {
-    for (const [name, value] of node.attrs) {
+    for (const [name, value, line] of node.attrs) {
       if (name !== 'id') continue
-      if (!ID.test(value)) throw new DrawingError(node.line, `<${node.name}>: the id "${value}" is not a plain name`)
-      if (ids.has(value)) throw new DrawingError(node.line, `<${node.name}>: the id "${value}" twice`)
+      if (!ID.test(value)) throw new DrawingError(line, `<${node.name}>: the id "${value}" is not a plain name`)
+      if (ids.has(value)) throw new DrawingError(line, `<${node.name}>: the id "${value}" twice`)
       ids.add(value)
     }
     for (const child of node.children) if (typeof child !== 'string') collect(child)
   }
   collect(root)
-  const own = (node: Element, id: string) => {
-    if (!ids.has(id)) throw new DrawingError(node.line, `<${node.name}>: #${id} names no element of the drawing`)
+  const own = (node: Element, line: number, id: string) => {
+    if (!ids.has(id)) throw new DrawingError(line, `<${node.name}>: #${id} names no element of the drawing`)
     return `${prefix}.${id}`
   }
 
   const checkedAttrs = (node: Element, isRoot: boolean): [string, string][] => {
     const out: [string, string][] = []
-    for (const [name, value] of node.attrs) {
+    for (const [name, value, line] of node.attrs) {
       const where = `<${node.name}> ${name}`
+      // the line of a value's part at `index`, as a value may span lines
+      const at = (index: number) => line + linesIn(value.slice(0, index)) - 1
       if (isRoot && name in NAMESPACES) {
-        if (value !== NAMESPACES[name]) throw new DrawingError(node.line, `${where}: not the SVG namespace`)
+        if (value !== NAMESPACES[name]) throw new DrawingError(line, `${where}: not the SVG namespace`)
         continue
       }
       if (isRoot && ROOT_NAMING.has(name)) continue
       if (name === 'id') {
-        out.push(['id', own(node, value)])
+        out.push(['id', own(node, line, value)])
         continue
       }
       if (name === 'href' || name === 'xlink:href') {
         const id = node.name === 'use' ? /^#([A-Za-z_][A-Za-z0-9_-]*)$/.exec(value)?.[1] : undefined
-        if (id === undefined) throw new DrawingError(node.line, `${where}: a link; only <use> may name an #id`)
-        out.push(['href', `#${own(node, id)}`])
+        if (id === undefined) throw new DrawingError(line, `${where}: a link; only <use> may name an #id`)
+        out.push(['href', `#${own(node, line, id)}`])
         continue
       }
       if (ID_LISTS.has(name)) {
@@ -407,25 +407,43 @@ export function readDrawing(text: string, prefix: string): Drawing {
           value
             .trim()
             .split(/\s+/)
-            .map((id) => own(node, id))
+            .map((id) => own(node, at(value.indexOf(id)), id))
             .join(' '),
         ])
         continue
       }
-      if (!ATTRIBUTES.has(name) && !ARIA.has(name)) {
+      if (TEXT_ATTRIBUTES.has(name)) {
+        out.push([name, value])
+        continue
+      }
+      if (name === 'class') {
+        if (!CLASSES.test(value.trim()))
+          throw new DrawingError(line, `${where}: a class that is not one of the theme's fig- classes`)
+        out.push([name, value.trim()])
+        continue
+      }
+      if (name.startsWith('font-') && !ATTRIBUTES.has(name))
+        throw new DrawingError(line, `${where}: a font of its own; a drawing's text is set in the page's font`)
+      if (!ATTRIBUTES.has(name)) {
         const why = /^on/i.test(name) ? 'an event attribute' : name === 'style' ? 'a style attribute' : 'an attribute'
-        throw new DrawingError(node.line, `${where}: ${why} a drawing may not hold`)
+        throw new DrawingError(line, `${where}: ${why} a drawing may not hold`)
       }
       // a browser reads a presentation value as CSS, where a backslash escapes: `u\72l(` is `url(`
-      if (value.includes('\\')) throw new DrawingError(node.line, `${where}: a backslash in its value`)
-      if (value.includes('/*')) throw new DrawingError(node.line, `${where}: a CSS comment in its value`)
-      if (/javascript:/i.test(value)) throw new DrawingError(node.line, `${where}: a URL or script in its value`)
+      if (value.includes('\\')) throw new DrawingError(at(value.indexOf('\\')), `${where}: a backslash in its value`)
+      if (value.includes('/*')) throw new DrawingError(at(value.indexOf('/*')), `${where}: a CSS comment in its value`)
+      const script = value.search(/javascript:/i)
+      if (script >= 0) throw new DrawingError(at(script), `${where}: a URL or script in its value`)
       // a value may name an element of the drawing as url(#id), and call nothing but what FUNCTIONS holds
-      const prefixed = value.replace(URL_REFERENCE, (_whole, id: string) => `url(#${own(node, id)})`)
-      for (const [, call] of value.replace(URL_REFERENCE, '').matchAll(CALL)) {
-        if (!FUNCTIONS.has(call!.toLowerCase())) {
-          const what = call!.toLowerCase() === 'url' ? 'a URL' : `the function ${call || '()'}`
-          throw new DrawingError(node.line, `${where}: ${what} in its value`)
+      const prefixed = value.replace(
+        URL_REFERENCE,
+        (_whole, id: string, index: number) => `url(#${own(node, at(index), id)})`,
+      )
+      // the references blanked out, so that each call keeps its place for the line it is on
+      for (const call of value.replace(URL_REFERENCE, (whole) => ' '.repeat(whole.length)).matchAll(CALL)) {
+        const fn = call[1]!.toLowerCase()
+        if (!FUNCTIONS.has(fn)) {
+          const what = fn === 'url' ? 'a URL' : `the function ${call[1] || '()'}`
+          throw new DrawingError(at(call.index!), `${where}: ${what} in its value`)
         }
       }
       out.push([name, prefixed])

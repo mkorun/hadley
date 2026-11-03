@@ -174,7 +174,8 @@ it. The id is `drawing.` and the file's name (`chart.svg`), with `.2` and on for
 theme does three things in its CSS:
 
 - **Colours.** A drawing's own `fill` and `stroke` are its fallback; a rule for a class it uses wins
-  (`.fig-accent { fill: … }`). The theme's documentation names the classes it colours.
+  (`.fig-accent { fill: … }`). A drawing's classes all begin with `fig-`, so that no other rule of the theme reaches
+  into it; the theme's documentation names those it colours.
 - **Which drawing shows.** For example `@container (width < 34rem)` shows `[data-svg-narrow]` and hides
   `[data-svg-wide]`. Without a narrow drawing the wide one always shows.
 - **The enlarged view.** `[data-svg-wide]` is a popover: the theme shows it in place while it is closed

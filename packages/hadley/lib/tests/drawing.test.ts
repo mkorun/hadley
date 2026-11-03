@@ -48,18 +48,20 @@ describe('drawing: what comes through', () => {
     assert.match(out, /<g aria-labelledby="drawing\.a\.d drawing\.a\.dot"><\/g>/)
   })
 
-  test('a value may call colours, arithmetic, transforms and var()', () => {
+  test('a value may call colours, arithmetic and transforms', () => {
     const svg =
-      '<svg><rect fill="color-mix(in oklch, var(--paper), rgb(0 0 0 / .2))" ' +
+      '<svg><rect fill="color-mix(in oklch, white, rgb(0 0 0 / .2))" ' +
       'stroke-width="calc(1px + 2px)" transform="translate(2 3) rotate(45) skewX(10)"/></svg>'
-    assert.match(written(svg), /fill="color-mix\(in oklch, var\(--paper\), rgb\(0 0 0 \/ \.2\)\)"/)
+    assert.match(written(svg), /fill="color-mix\(in oklch, white, rgb\(0 0 0 \/ \.2\)\)"/)
   })
 
-  test("a value is written escaped, as the page's HTML needs it", () => {
+  test("a value is written escaped, as the page's HTML needs it; text attributes are not read as CSS", () => {
     assert.equal(
-      written(`<svg><text font-family="'A' &quot;B&quot;">a &lt;b&gt; &amp; c</text></svg>`),
-      `<svg><text font-family="'A' &quot;B&quot;">a &lt;b&gt; &amp; c</text></svg>`,
+      written(`<svg><text aria-label="Accuracy (percent) &quot;A\\B&quot;">a &lt;b&gt; &amp; c</text></svg>`),
+      `<svg><text aria-label="Accuracy (percent) &quot;A\\B&quot;">a &lt;b&gt; &amp; c</text></svg>`,
     )
+    assert.match(written('<svg><rect class=" fig-accent  fig-line "/></svg>'), /class="fig-accent  fig-line"/)
+    assert.match(written('<svg><text font-weight="600" font-style="italic">x</text></svg>'), /font-weight="600"/)
   })
 })
 
@@ -123,6 +125,37 @@ describe('drawing: what stops the build', () => {
     refused('<svg><g aria-owns="page"/></svg>', 'line 1: <g> aria-owns: an attribute a drawing may not hold')
     refused('<svg><g aria-controls="page"/></svg>', 'line 1: <g> aria-controls: an attribute a drawing may not hold')
     refused('<svg><g aria-labelledby="page"/></svg>', 'line 1: <g>: #page names no element of the drawing')
+  })
+
+  // second review 2026-11-03 (Codex, Daybreak Blue)
+  test('no var(), no font of its own, only the fig- classes; the line of a value is the line of its part', () => {
+    refused('<svg><rect fill="var(--paint)"/></svg>', 'line 1: <rect> fill: the function var in its value')
+    refused(
+      '<svg><text font-family="IBM Plex Mono">A</text></svg>',
+      "line 1: <text> font-family: a font of its own; a drawing's text is set in the page's font",
+    )
+    refused(
+      '<svg><text font-stretch="condensed">A</text></svg>',
+      "line 1: <text> font-stretch: a font of its own; a drawing's text is set in the page's font",
+    )
+    refused(
+      '<svg><rect class="hidden"/></svg>',
+      "line 1: <rect> class: a class that is not one of the theme's fig- classes",
+    )
+    refused(
+      '<svg><rect class="fig-a nav"/></svg>',
+      "line 1: <rect> class: a class that is not one of the theme's fig- classes",
+    )
+    refused(
+      '<svg>\n<rect fill="\n  url(#missing)\n"/>\n</svg>',
+      'line 3: <rect>: #missing names no element of the drawing',
+    )
+    refused(
+      '<svg>\n<rect\n mask="\n\n image-set(x)"/></svg>',
+      'line 5: <rect> mask: the function image-set in its value',
+    )
+    refused('<svg>\r<rect\r fill="u\\72l(x)"/></svg>', 'line 3: <rect> fill: a backslash in its value')
+    refused('<svg>\r\n<g aria-labelledby="a\r\n b"/></svg>', 'line 2: <g>: #a names no element of the drawing')
   })
 
   test('title and desc hold only text, a shape only them', () => {
