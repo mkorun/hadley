@@ -1156,9 +1156,11 @@ sub {
   background: none;
   color: inherit;
 }
+/* as wide as its popover: a button is only as wide as its content, and the enlarged drawing would stay small */
 [data-svg-wide] > button {
   all: unset;
   display: block;
+  width: 100%;
   cursor: zoom-in;
 }
 [data-svg-wide] > button:focus-visible {
