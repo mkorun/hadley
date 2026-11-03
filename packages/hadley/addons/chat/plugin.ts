@@ -8,9 +8,12 @@ import { lf, slashed } from '../../lib/platform.ts'
 import { certificateFingerprint, createRendezvous, rendezvousDirectory } from './rendezvous.ts'
 import {
   chatInput,
+  delivered,
+  suggestion,
   message,
   newId,
   origin,
+  object,
   parseJson,
   permission,
   reply,
@@ -21,19 +24,21 @@ import {
   type Permission,
 } from './protocol.ts'
 
-type Entry =
+type Entry = (
   | { event: 'message'; data: Message }
-  | { event: 'reply'; data: Reply }
+  | { event: 'reply' | 'suggestion'; data: Reply }
+  | { event: 'delivered'; data: { id: string } }
   | { event: 'permission'; data: Permission }
   | { event: 'status'; data: { connected: boolean } }
+) & { at?: number }
 
 function send(res: ServerResponse, status: number, data: unknown): void {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' })
   res.end(JSON.stringify(data))
 }
 
-function emit(res: ServerResponse, event: string, data: unknown): void {
-  res.write(sse(event, data))
+function emit(res: ServerResponse, event: string, data: unknown, at?: number): void {
+  res.write(sse(event, data, at))
 }
 
 function stream(res: ServerResponse): void {
@@ -61,16 +66,19 @@ export function chatPlugin(options: {
   const browsers = new Set<ServerResponse>()
   const history: Entry[] = []
   const open = new Set<string>()
-  const ids = new Map<string, 'message' | 'reply'>()
+  const ids = new Map<string, 'message' | 'action' | 'reply'>()
+  const answered = new Set<string>()
+  const handed = new Set<string>()
 
   function remember(entry: Entry): void {
+    entry.at = Date.now()
     history.push(entry)
     if (history.length > 200) history.shift()
   }
 
   function broadcast(entry: Entry): void {
     remember(entry)
-    for (const browser of browsers) emit(browser, entry.event, entry.data)
+    for (const browser of browsers) emit(browser, entry.event, entry.data, entry.at)
   }
 
   function disconnect(): void {
@@ -112,7 +120,7 @@ export function chatPlugin(options: {
           entry.event === 'permission' ? { ...entry, open: open.has(entry.data.request_id) } : entry,
         ),
       )
-      emit(res, 'status', { connected: channel !== undefined })
+      emit(res, 'status', { connected: channel !== undefined }, Date.now())
       browsers.add(res)
       res.once('close', () => browsers.delete(res))
       return
@@ -140,8 +148,17 @@ export function chatPlugin(options: {
       let id: string
       do id = newId()
       while (ids.has(id))
-      const data = message({ id, text: input.text, site, root, url: new URL(input.page, site).href, ...attachment })
-      ids.set(id, 'message')
+      const { page, ...fields } = input
+      const data = message({
+        ...fields,
+        id,
+        text: input.text ?? input.action,
+        site,
+        root,
+        url: new URL(page, site).href,
+        ...attachment,
+      })
+      ids.set(id, input.action ? 'action' : 'message')
       remember({ event: 'message', data })
       emit(channel, 'message', data)
       send(res, 200, { id })
@@ -165,6 +182,22 @@ export function chatPlugin(options: {
         if (open.size >= 200) return send(res, 409, { error: 'chat: too many open permission requests' })
         open.add(data.request_id)
         broadcast({ event: 'permission', data })
+      } else if (typeof body === 'object' && body !== null && 'event' in body) {
+        const envelope = object(body, ['event', 'data'])
+        if (envelope.event === 'delivered') {
+          const data = delivered(envelope.data)
+          if (!['message', 'action'].includes(ids.get(data.id) ?? '') || handed.has(data.id))
+            return send(res, 409, { error: 'chat: delivered names an unknown or delivered message' })
+          handed.add(data.id)
+          broadcast({ event: 'delivered', data })
+        } else if (envelope.event === 'suggestion') {
+          const data = suggestion(envelope.data)
+          if (ids.has(data.id) || ids.get(data.to) !== 'action' || answered.has(data.to))
+            return send(res, 409, { error: 'chat: suggestion names an unknown or answered action' })
+          ids.set(data.id, 'reply')
+          answered.add(data.to)
+          broadcast({ event: 'suggestion', data })
+        } else throw new Error('chat: unknown channel event')
       } else {
         const data = reply(body)
         if (ids.has(data.id)) return send(res, 409, { error: 'chat: duplicate reply id' })

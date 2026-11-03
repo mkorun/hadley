@@ -908,7 +908,7 @@ function openEditor(blockId, blockEl, text) {
   textarea.className = 'hadley-textarea'
   textarea.value = text
   textarea.setAttribute('aria-label', T.editAriaLabel)
-  textarea.setAttribute('spellcheck', 'false')
+  textarea.setAttribute('spellcheck', 'true')
 
   const editorToolbar = document.createElement('div')
   editorToolbar.className = 'hadley-editor-toolbar'
@@ -942,6 +942,24 @@ function openEditor(blockId, blockEl, text) {
 
   saveBtn.addEventListener('click', () => void saveEditor(blockId, saveBtn))
   cancelBtn.addEventListener('click', closeEditor)
+  document.dispatchEvent(
+    new CustomEvent('hadley:editor-open', {
+      detail: {
+        block: blockId,
+        textarea,
+        wrapper,
+        insert(start, end, replacement) {
+          if (activeTextarea !== textarea) return false
+          textarea.focus()
+          textarea.setSelectionRange(start, end)
+          // insertText participates in the browser's native undo history; assigning value does not.
+          const inserted = document.execCommand('insertText', false, replacement)
+          resizeTextarea(textarea)
+          return inserted
+        },
+      },
+    }),
+  )
 }
 
 function resizeTextarea(ta) {
@@ -954,6 +972,7 @@ function resizeTextarea(ta) {
 // ─── Close the editor ────────────────────────────────────────────────────────
 
 function closeEditor() {
+  document.dispatchEvent(new CustomEvent('hadley:editor-close'))
   activeWrapper?.remove()
   activeWrapper = null
   activeTextarea = null

@@ -123,7 +123,7 @@ export async function events(origin: string, path: string, headers: Record<strin
   }
 }
 
-export function channelProcess(root: string, watchErrors = false) {
+export function channelProcess(root: string, watchErrors = false, environment: NodeJS.ProcessEnv = {}) {
   const module = fileURLToPath(new URL('../channel.ts', import.meta.url))
   const watcher = `import { watch } from 'node:fs'; import { runChannel } from ${JSON.stringify(module)};
     let attempt = 0;
@@ -134,7 +134,7 @@ export function channelProcess(root: string, watchErrors = false) {
       return watcher;
     });`
   const child = spawn(process.execPath, watchErrors ? ['--input-type=module', '-e', watcher] : [module], {
-    env: { ...process.env, XDG_RUNTIME_DIR: root, LOCALAPPDATA: root },
+    env: { ...process.env, HADLEY_CHAT_LOG: undefined, ...environment, XDG_RUNTIME_DIR: root, LOCALAPPDATA: root },
     stdio: 'pipe',
     timeout: 25_000,
   })

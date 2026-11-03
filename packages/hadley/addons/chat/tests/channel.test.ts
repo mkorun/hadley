@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { it } from 'node:test'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import http, { type IncomingMessage, type ServerResponse } from 'node:http'
 import https from 'node:https'
 import type { AddressInfo } from 'node:net'
@@ -24,6 +24,7 @@ async function fakeDevServer(
 ) {
   const streams = new Inbox<ServerResponse>()
   const posts = new Inbox<unknown>()
+  const deliveries = new Inbox<unknown>()
   let token = ''
   let requestCount = 0
   const handle = (req: IncomingMessage, res: ServerResponse) => {
@@ -41,7 +42,9 @@ async function fakeDevServer(
         body += chunk
       })
       req.once('end', () => {
-        posts.push(JSON.parse(body) as unknown)
+        const value = JSON.parse(body) as { event?: string }
+        if (value.event === 'delivered') deliveries.push(value)
+        else posts.push(value)
         res.end('{}')
       })
     } else {
@@ -68,6 +71,7 @@ async function fakeDevServer(
   return {
     streams,
     posts,
+    deliveries,
     record: rendezvous.record,
     get requestCount() {
       return requestCount
@@ -84,7 +88,7 @@ it(
   { timeout: 30_000 },
   async () => {
     const root = mkdtempSync(join(tmpdir(), 'hadley-channel-test-'))
-    const env = { ...process.env, XDG_RUNTIME_DIR: root, LOCALAPPDATA: root }
+    const env = { ...process.env, HADLEY_CHAT_LOG: undefined, XDG_RUNTIME_DIR: root, LOCALAPPDATA: root }
     const dir = rendezvousDirectory(env)
     const first = await fakeDevServer(dir, root, 'https://first.example')
     let second: Awaited<ReturnType<typeof fakeDevServer>> | undefined
@@ -150,7 +154,10 @@ it(
       rpc('server/discover', 2)
       assert.deepEqual((await stdout.next()).error, { code: -32601, message: 'method not found: server/discover' })
       rpc('tools/list', 3, { _meta: {} })
-      assert.equal(((await stdout.next()).result as { tools: { name: string }[] }).tools[0].name, 'reply')
+      assert.deepEqual(
+        ((await stdout.next()).result as { tools: { name: string }[] }).tools.map((tool) => tool.name),
+        ['suggest', 'reply'],
+      )
       rpc('ping', 4, { _meta: {} })
       assert.deepEqual((await stdout.next()).result, {})
       let stream = await first.streams.next()
@@ -319,7 +326,7 @@ for (const [name, input, expected] of [
   it(name, async () => {
     const root = mkdtempSync(join(tmpdir(), 'hadley-channel-bound-'))
     const child = spawn(process.execPath, [fileURLToPath(new URL('../channel.ts', import.meta.url))], {
-      env: { ...process.env, XDG_RUNTIME_DIR: root, LOCALAPPDATA: root },
+      env: { ...process.env, HADLEY_CHAT_LOG: undefined, XDG_RUNTIME_DIR: root, LOCALAPPDATA: root },
       stdio: 'pipe',
       timeout: 10_000,
     })
@@ -518,3 +525,115 @@ it(
     }
   },
 )
+
+it('composes rewrite notifications, acknowledges delivery, routes one suggestion and privately logs traffic', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'hadley-channel-actions-'))
+  const dir = rendezvousDirectory({ XDG_RUNTIME_DIR: root, LOCALAPPDATA: root })
+  const server = await fakeDevServer(dir, root, 'https://site.example')
+  const file = join(root, 'traffic.jsonl')
+  const channel = channelProcess(root, false, { HADLEY_CHAT_LOG: file })
+  try {
+    const stream = await server.streams.next()
+    const draft = 'First.\nA "quoted" *second* sentence.'
+    const data = {
+      id: 'abcdefgh',
+      text: 'Rewrite',
+      root,
+      site: server.record.site,
+      url: server.record.site + '/',
+      block: 'block',
+      file: 'page.md',
+      lines: '1-2',
+      action: 'rewrite-selection',
+      direction: 'custom',
+      instruction: 'Make it warmer.',
+      draft,
+      selection: { start: 7, end: draft.length },
+    }
+    stream.write(sse('message', data))
+    const notification = await channel.stdout.next()
+    assert.deepEqual(notification.params, {
+      content:
+        'Action: rewrite-selection\nDirection: "Make it warmer."\n' +
+        `Text to rewrite (JSON string): ${JSON.stringify(draft.slice(7))}\n` +
+        `Editing field context (JSON string): ${JSON.stringify(draft)}`,
+      meta: {
+        message_id: data.id,
+        root,
+        site: data.site,
+        url: data.url,
+        block: 'block',
+        file: 'page.md',
+        lines: '1-2',
+        action: data.action,
+        direction: data.direction,
+      },
+    })
+    assert.deepEqual(await server.deliveries.next(), { event: 'delivered', data: { id: data.id } })
+    channel.rpc('initialize', 1, { protocolVersion: '2025-06-18' })
+    const instructions = ((await channel.stdout.next()).result as { instructions: string }).instructions
+    for (const part of ['read no file', 'no other tool', 'exactly once', 'only the replacement', 'Markanto', 'fix'])
+      assert.ok(instructions.includes(part))
+    channel.rpc('tools/call', 2, { name: 'reply', arguments: { message_id: data.id, text: 'No' } })
+    assert.match(((await channel.stdout.next()).error as { message: string }).message, /use suggest/)
+    channel.rpc('tools/call', 3, { name: 'suggest', arguments: { message_id: data.id, text: 'A *warmer* sentence.' } })
+    const event = (await server.posts.next()) as { event: string; data: { id: string; to: string; text: string } }
+    assert.equal(event.event, 'suggestion')
+    assert.equal(event.data.to, data.id)
+    assert.equal(event.data.text, 'A *warmer* sentence.')
+    assert.ok((await channel.stdout.next()).result)
+    channel.rpc('tools/call', 4, { name: 'suggest', arguments: { message_id: data.id, text: 'Second' } })
+    assert.match(((await channel.stdout.next()).error as { message: string }).message, /unanswered action/)
+    for (const message_id of [undefined, 'zzzzzzzz']) {
+      channel.rpc('tools/call', 5, { name: 'suggest', arguments: { message_id, text: 'Unknown' } })
+      assert.ok((await channel.stdout.next()).error)
+    }
+    stream.write(
+      sse('message', {
+        ...data,
+        id: 'ijklmnop',
+        action: 'rewrite-block',
+        direction: 'fix',
+        instruction: undefined,
+        selection: undefined,
+      }),
+    )
+    const block = (await channel.stdout.next()).params as { content: string }
+    assert.ok(block.content.includes(`Text to rewrite (JSON string): ${JSON.stringify(draft)}`))
+    await server.deliveries.next()
+    stream.write(sse('message', { id: 'qrstuvwx', text: 'Chat', root, site: data.site, url: data.url }))
+    await channel.stdout.next()
+    await server.deliveries.next()
+    channel.rpc('tools/call', 7, { name: 'suggest', arguments: { message_id: 'qrstuvwx', text: 'Not an action' } })
+    assert.match(((await channel.stdout.next()).error as { message: string }).message, /unanswered action/)
+    // Even a token accidentally echoed by a peer must be redacted, without printing it in assertions.
+    channel.rpc('ping', 6, { private: server.record.token })
+    await channel.stdout.next()
+    const source = readFileSync(file, 'utf8')
+    assert.equal(source.includes(server.record.token), false)
+    if (process.platform !== 'win32') assert.equal(statSync(file).mode & 0o777, 0o600)
+    const entries = source
+      .trim()
+      .split('\n')
+      .map(
+        (line) =>
+          JSON.parse(line) as {
+            timestamp: string
+            direction: string
+            data: unknown
+            server?: string
+          },
+      )
+    for (const entry of entries) assert.ok(Number.isFinite(Date.parse(entry.timestamp)))
+    assert.deepEqual(
+      new Set(entries.map((entry) => entry.direction)),
+      new Set(['to-claude', 'from-claude', 'to-server', 'from-server']),
+    )
+    assert.ok(source.includes('A *warmer* sentence.'))
+    assert.ok(source.includes('delivered'))
+  } finally {
+    await channel.close()
+    await server.close()
+    rmSync(root, { recursive: true, force: true })
+  }
+})

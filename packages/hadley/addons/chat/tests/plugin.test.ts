@@ -188,3 +188,84 @@ it('marks historical permissions as closed after a verdict or channel replacemen
     replacement?.close()
   }
 })
+
+it('accepts delivery and one proposal only for an action from this dev server', async () => {
+  const channel = await events(dev.origin, '/__hadley/channel/events', { 'X-Hadley-Token': dev.token })
+  const browser = await events(dev.origin, '/__hadley/chat/events')
+  const headers = { 'X-Hadley-Token': dev.token }
+  try {
+    const source = 'Original.\n'
+    const file = join(dir, 'page.md')
+    writeFileSync(file, source)
+    blockIdMap.set('block', {
+      filePath: file,
+      start: 0,
+      end: source.length,
+      fileHashAtRender: createHash('sha256').update(source).digest('hex'),
+    })
+    const response = await post(dev.origin, '/__hadley/chat', {
+      page: '/',
+      block: 'block',
+      action: 'rewrite-block',
+      direction: 'shorter',
+      draft: 'Unsaved original.',
+    })
+    assert.equal(response.status, 200)
+    const { id } = (await response.json()) as { id: string }
+    const sent = (await channel.inbox.next()).data as { draft: string; file: string; lines: string }
+    assert.equal(sent.draft, 'Unsaved original.')
+    assert.equal(sent.file, 'page.md')
+    assert.equal(sent.lines, '1-1')
+    const delivery = { event: 'delivered', data: { id } }
+    assert.equal((await post(dev.origin, '/__hadley/channel', delivery, headers)).status, 200)
+    assert.deepEqual(await browser.inbox.next((entry) => entry.event === 'delivered'), delivery)
+    assert.equal((await post(dev.origin, '/__hadley/channel', delivery, headers)).status, 409)
+    const proposal = { event: 'suggestion', data: { id: newId(), to: id, text: 'Short.' } }
+    assert.equal((await post(dev.origin, '/__hadley/channel', proposal, headers)).status, 200)
+    assert.deepEqual(await browser.inbox.next((entry) => entry.event === 'suggestion'), proposal)
+    assert.equal(
+      (await post(dev.origin, '/__hadley/channel', { ...proposal, data: { ...proposal.data, id: newId() } }, headers))
+        .status,
+      409,
+    )
+    for (const to of [undefined, 'zzzzzzzz']) {
+      assert.equal(
+        (
+          await post(
+            dev.origin,
+            '/__hadley/channel',
+            { event: 'suggestion', data: { id: newId(), to, text: 'Wrong target' } },
+            headers,
+          )
+        ).status,
+        to === undefined ? 400 : 409,
+      )
+    }
+    assert.equal(
+      (await post(dev.origin, '/__hadley/channel', { id: newId(), to: id, text: 'Reply' }, headers)).status,
+      409,
+    )
+    const chat = await post(dev.origin, '/__hadley/chat', { page: '/', text: 'Chat' })
+    const chatId = ((await chat.json()) as { id: string }).id
+    assert.equal(
+      (
+        await post(
+          dev.origin,
+          '/__hadley/channel',
+          { event: 'suggestion', data: { id: newId(), to: chatId, text: 'Not an action' } },
+          headers,
+        )
+      ).status,
+      409,
+    )
+    assert.equal(
+      (await post(dev.origin, '/__hadley/channel', { event: 'delivered', data: { id: 'zzzzzzzz' } }, headers)).status,
+      409,
+    )
+    assert.equal((await post(dev.origin, '/__hadley/channel', { event: 'unknown', data: {} }, headers)).status, 400)
+    assert.equal(readFileSync(file, 'utf8'), source)
+  } finally {
+    channel.close()
+    browser.close()
+  }
+})

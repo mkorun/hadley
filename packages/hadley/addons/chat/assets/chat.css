@@ -282,3 +282,105 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
   outline: 2px solid var(--he-accent-focus);
   outline-offset: 2px;
 }
+
+.hadley-rewrite,
+.hadley-rewrite-menu {
+  font:
+    0.8125rem/1.5 ui-sans-serif,
+    system-ui,
+    sans-serif;
+  color: var(--he-text);
+  background: var(--he-bg);
+}
+
+.hadley-rewrite {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-top: 1px solid var(--he-border);
+}
+
+.hadley-rewrite button,
+.hadley-rewrite input,
+.hadley-rewrite-menu button {
+  font: inherit;
+  color: inherit;
+  background: var(--he-bg-deep);
+  border: 1px solid var(--he-border);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+}
+
+.hadley-rewrite button[aria-pressed='true'] {
+  border-color: var(--he-accent-focus);
+  background: var(--he-bg-hover);
+}
+
+.hadley-rewrite button:disabled,
+.hadley-rewrite-menu button:disabled {
+  opacity: 0.6;
+}
+
+.hadley-rewrite input {
+  flex: 1;
+  min-width: 12rem;
+}
+
+.hadley-rewrite input[hidden] {
+  display: none;
+}
+
+.hc-directions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.hc-rewrite-state {
+  color: var(--he-muted);
+}
+
+.hadley-rewrite-menu {
+  position: fixed;
+  z-index: 10002;
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem;
+  border: 1px solid var(--he-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px var(--he-shadow);
+}
+
+.hadley-rewrite-menu button {
+  text-align: left;
+  cursor: pointer;
+}
+
+.hadley-rewrite :focus-visible,
+.hadley-rewrite-menu :focus-visible {
+  outline: 2px solid var(--he-accent-focus);
+  outline-offset: 2px;
+}
+
+#hadley-chat .hc-details-switch {
+  padding: 0.25rem 0.75rem;
+  margin: 0;
+}
+
+#hadley-chat .hc-details-switch input {
+  margin-right: 0.5rem;
+}
+
+#hadley-chat .hc-timeline {
+  padding-left: 1rem;
+  margin: 0;
+  font-size: 0.75rem;
+}
+
+#hadley-chat .hc-proposal {
+  padding: 0.5rem;
+  border: 1px solid var(--he-border);
+  border-radius: 4px;
+}

@@ -4,9 +4,12 @@ import https from 'node:https'
 import { createInterface } from 'node:readline'
 import { Transform } from 'node:stream'
 import type { TLSSocket } from 'node:tls'
+import { trafficLog } from './traffic.ts'
 import { certificateFingerprint, readRendezvous, rendezvousDirectory, type Rendezvous } from './rendezvous.ts'
 import {
   MAX_BYTES,
+  actionContent,
+  suggestion,
   message,
   newId,
   object,
@@ -22,8 +25,11 @@ const INSTRUCTIONS =
   'Messages come from the site author in the hadley block editor as <channel source="hadley" …>. ' +
   'file is relative to root, the absolute directory the dev server serves; site is the production origin. ' +
   'Work in root and nowhere else for this message; url is the page the author is reading. ' +
-  'Answer only with reply, passing message_id: the author reads the panel, not the terminal. ' +
-  'Re-read a file before changing it; the author edits it in the editor at the same time.'
+  'Answer chat messages with reply, passing message_id: the author reads the panel, not the terminal. ' +
+  'Re-read a file before changing it; the author edits it in the editor at the same time. ' +
+  'For an action, take no detour: read no file and use no other tool. Call suggest exactly once with message_id ' +
+  'and only the replacement text: no quotes, explanation or Markdown fence around it. Keep the original language ' +
+  'and Markanto markup. With direction fix change nothing but errors. Claude proposes; only the editor writes.'
 
 interface Connection {
   record: Rendezvous
@@ -67,16 +73,21 @@ export function channelRequest(record: Rendezvous, path: string, body?: string):
 export async function runChannel(
   watchDirectory: (dir: string, listener: () => void) => FSWatcher = watch,
 ): Promise<void> {
+  const log = trafficLog(process.env.HADLEY_CHAT_LOG)
   const connections = new Map<number, Connection>()
-  const routes = new Map<string, Connection>()
+  const routes = new Map<string, { connection: Connection; action: boolean; answered: boolean }>()
   const requests = new Set<ClientRequest>()
   let stopped = false
   let watcher: FSWatcher | undefined
   const reported = new Map<string, string>()
   const diagnostic = (error: unknown) =>
     console.error(`hadley channel: ${error instanceof Error ? error.message : error}`)
-  const write = (data: object) => process.stdout.write(JSON.stringify({ jsonrpc: '2.0', ...data }) + '\n')
-  const notify = (method: string, params: object) => write({ method, params })
+  const write = (data: object, sent?: () => void) => {
+    const line = JSON.stringify({ jsonrpc: '2.0', ...data })
+    log.write('to-claude', line)
+    process.stdout.write(line + '\n', sent)
+  }
+  const notify = (method: string, params: object, sent?: () => void) => write({ method, params }, sent)
 
   function reportOnce(key: string, error: unknown): void {
     const message = error instanceof Error ? error.message : String(error)
@@ -86,13 +97,27 @@ export async function runChannel(
   }
 
   function receive(connection: Connection, event: string, value: unknown): void {
+    log.write('from-server', { event, data: value }, connection.record.origin)
     if (event === 'message') {
       const data = message(value)
       if (data.site !== connection.record.site) throw new Error('message.site differs from the rendezvous site')
       if (routes.has(data.id)) throw new Error('duplicate message id')
-      routes.set(data.id, connection)
-      const { id, text: content, ...meta } = data
-      notify('notifications/claude/channel', { content, meta: { message_id: id, ...meta } })
+      routes.set(data.id, { connection, action: data.action !== undefined, answered: false })
+      const {
+        id,
+        text: _text,
+        draft: _draft,
+        selection: _selection,
+        instruction: _instruction,
+        ...meta
+      } = { draft: undefined, selection: undefined, instruction: undefined, ...data }
+      notify(
+        'notifications/claude/channel',
+        { content: actionContent(data), meta: { message_id: id, ...meta } },
+        () => {
+          if (!stopped) void post(connection, { event: 'delivered', data: { id } }).catch(diagnostic)
+        },
+      )
     } else if (event === 'verdict') {
       const data = verdict(value)
       notify('notifications/claude/channel/permission', {
@@ -180,10 +205,11 @@ export async function runChannel(
         connection.request?.destroy()
         connection.response?.destroy()
         connections.delete(port)
-        for (const [id, target] of routes) if (target === connection) routes.delete(id)
+        for (const [id, target] of routes) if (target.connection === connection) routes.delete(id)
       }
     }
     for (const record of records) {
+      log.token(record.token)
       let connection = connections.get(record.port)
       if (!connection) {
         connection = { record, connected: false, retryAt: 0, failures: 0 }
@@ -195,11 +221,18 @@ export async function runChannel(
 
   async function post(connection: Connection, data: object): Promise<void> {
     if (!connection.connected) throw new Error(`port ${connection.record.port}: channel is disconnected`)
+    log.write('to-server', data, connection.record.origin)
     await new Promise<void>((resolve, reject) => {
       const request = channelRequest(connection.record, '/__hadley/channel', JSON.stringify(data))
       request.once('response', (response) => {
-        response.resume()
+        let body = ''
+        response.setEncoding('utf8')
+        response.on('data', (chunk: string) => {
+          body += chunk
+          if (Buffer.byteLength(body) > MAX_BYTES) response.destroy(new Error('channel response too large'))
+        })
         response.once('end', () => {
+          log.write('from-server', { status: response.statusCode, body }, connection.record.origin)
           if (response.statusCode === 200) resolve()
           else reject(new Error(`port ${connection.record.port}: channel POST returned HTTP ${response.statusCode}`))
         })
@@ -251,6 +284,16 @@ export async function runChannel(
           result = {
             tools: [
               {
+                name: 'suggest',
+                description: 'Propose only the replacement text for a rewrite action; the editor applies it',
+                inputSchema: {
+                  type: 'object',
+                  properties: { message_id: { type: 'string' }, text: { type: 'string' } },
+                  required: ['message_id', 'text'],
+                  additionalProperties: false,
+                },
+              },
+              {
                 name: 'reply',
                 description: 'Answer the site author in the hadley editor panel',
                 inputSchema: {
@@ -265,9 +308,10 @@ export async function runChannel(
           break
         case 'tools/call': {
           object(params, ['name', 'arguments', '_meta'])
-          if (params.name !== 'reply') throw new Error('unknown tool: expected reply')
+          if (params.name !== 'reply' && params.name !== 'suggest')
+            throw new Error('unknown tool: expected reply or suggest')
           const args = object(params.arguments, ['message_id', 'text'])
-          const data = reply({
+          const data = (params.name === 'suggest' ? suggestion : reply)({
             id: newId(),
             text: args.text,
             ...(args.message_id === undefined ? {} : { to: args.message_id }),
@@ -275,7 +319,11 @@ export async function runChannel(
           if (data.to !== undefined) {
             const target = routes.get(data.to)
             if (!target) throw new Error('message_id: unknown message')
-            await post(target, data)
+            if (params.name === 'suggest' && (!target.action || target.answered))
+              throw new Error('message_id: expected an unanswered action')
+            if (params.name === 'reply' && target.action) throw new Error('message_id: use suggest for an action')
+            await post(target.connection, params.name === 'suggest' ? { event: 'suggestion', data } : data)
+            if (params.name === 'suggest') target.answered = true
           } else await broadcast(data)
           result = { content: [{ type: 'text', text: 'shown in the editor' }] }
           break
@@ -362,6 +410,7 @@ export async function runChannel(
   try {
     scan()
     for await (const line of input) {
+      log.write('from-claude', line)
       if (!line.trim()) continue
       try {
         if (Buffer.byteLength(line) > MAX_BYTES) throw new Error('JSON-RPC line too large')
@@ -374,6 +423,7 @@ export async function runChannel(
     stop()
     process.off('SIGINT', stop)
     process.off('SIGTERM', stop)
+    log.close()
   }
 }
 
