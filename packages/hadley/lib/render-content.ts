@@ -32,8 +32,16 @@ const segmenter = (language: string) => {
   return made
 }
 
+/** The theme's `drawing.enlarge` in a language, which a drawing's button says (docs/themes.md, "Drawings"). */
+const enlargeText = (t: Record<string, unknown> | undefined): { enlarge?: string } => {
+  const drawing = t?.drawing
+  const text = drawing && typeof drawing === 'object' ? (drawing as Record<string, unknown>).enlarge : undefined
+  return typeof text === 'string' && text.trim() ? { enlarge: text } : {}
+}
+
 /** How a page is rendered; fileRequests() records with the same options render() writes with. */
 export const renderOptions = (site: Site, page: Page, isPublish: boolean) => ({
+  ...enlargeText(site.locales[page.language]),
   bundlePath: page.bundleDir,
   urlPath: page.urlPath,
   origin: site.content[page.language]!.origin,

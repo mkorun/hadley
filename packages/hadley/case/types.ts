@@ -38,7 +38,8 @@ export interface Annotation {
  *
  *   image   a bundle image built in several widths with the image config `config` (none: "default")
  *   native  a bundle image copied as it is (`<m data-size=native>`)
- *   copy    a bundle file copied as it is: a resource, a video or audio file, or an image sized by its `<m>`
+ *   drawing an SVG of the bundle written into the page (`<m data-svg=inline>`), with its `.narrow.svg` if there is one
+ *   copy   a bundle file copied as it is: a resource, a video or audio file, or an image sized by its `<m>`
  *   path    a site path: a page (ending in `/`) or a file in the build's plan, which must be one
  *   refused a destination named where nothing can show it, or one readDestination refuses, or a page id that names
  *           no page, for `reason`: it fails a published page, a draft shows why
@@ -46,7 +47,7 @@ export interface Annotation {
 export type FileRequest =
   | {
       node: object
-      kind: 'image' | 'native' | 'copy'
+      kind: 'image' | 'native' | 'copy' | 'drawing'
       destination: string
       rel: string
       suffix: string
@@ -54,6 +55,12 @@ export type FileRequest =
     }
   | { node: object; kind: 'path'; destination: string; path: string; suffix: string; href: string } // href: resolved
   | { node: object; kind: 'refused'; destination: string; reason: string }
+
+/** A drawing as the page writes it: the attributes of its root `<svg>` and what it holds, as HTML (lib/drawing.ts). */
+export interface Drawing {
+  attrs: ReadonlyArray<readonly [name: string, value: string]>
+  inner: string
+}
 
 /** An image built in several widths, as a figure and the cover write it. */
 export interface Picture {
@@ -77,10 +84,12 @@ export interface AiLabel {
  *   picture  an image built in several widths
  *   native   an image copied as it is
  *   file     any other bundle file copied as it is, or a theme file that exists
+ *   drawing  an SVG checked for the page (lib/drawing.ts), wide and maybe narrow; `id` is unique on the page
  */
 export type Built =
   | { kind: 'picture'; picture: Picture; ai?: AiLabel }
   | { kind: 'native'; href: string; width?: number; height?: number; ai?: AiLabel }
+  | { kind: 'drawing'; id: string; href: string; wide: Drawing; narrow?: Drawing } // href: the file, for the twin
   | { kind: 'file'; href: string }
   | { kind: 'failed'; reason: string }
 
@@ -123,6 +132,8 @@ export interface RenderOptions {
   // What a heading holds, written by the theme (templates/markup/heading.sort): given the heading's level, id and
   // content as HTML; its own tag and id stay hadley's. Without, the heading holds its content as it is.
   heading?: (heading: Heading) => string
+  // The theme's `drawing.enlarge` in the page's language, which a drawing's button says; a drawing needs it.
+  enlarge?: string
   // What was built for each file the content names, by its node (fileRequests); needed for a page with one.
   files?: ReadonlyMap<object, Built>
   // Block editor hooks (dev mode only) — inject data-hadley-id into rendered HTML

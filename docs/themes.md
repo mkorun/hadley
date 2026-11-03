@@ -153,6 +153,35 @@ page's template reads its own cover the same way, as `cover`, such as for the pi
   height="{ item.cover.height }" loading="lazy"></picture>{/if}
 ```
 
+## Drawings
+
+A drawing (content.md, "Drawings") comes into the page as:
+
+```html
+<figure data-svg>
+  <div data-svg-wide id="…" popover>
+    <button type="button" popovertarget="…" aria-label="{ t.drawing.enlarge }">
+      <svg role="img" aria-label="…">…</svg>
+    </button>
+  </div>
+  <svg data-svg-narrow role="img" aria-label="…">…</svg>
+  <figcaption>…</figcaption>
+</figure>
+```
+
+`data-svg-narrow` is there only if the bundle has a `.narrow.svg`; the figure carries `data-size` if the content sets
+it. The theme does three things in its CSS:
+
+- **Colours.** A drawing's own `fill` and `stroke` are its fallback; a rule for a class it uses wins
+  (`.fig-accent { fill: … }`). The theme's README names the classes it colours.
+- **Which drawing shows.** For example `@container (width < 34rem)` shows `[data-svg-narrow]` and hides
+  `[data-svg-wide]`. Without a narrow drawing the wide one always shows.
+- **The enlarged view.** `[data-svg-wide]` is a popover: the theme shows it in place while it is closed
+  (`display: block; position: static`, no border, no padding) and large while it is `:popover-open`, with its
+  `::backdrop`. No script is needed.
+
+A page with a drawing needs `t.drawing.enlarge` in the theme's texts of its language; without it the page fails.
+
 ## Persons
 
 A person is a file in `content/meta/persons/`; a page names one as its `author` (`author: $(persons/odile)`),

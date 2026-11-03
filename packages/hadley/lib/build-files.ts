@@ -2,9 +2,12 @@
  * The files a page names, built: the files of its bundle its content and front matter name (copied, or images made in
  * lib/images.ts), and the site paths it links, checked against the plan (lib/output.ts).
  */
+import { readFile } from 'node:fs/promises'
+import { basename } from 'node:path'
 import sharp from 'sharp'
-import type { Built, FileRequest } from '../case/index.ts'
+import type { Built, Drawing, FileRequest } from '../case/index.ts'
 import { readDestination } from '../case/index.ts'
+import { DrawingError, readDrawing } from './drawing.ts'
 import {
   copyInto,
   derivativeOwner,
@@ -27,8 +30,14 @@ const BROWSER_DOCUMENT = /\.(?:html?|xhtml?|shtml|xml|mht|mhtml)$/i
  * What was built for a page: its files by the node that names each, its first image (for the og:image), how many
  * images were made, and why a file could not be built (lib/problems.ts decides what becomes of that).
  */
-/** What could not be built, and the node of the content or the front matter field that names it (lib/lines.ts). */
-export type Failure = { message: string; node?: object; field?: string }
+/**
+ * What could not be built, and the node of the content or the front matter field that names it (lib/lines.ts); a
+ * `hint` is built, and only told (lib/problems.ts).
+ */
+export type Failure = { message: string; node?: object; field?: string; hint?: true }
+
+/** A drawing over this many bytes is reported (docs/content.md, "Drawings"). */
+export const DRAWING_BYTES = 32 * 1024
 
 export type PageFiles = {
   files: Map<object, Built>
@@ -66,6 +75,8 @@ export const buildPageFiles = async (
   const writing: Promise<void>[] = []
   // an image the content names twice is made once
   const made = new Map<string, ReturnType<typeof processImage>>()
+  // the ids of the page's drawings, each its own (drawingId)
+  const drawingIds = new Set<string>()
   for (const [i, ref] of refs.entries()) {
     const fail = (reason: string) => {
       failures[i]!.push({ message: `${ref.destination} ${reason}`, node: ref.node })
@@ -86,6 +97,12 @@ export const buildPageFiles = async (
     // an image sharp cannot read is a file that could not be built, as a missing one is
     const couldNot = (error: unknown) =>
       fail(`could not be built: ${error instanceof Error ? error.message : String(error)}`)
+    if (ref.kind === 'drawing') {
+      const hint = (message: string) =>
+        failures[i]!.push({ message: `${ref.destination} ${message}`, node: ref.node, hint: true })
+      await buildDrawing(ref.node, file, fail, hint)
+      continue
+    }
     try {
       const building = await buildFile(ref, file, fail)
       if (building) writing.push(building.written.catch(couldNot))
@@ -102,6 +119,57 @@ export const buildPageFiles = async (
     return { files, failures: failures.flat(), images, ...(firstImage ? { firstImage } : {}) }
   })
   return { written }
+
+  /**
+   * A drawing, read and checked (lib/drawing.ts), and its `.narrow.svg` beside it if there is one; its id is unique on
+   * the page: `drawing-` and the file's name, numbered from the second drawing of that name on.
+   */
+  async function buildDrawing(
+    node: object,
+    file: ContentFile,
+    fail: (reason: string) => void,
+    hint: (message: string) => void,
+  ): Promise<void> {
+    const base = `drawing-${basename(file.rel)
+      .replace(/\.svg$/i, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')}`
+    let id = base
+    for (let n = 2; drawingIds.has(id); n++) id = `${base}-${n}`
+    drawingIds.add(id)
+    const read = async (source: ContentFile, prefix: string): Promise<Drawing | undefined> => {
+      // what is said of the file: of the drawing itself, or of the narrow one beside it
+      const it = source === file ? 'is' : `has a narrow drawing, ${source.rel}, that is`
+      let bytes: Buffer
+      try {
+        bytes = await readFile(source.source)
+      } catch {
+        fail(`${it} a file that could not be read`)
+        return
+      }
+      if (bytes.length > DRAWING_BYTES) hint(`${it} a drawing of ${bytes.length} bytes, over ${DRAWING_BYTES}`)
+      try {
+        return readDrawing(new TextDecoder('utf-8', { fatal: true }).decode(bytes), prefix)
+      } catch (error) {
+        const why = error instanceof DrawingError ? error.message : 'not UTF-8'
+        fail(`${it} no drawing hadley writes into a page (docs/content.md, "Drawings"): ${why}`)
+      }
+    }
+    const wide = await read(file, id)
+    const besideRel = file.rel.replace(/\.svg$/i, '.narrow.svg')
+    const beside = await findContentFile(page.file, besideRel)
+    const narrow = 'refused' in beside ? undefined : await read(beside, `${id}-narrow`)
+    if (!wide || (!('refused' in beside) && !narrow)) return
+    // the file itself, checked, is published as well: the page's Markdown twin names it
+    try {
+      await copyInto(file.source, target.place(file.rel, file.rel))
+    } catch {
+      fail('could not be copied')
+      return
+    }
+    const href = `${target.base}${urlOf(file.rel)}`
+    files.set(node, { kind: 'drawing', id, href, wide, ...(narrow ? { narrow } : {}) })
+  }
 
   async function buildFile(
     ref: Exclude<FileRequest, { kind: 'path' | 'refused' }>,

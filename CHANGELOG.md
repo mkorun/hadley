@@ -10,6 +10,9 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 - `robots.txt`: hadley writes it with the sitemap line, unless the site or theme has its own; `robots: signal:` in
   `config.lima` adds a `Content-Signal` line, off until set.
+- Drawings: `<m data-svg=inline>` writes an SVG of the bundle into the page, checked against a list of what a drawing
+  may hold, so that the theme can colour it; a `.narrow.svg` beside it is the drawing for a narrow screen, and a click
+  enlarges it on a wide one (docs/content.md, "Drawings").
 
 ## [0.1.0] — 2026-11-01
 

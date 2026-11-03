@@ -10,7 +10,7 @@ import type { BlockToken, Built, CaseOptions, CaseResult, FileRequest, ParseErro
 export { typographyText } from './typography.ts'
 export { checkOnlyEditedBlockChanged } from './integrity.ts'
 export type { EditedRange, IntegrityResult } from './integrity.ts'
-export type { AiLabel, Built, FileRequest, Heading, Picture } from './types.ts'
+export type { AiLabel, Built, Drawing, FileRequest, Heading, Picture } from './types.ts'
 export { attrs, escAttr, escHtml, jsonScript, pictureHtml, startTag } from './html.ts'
 export { readDestination } from './destination.ts'
 export type { Destination, Use } from './destination.ts'

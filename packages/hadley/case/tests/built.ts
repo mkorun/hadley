@@ -24,6 +24,22 @@ export const pictureHtml = (src: string, alt: string): string => {
   )
 }
 
+/** A drawing as lib/drawing.ts gives it: one square; a file whose name starts with `n-` has a narrow drawing too. */
+export const drawing = (src: string): Built => {
+  const name = src.replace(/\.svg$/, '')
+  const square = {
+    attrs: [['viewBox', '0 0 8 8']] as const,
+    inner: '<rect class="fig-accent" width="8" height="8"></rect>',
+  }
+  return {
+    kind: 'drawing',
+    id: `drawing-${name}`,
+    href: src,
+    wide: square,
+    ...(name.startsWith('n-') ? { narrow: { ...square, attrs: [['viewBox', '0 0 4 8']] as const } } : {}),
+  }
+}
+
 export function renderBuilt(source: string, caseOptions: CaseOptions & { bundlePath: string }) {
   // a page at the site's root, unless the test places it
   const options = { urlPath: '/', ...caseOptions }
@@ -34,6 +50,7 @@ export function renderBuilt(source: string, caseOptions: CaseOptions & { bundleP
     if (ref.kind === 'image') files.set(ref.node, { kind: 'picture', picture: picture(ref.destination) })
     if (ref.kind === 'native') files.set(ref.node, { kind: 'native', href: ref.destination, width: 8, height: 8 })
     if (ref.kind === 'copy') files.set(ref.node, { kind: 'file', href: ref.destination })
+    if (ref.kind === 'drawing') files.set(ref.node, drawing(ref.destination))
     if (ref.kind === 'path') files.set(ref.node, { kind: 'file', href: ref.href })
   }
   return {

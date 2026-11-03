@@ -11,7 +11,16 @@ import type {
   RecoveryDocument,
   SourceAnnotations,
 } from '@markantolang/parser'
-import type { Annotation, BlockToken, Built, CaseResult, FileRequest, RenderOptions, TocEntry } from './types.ts'
+import type {
+  Annotation,
+  BlockToken,
+  Built,
+  CaseResult,
+  Drawing,
+  FileRequest,
+  RenderOptions,
+  TocEntry,
+} from './types.ts'
 import { attrs, escHtml, pictureHtml, startTag, type Attrs } from './html.ts'
 import { transformText, typographyState, type TypographyState } from './typography.ts'
 import {
@@ -121,7 +130,7 @@ const DIMENSIONS = /^(\d+)(?:x(\d+))?$/
 
 // What the renderer asks lib to build for a destination: a file of the bundle (copied, or an image) or a site path.
 type Wanted =
-  | { kind: 'image' | 'native' | 'copy'; rel: string; suffix: string; config?: string | undefined }
+  | { kind: 'image' | 'native' | 'copy' | 'drawing'; rel: string; suffix: string; config?: string | undefined }
   | { kind: 'path'; path: string; suffix: string; href: string }
 
 /**
@@ -151,6 +160,7 @@ function refused(ctx: Ctx, node: object, destination: string, reason: string): s
 const RECORDED: Record<Exclude<FileRequest['kind'], 'refused'>, Built> = {
   image: { kind: 'picture', picture: { src: '', width: 0, height: 0, sizes: '', sources: [] } },
   native: { kind: 'native', href: '' },
+  drawing: { kind: 'drawing', id: '', href: '', wide: { attrs: [], inner: '' } },
   copy: { kind: 'file', href: '' },
   path: { kind: 'file', href: '' },
 }
@@ -220,6 +230,7 @@ function bundleImageHtml(
 ): string {
   if (file.kind === 'failed') return notBuilt(file.reason)
   if (file.kind === 'file') throw new Error(`an image was built as a file: ${file.href}`)
+  if (file.kind === 'drawing') throw new Error('an image was built as a drawing')
   const alt = file.ai && image.alt ? `${image.alt} ${file.ai.altSuffix}` : image.alt
   if (file.kind === 'native') {
     const dim = image.title ? DIMENSIONS.exec(image.title) : null
@@ -457,6 +468,8 @@ function renderInlineImage(
   // `attrs`; there is no span around it. So data-size and data-style can sit on the wrapper (spanAttrs) OR on the
   // image node itself.
   const sizing = spanAttrs ?? node.attrs
+  if (sizing?.dataAttrs?.svg !== undefined || node.attrs?.dataAttrs?.svg !== undefined)
+    return refused(ctx, node, src, 'is a drawing, which stands as a block of its own, not in the text')
   // An inline image sized by <m data-size/data-style> stays in the text as a plain <img>, and a bundle file is only
   // copied: <figure><picture> would be invalid inside text.
   if (sizesInline(sizing)) {
@@ -650,7 +663,8 @@ function renderImageGroup(blocks: readonly Extract<DocumentBlock, { type: 'image
   const rest: Extract<DocumentBlock, { type: 'imageBlock' }>[] = []
   for (const block of blocks) {
     const read = readOf(ctx, block.src, 'resource')
-    if (read.kind !== 'bundle') {
+    // a drawing in a group is refused on its own (renderDrawing)
+    if (read.kind !== 'bundle' || block.attrs?.dataAttrs?.svg !== undefined) {
       rest.push(block)
       continue
     }
@@ -675,6 +689,7 @@ function renderImage(block: Extract<DocumentBlock, { type: 'imageBlock' }>, ctx:
   const read = readOf(ctx, block.src, 'resource')
   // a refused image shows nothing of itself, its caption neither
   if (read.kind === 'refused') return refused(ctx, block, block.src, read.reason)
+  if (block.attrs?.dataAttrs?.svg !== undefined) return renderDrawing(block, read, ctx, dhi)
   const attr = resourceConfigAttr(block.attrs)
   const bundle = read.kind === 'bundle' ? { rel: read.rel, suffix: read.suffix } : undefined
   const file =
@@ -708,6 +723,70 @@ function renderImage(block: Extract<DocumentBlock, { type: 'imageBlock' }>, ctx:
     return `${startTag('figure', [['class', attr], ...imageAttrs, ...dhi])}\n${startTag('img', img)}\n<figcaption>${caption}</figcaption>\n</figure>`
   }
   return startTag('img', [...img, ['class', attr], ...imageAttrs, ...dhi])
+}
+
+// what an image's <m> says of a drawing itself; the other data-* go on its figure as on any picture's
+const DRAWING_DATA = new Set(['svg', 'size', 'style'])
+
+/**
+ * A drawing (`<m data-svg=inline>`, docs/content.md): the SVG of the bundle, checked (lib/drawing.ts) and written into
+ * the page as docs/themes.md ("Drawings") shows it. One the content may not have fails the page, as a refused file.
+ */
+function renderDrawing(
+  block: Extract<DocumentBlock, { type: 'imageBlock' }>,
+  read: Exclude<Destination, { kind: 'refused' }>,
+  ctx: Ctx,
+  dhi: Attrs,
+): string {
+  const data = block.attrs?.dataAttrs ?? {}
+  const enlarge = ctx.options.enlarge
+  const why =
+    data.svg !== 'inline'
+      ? `has data-svg=${data.svg}, which takes inline`
+      : read.kind !== 'bundle' || read.suffix !== '' || !/\.svg$/i.test(read.rel)
+        ? 'is no SVG file of the bundle, which a drawing is'
+        : block.attrs?.group !== undefined
+          ? 'is a drawing, which stands on its own, not in a group'
+          : data.style !== undefined
+            ? 'is a drawing, which takes no data-style'
+            : data.size !== undefined && data.size !== '50%' && data.size !== '25%'
+              ? `is a drawing, which takes data-size=50% or 25%, not ${data.size}`
+              : enlarge === undefined
+                ? "is a drawing, and the theme's texts of the page's language have no drawing.enlarge"
+                : undefined
+  if (why !== undefined || read.kind !== 'bundle' || enlarge === undefined)
+    return refused(ctx, block, block.src, why ?? 'is no drawing')
+  const file = built(ctx, block, block.src, { kind: 'drawing', rel: read.rel, suffix: '' })
+  if (file.kind === 'failed') return notBuilt(file.reason)
+  if (file.kind !== 'drawing') throw new Error(`a drawing was built as ${file.kind}: ${block.src}`)
+  const alt = extractText(block.alt)
+  const svg = (drawing: Drawing, mark: Attrs) =>
+    `${startTag('svg', [...mark, ...drawing.attrs, ['role', 'img'], ['aria-label', alt]])}${drawing.inner}</svg>`
+  const caption = block.caption ? renderInline(block.caption, ctx) : block.title ? text(block.title, ctx) : undefined
+  const figure = startTag('figure', [
+    ['data-svg', true],
+    ['data-size', data.size],
+    ...contentAttrs(block.attrs, ctx, DRAWING_DATA),
+    ...dhi,
+  ])
+  const wide = [
+    startTag('div', [
+      ['data-svg-wide', true],
+      ['id', file.id],
+      ['popover', true],
+    ]),
+    startTag('button', [
+      ['type', 'button'],
+      ['popovertarget', file.id],
+      ['aria-label', alt ? `${enlarge}: ${alt}` : enlarge],
+    ]),
+    svg(file.wide, []),
+    '</button>',
+    '</div>',
+  ].join('\n')
+  const narrow = file.narrow ? `\n${svg(file.narrow, [['data-svg-narrow', true]])}` : ''
+  const figcaption = caption ? `\n<figcaption>${caption}</figcaption>` : ''
+  return `${figure}\n${wide}${narrow}${figcaption}\n</figure>`
 }
 
 /**

@@ -124,9 +124,9 @@ export async function buildFiles(
 }
 
 /** A failure as a problem of the page, with the line of the node or field it is about when there is one. */
-function problemOf(page: Page, { message, node, field }: Failure): Problem {
+function problemOf(page: Page, { message, node, field, hint }: Failure): Problem {
   const line = node === undefined ? fieldLine(page.source, field) : nodeLine(page, node)
-  return line === undefined ? { page, message } : { page, message, line }
+  return { page, message, ...(line === undefined ? {} : { line }), ...(hint ? { hint } : {}) }
 }
 /**
  * Checks the site paths every page names against the plan, once it holds every file the build writes; `renamed`

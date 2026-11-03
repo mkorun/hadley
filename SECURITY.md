@@ -25,6 +25,10 @@ A page cannot publish a document a browser would run as a page: naming an HTML, 
 stops it. Its other files are published as they are, so an SVG file keeps any script it holds, and a visitor who opens
 it runs that script on the site's origin, unless the site's server stops it ([docs/deploy.md](docs/deploy.md)).
 
+A drawing (`<m data-svg=inline>`) is written into the page, so hadley checks it: only the elements, attributes and
+references [docs/content.md](docs/content.md) names come through, and a drawing with anything else stops the build. A
+way around that check is a vulnerability.
+
 Trusted like code, and outside this boundary: `config.lima`, the theme and its templates, the layout of the site's
 folders. hadley sets no Content Security Policy; the site's server does ([docs/deploy.md](docs/deploy.md)).
 

@@ -271,6 +271,67 @@ describe('native renderer: inline semantics', () => {
   })
 })
 
+// docs/content.md and docs/themes.md, "Drawings"; the drawing itself is checked in lib/tests/drawing.test.ts
+describe('native renderer: drawings', () => {
+  const drawn = (source: string) => renderBuilt(source, { ...options, enlarge: 'Vergrößern' })
+  const square = '<rect class="fig-accent" width="8" height="8"></rect>'
+
+  test('a drawing is written into the page: a popover for the wide one, the narrow one beside it', () => {
+    const one = drawn('<m data-svg=inline>![Treffer & Fehler](chart.svg)\\\n*Je Verfahren*</m>\n')
+    assert.equal(
+      one.html,
+      [
+        '<figure data-svg>',
+        '<div data-svg-wide id="drawing-chart" popover>',
+        '<button type="button" popovertarget="drawing-chart" aria-label="Vergrößern: Treffer &amp; Fehler">',
+        `<svg viewBox="0 0 8 8" role="img" aria-label="Treffer &amp; Fehler">${square}</svg>`,
+        '</button>',
+        '</div>',
+        '<figcaption>Je Verfahren</figcaption>',
+        '</figure>',
+      ].join('\n'),
+    )
+    assert.deepEqual(one.refs, [{ kind: 'drawing', destination: 'chart.svg' }])
+
+    const both = drawn('<m data-svg=inline data-size=50% lang=en>![x](n-chart.svg)</m>\n').html
+    assert.match(both, /^<figure data-svg data-size="50%" lang="en">\n/)
+    assert.match(both, /<\/div>\n<svg data-svg-narrow viewBox="0 0 4 8" role="img" aria-label="x"><rect/)
+  })
+
+  test('a drawing the content may not have fails the page, and shows nothing', () => {
+    const refusal = (source: string, render = drawn) => {
+      const result = render(source)
+      assert.doesNotMatch(result.html, /<svg|<figure/)
+      return result.refs.map((ref) => ref.reason)
+    }
+    assert.deepEqual(refusal('<m data-svg=yes>![x](a.svg)</m>\n'), ['has data-svg=yes, which takes inline'])
+    assert.deepEqual(refusal('<m data-svg=inline>![x](a.png)</m>\n'), [
+      'is no SVG file of the bundle, which a drawing is',
+    ])
+    assert.deepEqual(refusal('<m data-svg=inline>![x](a.svg#x)</m>\n'), [
+      'is no SVG file of the bundle, which a drawing is',
+    ])
+    assert.deepEqual(refusal('<m data-svg=inline>![x](https://example.com/a.svg)</m>\n'), [
+      'is no SVG file of the bundle, which a drawing is',
+    ])
+    assert.deepEqual(refusal('<m data-svg=inline data-style=ink>![x](a.svg)</m>\n'), [
+      'is a drawing, which takes no data-style',
+    ])
+    assert.deepEqual(refusal('<m data-svg=inline data-size=native>![x](a.svg)</m>\n'), [
+      'is a drawing, which takes data-size=50% or 25%, not native',
+    ])
+    assert.deepEqual(refusal('<m data-svg=inline group=g>![x](a.svg)</m>\n'), [
+      'is a drawing, which stands on its own, not in a group',
+    ])
+    assert.deepEqual(refusal('Text <m data-svg=inline>![x](a.svg)</m> Text.\n'), [
+      'is a drawing, which stands as a block of its own, not in the text',
+    ])
+    assert.deepEqual(refusal('<m data-svg=inline>![x](a.svg)</m>\n', render), [
+      "is a drawing, and the theme's texts of the page's language have no drawing.enlarge",
+    ])
+  })
+})
+
 describe('native renderer: blocks and side channels', () => {
   // 2026-10-29 (axe, scrollable-region-focusable): a block wider than the page scrolls, and the keyboard must reach it
   test('a code block, highlighted or not, and a math block are reached by the keyboard', () => {
