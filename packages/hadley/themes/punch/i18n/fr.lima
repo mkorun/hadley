@@ -93,3 +93,6 @@ profiles:
 
 contact:
   write: Écrivez-moi
+
+drawing:
+  enlarge: Agrandir

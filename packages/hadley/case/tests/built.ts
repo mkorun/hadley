@@ -33,7 +33,7 @@ export const drawing = (src: string): Built => {
   }
   return {
     kind: 'drawing',
-    id: `drawing-${name}`,
+    id: `drawing.${name}`,
     href: src,
     wide: square,
     ...(name.startsWith('n-') ? { narrow: { ...square, attrs: [['viewBox', '0 0 4 8']] as const } } : {}),

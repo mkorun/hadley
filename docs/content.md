@@ -78,18 +78,22 @@ A picture labelled as AI-generated in its metadata (XMP) carries the theme's lab
 
 **Drawings.** `<m data-svg=inline>![Right answers by method](accuracy.svg)</m>` writes an SVG of the bundle into the
 page instead of an `<img>`, so that it takes its colours from the theme ([themes.md](themes.md), "Drawings"). A
-drawing stands as a block, with a caption if it has one; `data-size=50%` and `25%` work as for any picture, `native`
-and `data-style` do not. If `accuracy.narrow.svg` lies beside it, the page holds both, and the theme shows the one that
-fits the width. On a wide screen a click enlarges a drawing; Esc or a click beside it closes it. The file itself is
-published as well, as the page's Markdown twin names it.
+drawing stands as a block, with a caption if it has one; its `data-size` goes on its figure as written, for the
+theme to read (`native`: at the drawing's own width), and `data-style` does not apply. If `accuracy.narrow.svg` lies
+beside it, the page holds both, and the theme shows the one that fits the width. On a wide screen a click enlarges a
+drawing; Esc or a click beside it closes it. The file itself is published as well, as the page's Markdown twin names
+it.
 
 A drawing is content, and content is untrusted. It may hold shapes (`path`, `rect`, `circle`, `ellipse`, `line`,
 `polyline`, `polygon`), text (`text`, `tspan`), `g`, `defs`, `title`, `desc`, `use`, gradients, clip paths, masks and
-markers, with their geometry and presentation attributes, `id`, `class`, `role` and `aria-*`; a reference only to an
-`#id` of the same file. Anything else stops the build, with the file and the line: a script, an event attribute,
-`<style>`, a `style` attribute, `<foreignObject>`, `<image>`, a link, a URL, a DOCTYPE or an entity. hadley removes
-nothing silently. It gives the `id`s of each drawing a prefix of their own, so that two drawings on one page do not
-meet, and names the drawing with its alt text. A drawing over 32 KB (32,768 bytes) is reported.
+markers, with their geometry and presentation attributes, `id`, `class`, `role`, and `aria-label`, `aria-labelledby`,
+`aria-describedby`, `aria-description`, `aria-roledescription` and `aria-hidden`. A `title` or `desc` holds only text,
+a shape only a `title` or `desc`. A value may call colour, arithmetic and transform functions and `var()`, and name
+nothing but an `#id` of the same file (`url(#id)`, `<use href="#id">`); an id is a letter or `_`, then letters,
+digits, `_` and `-`. Anything else stops the build, with the file and the line: a script, an event attribute,
+`<style>`, a `style` attribute, `<foreignObject>`, `<image>`, a link, a URL, a backslash in a value, a DOCTYPE or an
+entity. hadley removes nothing silently. It gives the `id`s of each drawing a prefix of their own with a `.`, which no
+other id of the page has, and names the drawing with its alt text. A drawing over 32 KB (32,768 bytes) is reported.
 
 **Media.** `<m video preview=poster.jpg>[The walk](walk.mp4)</m>` shows a video with its poster, `<m audio>` a
 sound with its picture; `<m embed>[Demo](https://example.com/embed)</m>` an embed over https.

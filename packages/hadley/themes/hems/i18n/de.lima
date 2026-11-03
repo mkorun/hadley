@@ -87,3 +87,6 @@ scheme:
   auto:  Automatisch
   light: Hell
   dark:  Dunkel
+
+drawing:
+  enlarge: Vergrößern

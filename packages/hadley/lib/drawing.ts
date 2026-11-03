@@ -4,7 +4,7 @@
  * hold is an error that names its line, and nothing is dropped silently but comments, the XML declaration and the two
  * SVG namespace declarations, which a page does not need.
  *
- *   readDrawing(text, 'drawing-accuracy')  →  { attrs, inner }   the root's attributes and the checked content
+ *   readDrawing(text, 'drawing.accuracy')  →  { attrs, inner }   the root's attributes and the checked content
  */
 import { attrs as attrsHtml, escHtml } from '../case/html.ts'
 import type { Drawing } from '../case/types.ts'
@@ -133,13 +133,88 @@ const NAMESPACES: Record<string, string> = {
 // what hadley says of the root itself: the alt text names the drawing
 const ROOT_NAMING = new Set(['role', 'aria-label', 'aria-labelledby', 'aria-hidden'])
 
-const NAME = /^[A-Za-z_][A-Za-z0-9_.:-]*$/
-const ID = /^[A-Za-z_][A-Za-z0-9_.-]*$/
-const ARIA = /^aria-[a-z]+$/
+// what an element may hold, by its name; any other element holds none. `title` and `desc` hold only text: in an HTML
+// page they are where HTML begins again, and an element in them would be read as HTML
+const CONTAINER = new Set([
+  ...['g', 'defs', 'title', 'desc', 'path', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'text', 'use'],
+  ...['linearGradient', 'radialGradient', 'clipPath', 'mask', 'marker'],
+])
+const SHAPE = new Set(['title', 'desc'])
+const HOLDS: Record<string, ReadonlySet<string>> = {
+  svg: CONTAINER,
+  g: CONTAINER,
+  defs: CONTAINER,
+  clipPath: CONTAINER,
+  mask: CONTAINER,
+  marker: CONTAINER,
+  text: new Set(['tspan', 'title', 'desc']),
+  tspan: new Set(['tspan']),
+  linearGradient: new Set(['stop']),
+  radialGradient: new Set(['stop']),
+  path: SHAPE,
+  rect: SHAPE,
+  circle: SHAPE,
+  ellipse: SHAPE,
+  line: SHAPE,
+  polyline: SHAPE,
+  polygon: SHAPE,
+  use: SHAPE,
+}
+
+// ARIA that names, describes or hides; an attribute that points at another element points only into the drawing
+const ARIA = new Set([
+  'aria-label',
+  'aria-labelledby',
+  'aria-describedby',
+  'aria-description',
+  'aria-roledescription',
+  'aria-hidden',
+])
 const ID_LISTS = new Set(['aria-labelledby', 'aria-describedby'])
-const URL_REFERENCE = /url\(\s*['"]?#([A-Za-z_][A-Za-z0-9_.-]*)['"]?\s*\)/g
-const FORBIDDEN_VALUE = /javascript:|expression\(|url\(/i
-const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }
+
+// the functions a value may call: colours, arithmetic, the page's custom properties, transforms; and url(#id) alone
+const FUNCTIONS = new Set([
+  'rgb',
+  'rgba',
+  'hsl',
+  'hsla',
+  'hwb',
+  'lab',
+  'lch',
+  'oklab',
+  'oklch',
+  'color',
+  'color-mix',
+  'var',
+  'calc',
+  'min',
+  'max',
+  'clamp',
+  'matrix',
+  'translate',
+  'translatex',
+  'translatey',
+  'scale',
+  'scalex',
+  'scaley',
+  'rotate',
+  'skewx',
+  'skewy',
+])
+
+// a drawing's own ids hold no `.`, so that the ids hadley makes from them, which do, meet neither these nor the
+// page's: Markanto's ids and hadley's slugs hold none either
+const NAME = /^[A-Za-z_][A-Za-z0-9_.:-]*$/
+const ID = /^[A-Za-z_][A-Za-z0-9_-]*$/
+const URL_REFERENCE = /url\(\s*['"]?#([A-Za-z_][A-Za-z0-9_-]*)['"]?\s*\)/g
+const CALL = /([A-Za-z-]*)\s*\(/g
+const ENTITIES = new Map([
+  ['amp', '&'],
+  ['lt', '<'],
+  ['gt', '>'],
+  ['quot', '"'],
+  ['apos', "'"],
+])
 
 interface Element {
   name: string
@@ -167,7 +242,8 @@ function parse(text: string): Element {
   const decode = (raw: string, position: number) =>
     raw.replace(/&([^;\s&]*);?/g, (whole, entity: string) => {
       if (!whole.endsWith(';')) fail('a `&` that is no character reference', position)
-      if (ENTITIES[entity] !== undefined) return ENTITIES[entity]
+      const named = ENTITIES.get(entity)
+      if (named !== undefined) return named
       const hex = /^#x([0-9A-Fa-f]{1,6})$/.exec(entity)
       const dec = /^#([0-9]{1,7})$/.exec(entity)
       const code = hex ? parseInt(hex[1]!, 16) : dec ? parseInt(dec[1]!, 10) : undefined
@@ -301,7 +377,7 @@ export function readDrawing(text: string, prefix: string): Drawing {
   collect(root)
   const own = (node: Element, id: string) => {
     if (!ids.has(id)) throw new DrawingError(node.line, `<${node.name}>: #${id} names no element of the drawing`)
-    return `${prefix}-${id}`
+    return `${prefix}.${id}`
   }
 
   const checkedAttrs = (node: Element, isRoot: boolean): [string, string][] => {
@@ -318,7 +394,7 @@ export function readDrawing(text: string, prefix: string): Drawing {
         continue
       }
       if (name === 'href' || name === 'xlink:href') {
-        const id = node.name === 'use' ? /^#([A-Za-z_][A-Za-z0-9_.-]*)$/.exec(value)?.[1] : undefined
+        const id = node.name === 'use' ? /^#([A-Za-z_][A-Za-z0-9_-]*)$/.exec(value)?.[1] : undefined
         if (id === undefined) throw new DrawingError(node.line, `${where}: a link; only <use> may name an #id`)
         out.push(['href', `#${own(node, id)}`])
         continue
@@ -334,14 +410,21 @@ export function readDrawing(text: string, prefix: string): Drawing {
         ])
         continue
       }
-      if (!ATTRIBUTES.has(name) && !ARIA.test(name)) {
+      if (!ATTRIBUTES.has(name) && !ARIA.has(name)) {
         const why = /^on/i.test(name) ? 'an event attribute' : name === 'style' ? 'a style attribute' : 'an attribute'
         throw new DrawingError(node.line, `${where}: ${why} a drawing may not hold`)
       }
-      // a value may name an element of the drawing as url(#id), and nothing else as a URL
+      // a browser reads a presentation value as CSS, where a backslash escapes: `u\72l(` is `url(`
+      if (value.includes('\\')) throw new DrawingError(node.line, `${where}: a backslash in its value`)
+      if (/javascript:/i.test(value)) throw new DrawingError(node.line, `${where}: a URL or script in its value`)
+      // a value may name an element of the drawing as url(#id), and call nothing but what FUNCTIONS holds
       const prefixed = value.replace(URL_REFERENCE, (_whole, id: string) => `url(#${own(node, id)})`)
-      if (FORBIDDEN_VALUE.test(prefixed.replace(URL_REFERENCE, '')))
-        throw new DrawingError(node.line, `${where}: a URL or script in its value`)
+      for (const [, call] of value.replace(URL_REFERENCE, '').matchAll(CALL)) {
+        if (!FUNCTIONS.has(call!.toLowerCase())) {
+          const what = call!.toLowerCase() === 'url' ? 'a URL' : `the function ${call || '()'}`
+          throw new DrawingError(node.line, `${where}: ${what} in its value`)
+        }
+      }
       out.push([name, prefixed])
     }
     return out
@@ -364,6 +447,8 @@ export function readDrawing(text: string, prefix: string): Drawing {
               child.line,
               `<${child.name}>: ${WHY[child.name] ?? 'an element'} a drawing may not hold`,
             )
+          if (!HOLDS[node.name]?.has(child.name))
+            throw new DrawingError(child.line, `<${child.name}> inside <${node.name}>, which a drawing may not hold`)
           return `<${child.name}${attrsHtml(checkedAttrs(child, false))}>${write(child)}</${child.name}>`
         }
         if (child.trim() && !TEXT_ELEMENTS.has(node.name))

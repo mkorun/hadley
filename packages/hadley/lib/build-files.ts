@@ -121,8 +121,10 @@ export const buildPageFiles = async (
   return { written }
 
   /**
-   * A drawing, read and checked (lib/drawing.ts), and its `.narrow.svg` beside it if there is one; its id is unique on
-   * the page: `drawing-` and the file's name, numbered from the second drawing of that name on.
+   * A drawing, read and checked (lib/drawing.ts), and its `.narrow.svg` beside it if there is one. Its id is unique on
+   * the page and holds a `.`, which no id of the content and no id of a drawing holds: `drawing.` and the file's name,
+   * `.2` and on for a second drawing of that name. The drawing's own ids follow it after a `.`, the narrow one's after
+   * `.narrow.`.
    */
   async function buildDrawing(
     node: object,
@@ -130,12 +132,12 @@ export const buildPageFiles = async (
     fail: (reason: string) => void,
     hint: (message: string) => void,
   ): Promise<void> {
-    const base = `drawing-${basename(file.rel)
+    const base = `drawing.${basename(file.rel)
       .replace(/\.svg$/i, '')
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')}`
     let id = base
-    for (let n = 2; drawingIds.has(id); n++) id = `${base}-${n}`
+    for (let n = 2; drawingIds.has(id); n++) id = `${base}.${n}`
     drawingIds.add(id)
     const read = async (source: ContentFile, prefix: string): Promise<Drawing | undefined> => {
       // what is said of the file: of the drawing itself, or of the narrow one beside it
@@ -158,7 +160,7 @@ export const buildPageFiles = async (
     const wide = await read(file, id)
     const besideRel = file.rel.replace(/\.svg$/i, '.narrow.svg')
     const beside = await findContentFile(page.file, besideRel)
-    const narrow = 'refused' in beside ? undefined : await read(beside, `${id}-narrow`)
+    const narrow = 'refused' in beside ? undefined : await read(beside, `${id}.narrow`)
     if (!wide || (!('refused' in beside) && !narrow)) return
     // the file itself, checked, is published as well: the page's Markdown twin names it
     try {

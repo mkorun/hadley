@@ -88,3 +88,6 @@ scheme:
   auto:  Auto
   light: Light
   dark:  Dark
+
+drawing:
+  enlarge: Enlarge

@@ -87,3 +87,6 @@ scheme:
   auto:  Automatique
   light: Clair
   dark:  Sombre
+
+drawing:
+  enlarge: Agrandir

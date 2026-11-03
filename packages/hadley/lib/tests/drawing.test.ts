@@ -27,7 +27,7 @@ describe('drawing: what comes through', () => {
     assert.equal(
       written(svg),
       '<svg viewBox="0 0 880 100" width="880" height="100">\n' +
-        '  <title id="p-t">Right &amp; wrong — &lt;by method&gt;</title>\n' +
+        '  <title id="p.t">Right &amp; wrong — &lt;by method&gt;</title>\n' +
         '  <rect class="fig-accent" x="20" y="40" width="300" height="12" fill="#b06d00" rx="4"></rect>\n' +
         '  <text x="20" y="20" font-size="13" text-anchor="start">11–40 %</text>\n</svg>',
     )
@@ -40,12 +40,19 @@ describe('drawing: what comes through', () => {
       '<clipPath id="c"><rect width="5" height="5"/></clipPath><path id="dot" d="M0 0h1"/></defs>' +
       `<rect fill="url(#g)" clip-path="url( '#c' )" width="10" height="10"/><use href="#dot"/><use xlink:href="#dot" x="2"/>` +
       '<g aria-labelledby="d dot"/></svg>'
-    const out = written(svg, 'drawing-a')
-    assert.match(out, /^<svg viewBox="0 0 10 10" aria-describedby="drawing-a-d">/)
-    assert.match(out, /<linearGradient id="drawing-a-g">/)
-    assert.match(out, /fill="url\(#drawing-a-g\)" clip-path="url\(#drawing-a-c\)"/)
-    assert.match(out, /<use href="#drawing-a-dot"><\/use><use href="#drawing-a-dot" x="2"><\/use>/)
-    assert.match(out, /<g aria-labelledby="drawing-a-d drawing-a-dot"><\/g>/)
+    const out = written(svg, 'drawing.a')
+    assert.match(out, /^<svg viewBox="0 0 10 10" aria-describedby="drawing\.a\.d">/)
+    assert.match(out, /<linearGradient id="drawing\.a\.g">/)
+    assert.match(out, /fill="url\(#drawing\.a\.g\)" clip-path="url\(#drawing\.a\.c\)"/)
+    assert.match(out, /<use href="#drawing\.a\.dot"><\/use><use href="#drawing\.a\.dot" x="2"><\/use>/)
+    assert.match(out, /<g aria-labelledby="drawing\.a\.d drawing\.a\.dot"><\/g>/)
+  })
+
+  test('a value may call colours, arithmetic, transforms and var()', () => {
+    const svg =
+      '<svg><rect fill="color-mix(in oklch, var(--paper), rgb(0 0 0 / .2))" ' +
+      'stroke-width="calc(1px + 2px)" transform="translate(2 3) rotate(45) skewX(10)"/></svg>'
+    assert.match(written(svg), /fill="color-mix\(in oklch, var\(--paper\), rgb\(0 0 0 \/ \.2\)\)"/)
   })
 
   test("a value is written escaped, as the page's HTML needs it", () => {
@@ -87,18 +94,59 @@ describe('drawing: what stops the build', () => {
     refused('<svg xmlns="http://example.com/"/>', 'line 1: <svg> xmlns: not the SVG namespace')
     refused('<svg><rect href="#x" id="x"/></svg>', 'line 1: <rect> href: a link; only <use> may name an #id')
     refused('<svg><use href="other.svg#x"/></svg>', 'line 1: <use> href: a link; only <use> may name an #id')
-    refused('<svg><rect fill="url(https://example.com/x)"/></svg>', 'line 1: <rect> fill: a URL or script in its value')
-    refused('<svg><rect fill="url(#g) url(x.svg)" id="g"/></svg>', 'line 1: <rect> fill: a URL or script in its value')
+    refused('<svg><rect fill="url(https://example.com/x)"/></svg>', 'line 1: <rect> fill: a URL in its value')
+    refused('<svg><rect fill="url(#g) url(x.svg)" id="g"/></svg>', 'line 1: <rect> fill: a URL in its value')
     refused('<svg><rect fill="javascript:alert(1)"/></svg>', 'line 1: <rect> fill: a URL or script in its value')
-    refused('<svg><rect fill="expression(alert(1))"/></svg>', 'line 1: <rect> fill: a URL or script in its value')
+    refused(
+      '<svg><rect fill="expression(alert(1))"/></svg>',
+      'line 1: <rect> fill: the function expression in its value',
+    )
     refused('<svg><rect fill="url(#nothing)"/></svg>', 'line 1: <rect>: #nothing names no element of the drawing')
     refused('<svg><g id="a"/><g id="a"/></svg>', 'line 1: <g>: the id "a" twice')
     refused('<svg><g id="a b"/></svg>', 'line 1: <g>: the id "a b" is not a plain name')
+    // its ids hold no `.`, so that hadley's ids for it meet none of them (lib/build-files.ts, buildDrawing)
+    refused('<svg><g id="a.b"/></svg>', 'line 1: <g>: the id "a.b" is not a plain name')
+  })
+
+  // review 2026-11-03 (Codex): what got through the first version
+  test('a CSS escape, a function that loads, ARIA that points out of the drawing', () => {
+    refused('<svg><rect fill="u\\72l(/x.svg#g)"/></svg>', 'line 1: <rect> fill: a backslash in its value')
+    refused('<svg><rect id="g" fill="u\\72l(#g)"/></svg>', 'line 1: <rect> fill: a backslash in its value')
+    refused(
+      `<svg><rect mask="image-set('/m.png' 1x)"/></svg>`,
+      'line 1: <rect> mask: the function image-set in its value',
+    )
+    refused('<svg><rect fill="attr(x)"/></svg>', 'line 1: <rect> fill: the function attr in its value')
+    refused('<svg><rect fill="(x)"/></svg>', 'line 1: <rect> fill: the function () in its value')
+    refused('<svg><g aria-owns="page"/></svg>', 'line 1: <g> aria-owns: an attribute a drawing may not hold')
+    refused('<svg><g aria-controls="page"/></svg>', 'line 1: <g> aria-controls: an attribute a drawing may not hold')
+    refused('<svg><g aria-labelledby="page"/></svg>', 'line 1: <g>: #page names no element of the drawing')
+  })
+
+  test('title and desc hold only text, a shape only them', () => {
+    refused('<svg><title><rect/></title></svg>', 'line 1: <rect> inside <title>, which a drawing may not hold')
+    refused('<svg><desc><title>x</title></desc></svg>', 'line 1: <title> inside <desc>, which a drawing may not hold')
+    refused('<svg><rect><rect/></rect></svg>', 'line 1: <rect> inside <rect>, which a drawing may not hold')
+    refused('<svg><text><g/></text></svg>', 'line 1: <g> inside <text>, which a drawing may not hold')
+    refused(
+      '<svg><linearGradient><rect/></linearGradient></svg>',
+      'line 1: <rect> inside <linearGradient>, which a drawing may not hold',
+    )
+    assert.match(
+      written('<svg><rect><title>tip</title></rect><text>a<tspan>b</tspan></text></svg>'),
+      /<title>tip<\/title>/,
+    )
   })
 
   test('what an XML file may hold and a drawing does not', () => {
     refused('<!DOCTYPE svg [<!ENTITY x "y">]><svg/>', 'line 1: a DOCTYPE')
     refused('<svg><text>&x;</text></svg>', 'line 1: the entity &x; (only &amp; &lt; &gt; &quot; &apos; and numbers)')
+    // review 2026-11-03: a name an object has from its prototype is no entity either
+    for (const name of ['constructor', 'toString', '__proto__'])
+      refused(
+        `<svg><text>&${name};</text></svg>`,
+        `line 1: the entity &${name}; (only &amp; &lt; &gt; &quot; &apos; and numbers)`,
+      )
     refused('<svg><text>a & b</text></svg>', 'line 1: a `&` that is no character reference')
     refused('<svg><text>&#0;</text></svg>', 'line 1: the character reference &#0; names no character')
     refused('<svg><text><![CDATA[x]]></text></svg>', 'line 1: a CDATA section')

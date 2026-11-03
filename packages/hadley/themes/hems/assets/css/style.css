@@ -1117,6 +1117,98 @@ sub {
   max-width: 25%;
 }
 
+/* A drawing (docs/themes.md, "Drawings"): the wide one, or the narrow one where the text is narrow; a click enlarges
+   the wide one. Its marks take the colours of the page by class. */
+.prose figure[data-svg] {
+  container-type: inline-size;
+}
+.prose figure[data-svg] svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.prose figure[data-svg][data-size='native'] svg {
+  width: auto;
+  max-width: 100%;
+}
+[data-svg-narrow] {
+  display: none;
+}
+@container (width < 34rem) {
+  figure[data-svg]:has([data-svg-narrow]) [data-svg-wide] {
+    display: none;
+  }
+  figure[data-svg] [data-svg-narrow] {
+    display: block;
+  }
+}
+[data-svg-wide] {
+  display: block;
+  position: static;
+  inset: auto;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: none;
+  color: inherit;
+}
+[data-svg-wide] > button {
+  all: unset;
+  display: block;
+  cursor: zoom-in;
+}
+[data-svg-wide] > button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 4px;
+}
+[data-svg-wide]:popover-open {
+  position: fixed;
+  inset: 0;
+  width: min(96vw, 90rem);
+  height: fit-content;
+  max-height: 94vh;
+  margin: auto;
+  padding: var(--space-5);
+  overflow: auto;
+  background: var(--paper);
+}
+[data-svg-wide]:popover-open > button {
+  cursor: zoom-out;
+}
+[data-svg-wide]::backdrop {
+  background: rgb(0 0 0 / 0.72);
+}
+.fig-ink {
+  fill: var(--ink);
+}
+.fig-soft {
+  fill: var(--ink-soft);
+}
+.fig-muted {
+  fill: var(--ink-mute);
+}
+.fig-ground {
+  fill: var(--paper-sunk);
+}
+.fig-context {
+  fill: var(--rule-strong);
+}
+.fig-accent {
+  fill: var(--red);
+}
+.fig-line {
+  stroke: var(--ink-mute);
+}
+.fig-rule {
+  stroke: var(--rule);
+}
+.fig-accent-line {
+  stroke: var(--red);
+}
+
 address {
   font-style: normal;
 }

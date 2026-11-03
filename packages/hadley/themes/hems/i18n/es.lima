@@ -87,3 +87,6 @@ scheme:
   auto:  Automático
   light: Claro
   dark:  Oscuro
+
+drawing:
+  enlarge: Ampliar

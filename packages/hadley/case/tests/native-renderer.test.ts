@@ -282,8 +282,8 @@ describe('native renderer: drawings', () => {
       one.html,
       [
         '<figure data-svg>',
-        '<div data-svg-wide id="drawing-chart" popover>',
-        '<button type="button" popovertarget="drawing-chart" aria-label="Vergrößern: Treffer &amp; Fehler">',
+        '<div data-svg-wide id="drawing.chart" popover>',
+        '<button type="button" popovertarget="drawing.chart" aria-label="Vergrößern: Treffer &amp; Fehler">',
         `<svg viewBox="0 0 8 8" role="img" aria-label="Treffer &amp; Fehler">${square}</svg>`,
         '</button>',
         '</div>',
@@ -296,6 +296,12 @@ describe('native renderer: drawings', () => {
     const both = drawn('<m data-svg=inline data-size=50% lang=en>![x](n-chart.svg)</m>\n').html
     assert.match(both, /^<figure data-svg data-size="50%" lang="en">\n/)
     assert.match(both, /<\/div>\n<svg data-svg-narrow viewBox="0 0 4 8" role="img" aria-label="x"><rect/)
+
+    // the theme reads its size, whatever it is
+    assert.match(
+      drawn('<m data-svg=inline data-size=native>![x](chart.svg)</m>\n').html,
+      /^<figure data-svg data-size="native">/,
+    )
   })
 
   test('a drawing the content may not have fails the page, and shows nothing', () => {
@@ -317,9 +323,6 @@ describe('native renderer: drawings', () => {
     assert.deepEqual(refusal('<m data-svg=inline data-style=ink>![x](a.svg)</m>\n'), [
       'is a drawing, which takes no data-style',
     ])
-    assert.deepEqual(refusal('<m data-svg=inline data-size=native>![x](a.svg)</m>\n'), [
-      'is a drawing, which takes data-size=50% or 25%, not native',
-    ])
     assert.deepEqual(refusal('<m data-svg=inline group=g>![x](a.svg)</m>\n'), [
       'is a drawing, which stands on its own, not in a group',
     ])
@@ -328,6 +331,26 @@ describe('native renderer: drawings', () => {
     ])
     assert.deepEqual(refusal('<m data-svg=inline>![x](a.svg)</m>\n', render), [
       "is a drawing, and the theme's texts of the page's language have no drawing.enlarge",
+    ])
+  })
+
+  // review 2026-11-03: a data-svg that does not sit on the picture itself made an ordinary picture of a drawing
+  test('a data-svg anywhere else fails the page too', () => {
+    const elsewhere = 'is for a picture that stands as a block of its own (a drawing)'
+    for (const source of [
+      '<m data-svg=inline><m lang=en>![x](a.svg)</m></m>\n',
+      '<m data-svg=inline><m data-size=50%>![x](a.svg)</m></m>\n',
+      '<m data-svg=inline>Text</m>\n',
+    ]) {
+      const refs = drawn(source).refs.filter((ref) => ref.kind === 'refused')
+      assert.deepEqual(refs, [{ kind: 'refused', destination: 'data-svg=inline', reason: elsewhere }], source)
+    }
+    assert.deepEqual(drawn('<m lang=en><m data-svg=inline>![x](a.svg)</m></m>\n').refs, [
+      {
+        kind: 'refused',
+        destination: 'a.svg',
+        reason: 'is a drawing, which stands as a block of its own, not in the text',
+      },
     ])
   })
 })

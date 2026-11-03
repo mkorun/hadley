@@ -159,21 +159,22 @@ A drawing (content.md, "Drawings") comes into the page as:
 
 ```html
 <figure data-svg>
-  <div data-svg-wide id="…" popover>
-    <button type="button" popovertarget="…" aria-label="{ t.drawing.enlarge }">
-      <svg role="img" aria-label="…">…</svg>
+  <div data-svg-wide id="drawing.chart" popover>
+    <button type="button" popovertarget="drawing.chart" aria-label="{ t.drawing.enlarge }: { alt }">
+      <svg role="img" aria-label="{ alt }">…</svg>
     </button>
   </div>
-  <svg data-svg-narrow role="img" aria-label="…">…</svg>
+  <svg data-svg-narrow role="img" aria-label="{ alt }">…</svg>
   <figcaption>…</figcaption>
 </figure>
 ```
 
 `data-svg-narrow` is there only if the bundle has a `.narrow.svg`; the figure carries `data-size` if the content sets
-it. The theme does three things in its CSS:
+it. The id is `drawing.` and the file's name (`chart.svg`), with `.2` and on for a second drawing of that name. The
+theme does three things in its CSS:
 
 - **Colours.** A drawing's own `fill` and `stroke` are its fallback; a rule for a class it uses wins
-  (`.fig-accent { fill: … }`). The theme's README names the classes it colours.
+  (`.fig-accent { fill: … }`). The theme's documentation names the classes it colours.
 - **Which drawing shows.** For example `@container (width < 34rem)` shows `[data-svg-narrow]` and hides
   `[data-svg-wide]`. Without a narrow drawing the wide one always shows.
 - **The enlarged view.** `[data-svg-wide]` is a popover: the theme shows it in place while it is closed
@@ -220,6 +221,10 @@ Line art — an image in `<m data-style=ink>` — takes the colour of the paper 
 in the dark one; so does a cover whose page sets `coverStyle: ink`. A portrait in `<m data-style=cameo>` is round: on
 the paper in the light scheme, a disc of paper in the dark one.
 
+A drawing takes its colours by class, in either scheme: `fig-ink`, `fig-soft`, `fig-muted`, `fig-ground`,
+`fig-context` and `fig-accent` set the fill of a mark, `fig-line`, `fig-rule` and `fig-accent-line` its stroke. Below a
+text width of 34rem a drawing's narrow version shows, if it has one.
+
 Its settings:
 
 | Setting | Values | Default |  |
@@ -234,4 +239,4 @@ punch is the theme of a personal site with a few posts
 makes one with its starter (docs/init.md). Its home page opens on the page's cover, as wide as the screen, with the
 site's title, the home page's text and the owner's profiles (`profiles`, "Persons") on it; an image of that text in
 `<m data-style=cameo>` is the round portrait above the title. The posts follow as cards with their covers
-(`item.cover`). Its settings are those of hems.
+(`item.cover`). Its settings are those of hems, and so are the classes of a drawing, in punch's colours.

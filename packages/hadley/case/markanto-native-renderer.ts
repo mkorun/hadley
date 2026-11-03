@@ -68,6 +68,11 @@ function contentData(
       ctx.ignoredAttributes.push(`data-${key}`)
       continue
     }
+    // a drawing reads its data-svg itself (renderDrawing); anywhere else it would quietly make a picture of one
+    if (key === 'svg') {
+      refused(ctx, attrs!, `data-svg=${value}`, 'is for a picture that stands as a block of its own (a drawing)')
+      continue
+    }
     if (!/(?:href|src|url|link)$/.test(key)) {
       data[key] = value
       continue
@@ -749,11 +754,9 @@ function renderDrawing(
           ? 'is a drawing, which stands on its own, not in a group'
           : data.style !== undefined
             ? 'is a drawing, which takes no data-style'
-            : data.size !== undefined && data.size !== '50%' && data.size !== '25%'
-              ? `is a drawing, which takes data-size=50% or 25%, not ${data.size}`
-              : enlarge === undefined
-                ? "is a drawing, and the theme's texts of the page's language have no drawing.enlarge"
-                : undefined
+            : enlarge === undefined
+              ? "is a drawing, and the theme's texts of the page's language have no drawing.enlarge"
+              : undefined
   if (why !== undefined || read.kind !== 'bundle' || enlarge === undefined)
     return refused(ctx, block, block.src, why ?? 'is no drawing')
   const file = built(ctx, block, block.src, { kind: 'drawing', rel: read.rel, suffix: '' })
