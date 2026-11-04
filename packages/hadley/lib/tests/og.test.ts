@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { loadOgDesign } from '../og.ts'
-import { buildOverlay, generateOgImage } from '../generate-og-image.ts'
+import { applyColourMatrix, buildOverlay, generateOgImage } from '../generate-og-image.ts'
 import sharp from 'sharp'
 
 let dir: string
@@ -81,6 +81,41 @@ describe('the overlay of an og image', () => {
 
 // review 2026-10-26 (performance): the cache compared the page file's mtime, so a change of its text made the image
 // anew, which shows the title alone (about 150 ms each time)
+// 2026-11-05: mko.run draws a doodle cover on its stage through a colour matrix, and its og image showed the white file
+const DOODLE = '-0.042 0 0.042 0 0.957  -0.363 0 0.363 0 0.945  -0.984 0 0.984 0 0.918  0 0 -1.35 1.35 0'
+
+describe('a cover style for og images', () => {
+  it('is read from --og-cover-<style>, as 20 numbers', async () => {
+    theme(`:root { --og-background: #102030; --og-accent: #ABCDEF; --og-cover-doodle: ${DOODLE}; }`)
+    const design = (await loadOgDesign(dir, on, content, 'de'))!
+    assert.equal(design.coverMatrices.doodle?.length, 20)
+    assert.equal(design.coverMatrices.doodle?.[4], 0.957)
+  })
+
+  it('stops the build when one is not 20 numbers', async () => {
+    theme(':root { --og-background: #102030; --og-accent: #ABCDEF; --og-cover-ink: 1 0 0; }')
+    await assert.rejects(loadOgDesign(dir, on, content, 'de'), /--og-cover-ink as 20 numbers/)
+  })
+
+  it('goes through its matrix as feColorMatrix applies it: white goes, ink turns paper, amber stays', async () => {
+    const m = DOODLE.split(/\s+/).map(Number)
+    const pixel = async (colour: string) => {
+      const out = await applyColourMatrix(
+        await sharp({ create: { width: 1, height: 1, channels: 3, background: colour } })
+          .png()
+          .toBuffer(),
+        m,
+      )
+      return [...(await sharp(out).raw().toBuffer())]
+    }
+    assert.equal((await pixel('#ffffff'))[3], 0)
+    assert.deepEqual(await pixel('#000000'), [244, 241, 234, 255])
+    const amber = await pixel('#edb342')
+    assert.ok(Math.abs(amber[0]! - 0xed) <= 2 && Math.abs(amber[1]! - 0xb3) <= 2 && Math.abs(amber[2]! - 0x42) <= 2)
+    assert.equal(amber[3], 255)
+  })
+})
+
 describe('the og image of a page', () => {
   it('is taken from the store while its title is the same, and made anew when the title changes', async () => {
     theme(':root { --og-background: #102030; --og-accent: #ABCDEF; }')

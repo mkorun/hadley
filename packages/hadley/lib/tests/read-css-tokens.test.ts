@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { readCssTokens } from '../read-css-tokens.ts'
+import { readCssTokens, readCssTokensStartingWith } from '../read-css-tokens.ts'
 
 let siteDir: string
 
@@ -30,5 +30,19 @@ describe('readCssTokens', () => {
   it('returns no tokens without a stylesheet', async () => {
     rmSync(join(siteDir, 'theme'), { recursive: true })
     assert.deepEqual(await readCssTokens(siteDir, ['--og-accent']), {})
+  })
+})
+
+describe('readCssTokensStartingWith', () => {
+  it('reads every token of the :root block that begins with the prefix, by the rest of its name', async () => {
+    css(
+      ':root {\n  --og-cover-doodle: 1 2;\n  --og-cover-ink: 3;\n  --og-cover-: 4;\n  --og-accent: #c00;\n}\n.a { --og-cover-x: 5; }',
+    )
+    assert.deepEqual(await readCssTokensStartingWith(siteDir, '--og-cover-'), { doodle: '1 2', ink: '3' })
+  })
+
+  it('reads none without a stylesheet', async () => {
+    rmSync(join(siteDir, 'theme'), { recursive: true })
+    assert.deepEqual(await readCssTokensStartingWith(siteDir, '--og-cover-'), {})
   })
 })

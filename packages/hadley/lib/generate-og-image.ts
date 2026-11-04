@@ -61,6 +61,30 @@ const injectJpegXmp = (jpegBuf: Buffer, xmpBuf: Buffer): Buffer => {
 }
 
 /**
+ * A picture through a 4 × 5 colour matrix as SVG's feColorMatrix applies it: each of red, green, blue and alpha of a
+ * pixel, from 0 to 1 and not premultiplied, becomes a sum of the four with an offset; as a PNG.
+ */
+export const applyColourMatrix = async (bytes: Buffer, m: number[]): Promise<Buffer> => {
+  const { data, info } = await sharp(bytes)
+    .timeout({ seconds: IMAGE_SECONDS })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+  const out = Buffer.alloc(data.length)
+  for (let i = 0; i < data.length; i += 4) {
+    const v = [data[i]! / 255, data[i + 1]! / 255, data[i + 2]! / 255, data[i + 3]! / 255]
+    for (let row = 0; row < 4; row++) {
+      const k = row * 5
+      const x = m[k]! * v[0]! + m[k + 1]! * v[1]! + m[k + 2]! * v[2]! + m[k + 3]! * v[3]! + m[k + 4]!
+      out[i + row] = Math.round(Math.min(1, Math.max(0, x)) * 255)
+    }
+  }
+  return sharp(out, { raw: { width: info.width, height: info.height, channels: 4 } })
+    .png()
+    .toBuffer()
+}
+
+/**
  * The mean colour of the edges of a picture that the og image's edges continue: its top and bottom rows when it is
  * wider than the image, else its left and right columns. Read from a small copy, over `ground` where it is
  * transparent, as the og image lays it.
@@ -250,7 +274,7 @@ export interface OgImageResult {
 }
 
 export async function generateOgImage(
-  page: Pick<Page, 'urlPath' | 'file' | 'metadata'>,
+  page: Pick<Page, 'urlPath' | 'file' | 'metadata' | 'cover'>,
   source: ContentFile,
   destPath: string,
   stored: string, // where the image is kept between builds, of either kind
@@ -265,8 +289,11 @@ export async function generateOgImage(
     (bytes) => bytes.toString('base64'),
     () => undefined,
   )
+  // the theme's colour matrix for the page's cover style, when the image is made from the cover
+  const style = page.metadata.coverStyle
+  const matrix = source === page.cover && typeof style === 'string' ? design.coverMatrices[style] : undefined
   const configHash = createHash('sha256')
-    .update(JSON.stringify([OG_CONFIG_HASH, design, language, badge ?? null]))
+    .update(JSON.stringify([OG_CONFIG_HASH, design, language, badge ?? null, matrix ?? null]))
     .digest('hex')
   const sourceChanged = (await stat(srcPath)).ctimeMs
   // of the page, the image shows its title alone: a change of its text leaves the image as it is
@@ -290,8 +317,10 @@ export async function generateOgImage(
 
   const endTurn = await pictureTurn()
   try {
-    const bytes = await pictureBytes(srcPath)
-    const meta = await sharp(bytes).metadata()
+    const original = await pictureBytes(srcPath)
+    const meta = await sharp(original).metadata()
+    // the picture as the theme draws its cover style, when it gives one a matrix
+    const bytes = matrix ? await applyColourMatrix(original, matrix) : original
     const w = meta.width ?? 1
     const h = meta.height ?? 1
 
