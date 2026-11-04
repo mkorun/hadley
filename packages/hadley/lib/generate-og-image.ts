@@ -4,8 +4,9 @@
  * Generates a 1200×630 og:image from an article's cover or first bundle image, resolved by build-files.ts.
  *
  * Strategy:
- *   - Portrait images (width < height) → cover/crop centered to 1200×630
- *   - Landscape/square images          → contain + pad with #fcfcfc background
+ *   - An opaque picture fills 1200×630, cut about its middle or where the page's ogPosition says
+ *   - A transparent one (a drawing, a cover style's lines) lies whole on the site's --og-background
+ *   - A page whose og:image is false has no picture: its title on --og-background
  *
  * Overlay, from the site's OgDesign (lib/og.ts):
  *   - Dark gradient at bottom third
@@ -41,8 +42,8 @@ import { element, xmlDocument, type XmlElement } from './xml.ts'
 const OG_WIDTH = 1200
 const OG_HEIGHT = 630
 // Bump version when overlay design changes to invalidate the cache, or what the cache keeps of an image (v14: creator;
-// v15: the edges in the colour of the picture's own)
-const OG_CONFIG_HASH = 'og:1200x630:v15'
+// v15: the edges in the colour of the picture's own; v16: an opaque picture fills the image)
+const OG_CONFIG_HASH = 'og:1200x630:v16'
 
 // Insert XMP APP1 segment after SOI — skip APP0 (JFIF) if present so the
 // JFIF spec (APP0 must immediately follow SOI) is not violated.
@@ -82,36 +83,6 @@ export const applyColourMatrix = async (bytes: Buffer, m: number[]): Promise<Buf
   return sharp(out, { raw: { width: info.width, height: info.height, channels: 4 } })
     .png()
     .toBuffer()
-}
-
-/**
- * The mean colour of the edges of a picture that the og image's edges continue: its top and bottom rows when it is
- * wider than the image, else its left and right columns. Read from a small copy, over `ground` where it is
- * transparent, as the og image lays it.
- */
-export const edgeColour = async (
-  bytes: Buffer,
-  aspect: number,
-  ground: string,
-): Promise<{ r: number; g: number; b: number }> => {
-  const N = 32
-  const { data } = await sharp(bytes)
-    .timeout({ seconds: IMAGE_SECONDS })
-    .flatten({ background: ground })
-    .resize(N, N, { fit: 'fill' })
-    .raw()
-    .toBuffer({ resolveWithObject: true })
-  const wide = aspect > OG_WIDTH / OG_HEIGHT
-  const sum = [0, 0, 0]
-  let n = 0
-  for (let y = 0; y < N; y++)
-    for (let x = 0; x < N; x++) {
-      if (wide ? y !== 0 && y !== N - 1 : x !== 0 && x !== N - 1) continue
-      for (let c = 0; c < 3; c++) sum[c]! += data[(y * N + x) * 3 + c]!
-      n++
-    }
-  const [r, g, b] = sum.map((v) => Math.round(v / n)) as [number, number, number]
-  return { r, g, b }
 }
 
 // Approximate text wrapping for Noto Sans Bold.
@@ -287,15 +258,14 @@ export interface OgImageResult {
 
 export async function generateOgImage(
   page: Pick<Page, 'urlPath' | 'file' | 'metadata' | 'cover'>,
-  source: ContentFile,
+  source: ContentFile | null, // null: no picture, the title on the site's ground
   destPath: string,
   stored: string, // where the image is kept between builds, of either kind
   cache: ImageCache,
   design: OgDesign,
   language: string,
 ): Promise<OgImageResult> {
-  const srcPath = source.source
-  const cacheKey = `og:${page.urlPath}${source.rel}`
+  const cacheKey = `og:${page.urlPath}${source?.rel ?? ''}`
   // everything the image is made of but its source and title: the design and the AI badge, if there is one
   const badge = await readFile(design.aiBadgePath).then(
     (bytes) => bytes.toString('base64'),
@@ -304,10 +274,12 @@ export async function generateOgImage(
   // the theme's colour matrix for the page's cover style, when the image is made from the cover
   const style = page.metadata.coverStyle
   const matrix = source === page.cover && typeof style === 'string' ? design.coverMatrices[style] : undefined
+  // where an opaque picture is cut: front-matter.ts lets a page name only one of OG_POSITIONS
+  const position = typeof page.metadata.ogPosition === 'string' ? page.metadata.ogPosition : 'centre'
   const configHash = createHash('sha256')
-    .update(JSON.stringify([OG_CONFIG_HASH, design, language, badge ?? null, matrix ?? null]))
+    .update(JSON.stringify([OG_CONFIG_HASH, design, language, badge ?? null, matrix ?? null, position]))
     .digest('hex')
-  const sourceChanged = (await stat(srcPath)).ctimeMs
+  const sourceChanged = source ? (await stat(source.source)).ctimeMs : 0
   // of the page, the image shows its title alone: a change of its text leaves the image as it is
   const title = page.metadata.title
   const cached = cache[cacheKey]
@@ -329,33 +301,31 @@ export async function generateOgImage(
 
   const endTurn = await pictureTurn()
   try {
-    const original = await pictureBytes(srcPath)
-    const meta = await sharp(original).metadata()
+    const original = source ? await pictureBytes(source.source) : undefined
+    const meta = original ? await sharp(original).metadata() : undefined
     // the picture as the theme draws its cover style, when it gives one a matrix
-    const bytes = matrix ? await applyColourMatrix(original, matrix) : original
-    const w = meta.width ?? 1
-    const h = meta.height ?? 1
+    const bytes = original && matrix ? await applyColourMatrix(original, matrix) : original
 
     await mkdir(dirname(destPath), { recursive: true })
 
-    // portrait: cropped (cover, centre); landscape or square: contained and padded (see the top of the file)
-    const isPortrait = w < h
-    // a transparent picture lies on the site's ground, as one with coverStyle lines lies on its stage
-    const baseImage = sharp(bytes)
-      .timeout({ seconds: IMAGE_SECONDS })
-      .flatten({ background: design.background })
-      .resize(
-        OG_WIDTH,
-        OG_HEIGHT,
-        // the edges of a picture that does not fit take the colour of its own, so that a light etching and a dark
-        // picture both run on into them
-        isPortrait
-          ? { fit: 'cover', position: 'centre' }
-          : { fit: 'contain', background: await edgeColour(bytes, w / h, design.background) },
-      )
+    // an opaque picture fills the image; a transparent one lies whole on the site's ground, as one with coverStyle
+    // lines lies on its stage, and without a picture the ground is all (see the top of the file)
+    const ground = { width: OG_WIDTH, height: OG_HEIGHT, channels: 3 as const, background: design.background }
+    const baseImage = bytes
+      ? sharp(bytes)
+          .timeout({ seconds: IMAGE_SECONDS })
+          .flatten({ background: design.background })
+          .resize(
+            OG_WIDTH,
+            OG_HEIGHT,
+            (await sharp(bytes).timeout({ seconds: IMAGE_SECONDS }).stats()).isOpaque
+              ? { fit: 'cover', position }
+              : { fit: 'contain', background: design.background },
+          )
+      : sharp({ create: ground })
 
     // Read source metadata once for AI-detection and XMP extraction
-    const srcXmp = meta.xmp ?? null
+    const srcXmp = meta?.xmp ?? null
     const ai = srcXmp ? /trainedAlgorithmicMedia/i.test(srcXmp.toString('utf-8')) : false
     const creator = srcXmp ? extractXmpText(srcXmp, 'dc:creator') : undefined
     const creditText = srcXmp ? (extractXmpText(srcXmp, 'photoshop:Credit') ?? creator) : undefined
@@ -387,8 +357,8 @@ export async function generateOgImage(
       sourceChanged,
       title,
       configHash,
-      naturalWidth: w,
-      naturalHeight: h,
+      naturalWidth: meta?.width ?? OG_WIDTH,
+      naturalHeight: meta?.height ?? OG_HEIGHT,
       validWidths: [OG_WIDTH],
       isAi: ai,
       creator,

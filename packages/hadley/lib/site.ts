@@ -30,6 +30,7 @@ export interface Metadata {
   category?: string
   link?: string
   archetype?: string
+  ogPosition?: string // one of OG_POSITIONS (lib/front-matter.ts)
   author?: string | { name?: string }
   vgwort_pixel?: string
   ai_assisted?: boolean // written with the help of AI
@@ -89,7 +90,8 @@ export interface Page {
   // filled by the build (index.ts) as it goes
   files?: ReadonlyMap<object, Built>
   cover?: ContentFile | undefined
-  ogSource?: ContentFile | undefined
+  // the picture of its og image: its cover or first image, or none (null) where its og:image is false
+  ogSource?: ContentFile | null | undefined
   ogImage?: string | undefined
   markup?: string
   result?: PageResult

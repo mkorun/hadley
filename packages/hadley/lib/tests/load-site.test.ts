@@ -120,6 +120,11 @@ describe('the front matter of a page', () => {
     await assert.rejects(published('deep'), (error: Error) => error.message.includes('a.md'))
   })
 
+  it('fails a published page whose ogPosition is none it knows', async () => {
+    await site('position', { 'articles/[a]/a.md': page('title: A\nogPosition: upper\n') })
+    await assert.rejects(published('position'), /its ogPosition upper is not one of centre, top, bottom, left, right/)
+  })
+
   it('stops at a status it does not know, in both builds', async () => {
     await site('status', { 'articles/[a]/a.md': page('title: A\nstatus: publshed\n') })
     await assert.rejects(

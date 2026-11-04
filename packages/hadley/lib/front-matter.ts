@@ -8,6 +8,8 @@ import type { FieldSchema } from './site-config.ts'
 
 export const STATES = ['draft', 'seed', 'published', 'archived']
 export const KNOWN_TYPES = new Set(['article', 'essay', 'note', 'page'])
+// where the og image cuts an opaque picture that does not fit it: about its middle, or keeping that edge
+export const OG_POSITIONS = ['centre', 'top', 'bottom', 'left', 'right']
 const KNOWN_ARCHETYPES = new Set([
   'deep-dive',
   'case-study',
@@ -28,6 +30,7 @@ const TEXT_FIELDS = [
   'link',
   'archetype',
   'coverStyle', // a style for the cover the theme may know (docs/themes.md, "Covers")
+  'ogPosition', // where the og image cuts its picture (docs/content.md)
 ] as const
 const DATE_FIELDS = ['publishFrom', 'updatedAt'] as const
 
@@ -124,6 +127,12 @@ export function readFrontMatter(front: Record<string, unknown>, schema: FieldSch
   }
   if (metadata.publishFrom && metadata.updatedAt && metadata.updatedAt < metadata.publishFrom) {
     faults.push({ message: 'its updatedAt is before its publishFrom', field: 'updatedAt' })
+  }
+  if (metadata.ogPosition && !OG_POSITIONS.includes(metadata.ogPosition)) {
+    faults.push({
+      message: `its ogPosition ${metadata.ogPosition} is not one of ${OG_POSITIONS.join(', ')}`,
+      field: 'ogPosition',
+    })
   }
   if (metadata.archetype && !KNOWN_ARCHETYPES.has(metadata.archetype)) {
     faults.push({

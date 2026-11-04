@@ -15,7 +15,6 @@ import {
   type ImageConfigs,
 } from '../images.ts'
 import sharp from 'sharp'
-import { edgeColour } from '../generate-og-image.ts'
 import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
 import { mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
@@ -395,43 +394,5 @@ describe('the AI tool an image names', () => {
     } finally {
       await rm(dir, { recursive: true, force: true })
     }
-  })
-})
-
-// 2026-11-05: an og image filled the edges of a picture that does not fit it with near white, a band over a dark one
-describe('the colour of a picture’s edges', () => {
-  // a white picture with bands of `colour` along two of its edges
-  const banded = (width: number, height: number, colour: string, along: 'top' | 'sides') => {
-    const band = along === 'top' ? { width, height: height / 10 } : { width: width / 10, height }
-    const input = { create: { ...band, channels: 3 as const, background: colour } }
-    const far = along === 'top' ? { top: height - band.height, left: 0 } : { top: 0, left: width - band.width }
-    return sharp({ create: { width, height, channels: 3, background: '#ffffff' } })
-      .composite([
-        { input, top: 0, left: 0 },
-        { input, ...far },
-      ])
-      .png()
-      .toBuffer()
-  }
-
-  test('is that of its top and bottom rows when it is wider than the og image', async () => {
-    assert.deepEqual(await edgeColour(await banded(400, 100, '#102030', 'top'), 4, '#000000'), { r: 16, g: 32, b: 48 })
-  })
-
-  test('is that of its left and right columns when it is narrower', async () => {
-    assert.deepEqual(await edgeColour(await banded(300, 200, '#803020', 'sides'), 1.5, '#000000'), {
-      r: 128,
-      g: 48,
-      b: 32,
-    })
-  })
-
-  test('takes a transparent edge as the ground the picture lies on', async () => {
-    const clear = await sharp({
-      create: { width: 100, height: 100, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
-    })
-      .png()
-      .toBuffer()
-    assert.deepEqual(await edgeColour(clear, 1, '#0f4b57'), { r: 15, g: 75, b: 87 })
   })
 })

@@ -137,6 +137,66 @@ describe('a cover style in an og image', () => {
 })
 
 describe('the og image of a page', () => {
+  // 2026-11-05: a 4:3 photograph lay in the middle with strips at its sides; a page cuts it where its ogPosition says
+  it('is filled by an opaque picture, cut where the page says, and holds a transparent one whole', async () => {
+    theme(':root { --og-background: #102030; }')
+    const design = (await loadOgDesign(dir, on, content, 'de', {}))!
+    const source = join(dir, 'a.png')
+    const file = join(dir, 'a.md')
+    writeFileSync(file, 'Text.')
+    const out = join(dir, 'out', 'og.jpg')
+    // the colour at the top left corner of the og image made with `metadata`
+    const corner = async (metadata: Record<string, unknown>) => {
+      await generateOgImage(
+        { urlPath: '/a/', file, metadata: { title: 'Titel', ...metadata } },
+        { rel: 'a.png', source },
+        out,
+        join(dir, 'store', 'og.jpg'),
+        {},
+        design,
+        'de',
+      )
+      return [...(await sharp(out).extract({ left: 0, top: 0, width: 1, height: 1 }).raw().toBuffer())]
+    }
+    const near = (rgb: number[], to: number[]) => rgb.every((v, i) => Math.abs(v - to[i]!) <= 6)
+    // 4:3, red in its top tenth, white below
+    await sharp({ create: { width: 400, height: 300, channels: 3, background: '#ffffff' } })
+      .composite([
+        { input: { create: { width: 400, height: 30, channels: 3, background: '#ff0000' } }, top: 0, left: 0 },
+      ])
+      .png()
+      .toFile(source)
+    assert.ok(near(await corner({}), [255, 255, 255]))
+    assert.ok(near(await corner({ ogPosition: 'top' }), [255, 0, 0]))
+    // transparent: on the ground, whole
+    await sharp({ create: { width: 400, height: 300, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+      .png()
+      .toFile(source)
+    assert.ok(near(await corner({}), [0x10, 0x20, 0x30]))
+  })
+
+  // 2026-11-05: a page whose picture may not go out with its link has its title on the ground
+  it('has no picture where the page has none for it, only its title on the ground', async () => {
+    theme(':root { --og-background: #102030; }')
+    const design = (await loadOgDesign(dir, on, content, 'de', {}))!
+    const out = join(dir, 'out', 'og.jpg')
+    const file = join(dir, 'a.md')
+    writeFileSync(file, 'Text.')
+    const made = await generateOgImage(
+      { urlPath: '/a/', file, metadata: { title: 'Titel' } },
+      null,
+      out,
+      join(dir, 'store', 'og.jpg'),
+      {},
+      design,
+      'de',
+    )
+    assert.equal(made.result, 'generated')
+    assert.equal(made.isAi, false)
+    const pixel = [...(await sharp(out).extract({ left: 0, top: 0, width: 1, height: 1 }).raw().toBuffer())]
+    assert.ok(pixel.every((v, i) => Math.abs(v - [0x10, 0x20, 0x30][i]!) <= 6))
+  })
+
   it('is taken from the store while its title is the same, and made anew when the title changes', async () => {
     theme(':root { --og-background: #102030; --og-accent: #ABCDEF; }')
     const design = (await loadOgDesign(dir, on, content, 'de', {}))!

@@ -455,6 +455,11 @@ describe('files the front matter names', () => {
     })
   })
 
+  it('takes an og:image of false as one without a picture, and refuses true', async () => {
+    assert.deepEqual(await named({ 'og:image': false }), { warnings: [], ogNone: true })
+    await assert.rejects(named({ 'og:image': true }), /og:image true is neither .* nor false for none/)
+  })
+
   it('fails a published page for an og:image of a scheme a resource may not have, or at a site path', async () => {
     await assert.rejects(
       named({ 'og:image': 'javascript:alert(1)' }),

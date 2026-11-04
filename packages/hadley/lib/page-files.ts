@@ -99,10 +99,10 @@ export async function buildFiles(
         images.built += files.images.built
         images.cached += files.images.cached
         const ogFile = files.files.get(ogNode)
-        // the og image is made from the cover or the first image
+        // the og image is made from the cover or the first image, or without one where its og:image is false
         page.files = files.files
         page.cover = named.cover
-        page.ogSource = named.cover ?? files.firstImage
+        page.ogSource = named.ogNone ? null : (named.cover ?? files.firstImage)
         // beside the page, or on an error page a path of the site already
         page.ogImage =
           ogFile?.kind === 'file' ? new URL(ogFile.href, language.origin + page.urlPath).href : named.ogImage
@@ -188,20 +188,20 @@ export async function buildCovers(options: FilesOptions): Promise<Counted> {
   return count(results)
 }
 
-// a page's og image: of an article or essay, from its cover or first image, when og images are on
-const ogImageOf = (options: FilesOptions, page: Page) =>
-  options.og && page.articleLike && page.ogSource ? page.ogSource : undefined
+// the picture of a page's og image when og images are on and it is an article or essay with one or with none (null);
+// undefined where it has no og image of its own
+const ogImageOf = (options: FilesOptions, page: Page) => (options.og && page.articleLike ? page.ogSource : undefined)
 
 /** Claims the og image of every page that gets one (buildOgImages makes it once the page's text is known). */
 export function planOgImages(options: FilesOptions): void {
   for (const language of Object.values(options.site.content))
     for (const page of Object.values(language.pages))
-      if (ogImageOf(options, page)) placeFor(options.output, page)('og.jpg', 'og image')
+      if (ogImageOf(options, page) !== undefined) placeFor(options.output, page)('og.jpg', 'og image')
 }
 
 /**
  * Makes the og image (1200×630) of every article and essay from its cover or first image when og images are on;
- * fills what its head and JSON-LD say of it. Portrait → crop (cover), landscape/square → pad (contain + #fcfcfc).
+ * fills what its head and JSON-LD say of it. An opaque picture fills it, a transparent one lies on the ground whole.
  */
 export async function buildOgImages(options: FilesOptions): Promise<Counted> {
   const design = options.og
@@ -209,7 +209,7 @@ export async function buildOgImages(options: FilesOptions): Promise<Counted> {
     Object.entries(options.site.content).flatMap(([lang, language]) =>
       Object.values(language.pages).map(async (page) => {
         const source = ogImageOf(options, page)
-        if (!design || !source) return null
+        if (!design || source === undefined) return null
         let ogResult: Awaited<ReturnType<typeof generateOgImage>>
         try {
           ogResult = await generateOgImage(
@@ -222,7 +222,8 @@ export async function buildOgImages(options: FilesOptions): Promise<Counted> {
             lang,
           )
         } catch (error) {
-          return { page, message: `the og image from ${source.rel} could not be made: ${why(error)}` }
+          const from = source ? ` from ${source.rel}` : ''
+          return { page, message: `the og image${from} could not be made: ${why(error)}` }
         }
         page.hasOgImage = true
         page.isAiOg = ogResult.isAi

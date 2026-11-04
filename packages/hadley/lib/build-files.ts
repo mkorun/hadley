@@ -273,9 +273,10 @@ export const sitePaths = (
 
 /**
  * The files a page's front matter names, read as content destinations are (readDestination in case/). Its
- * `cover` is a file of the bundle that must exist. Its `og:image` is an absolute http(s) URL (`ogImage`) or a file of
- * the bundle (`ogFile`), which buildPageFiles copies as it is, like any file the content names. The page goes
- * without a refused one, which is one of the `failures`.
+ * `cover` is a file of the bundle that must exist. Its `og:image` is an absolute http(s) URL (`ogImage`), a file of
+ * the bundle (`ogFile`), which buildPageFiles copies as it is, like any file the content names, or `false` (`ogNone`):
+ * an og image without a picture, its title on the site's ground. The page goes without a refused one, which is one of
+ * the `failures`.
  */
 export const frontMatterFiles = async (
   page: { file: string; urlPath: string; metadata: Record<string, any> },
@@ -284,12 +285,14 @@ export const frontMatterFiles = async (
   cover?: ContentFile
   ogImage?: string
   ogFile?: { destination: string; rel: string; suffix: string }
+  ogNone?: true
   failures: Failure[]
 }> => {
   const out: {
     cover?: ContentFile
     ogImage?: string
     ogFile?: { destination: string; rel: string; suffix: string }
+    ogNone?: true
     failures: Failure[]
   } = { failures: [] }
   const refuse = (message: string, field: string) => out.failures.push({ message, field })
@@ -303,11 +306,13 @@ export const frontMatterFiles = async (
     if ('refused' in file) refuse(`cover ${cover} ${file.refused}`, 'cover')
     else out.cover = file
   }
-  if (ogImage !== undefined) {
+  if (ogImage === false) out.ogNone = true
+  else if (ogImage !== undefined) {
     const read = typeof ogImage === 'string' ? readDestination(ogImage, 'resource', page.urlPath, origin) : undefined
     if (read?.kind === 'external') out.ogImage = ogImage
     else if (read?.kind === 'bundle') out.ogFile = { destination: ogImage, rel: read.rel, suffix: read.suffix }
-    else refuse(`og:image ${ogImage} is neither an http(s) URL nor a file of the bundle`, 'og:image')
+    else
+      refuse(`og:image ${ogImage} is neither an http(s) URL nor a file of the bundle, nor false for none`, 'og:image')
   }
   return out
 }

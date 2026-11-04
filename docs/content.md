@@ -37,7 +37,8 @@ author: $(persons/ada)
 | `status` | `published` (default), `draft`, `seed` or `archived` (site.md, "The states of a page") |
 | `cover` | a picture of the bundle as the page's cover (themes.md, "Covers") |
 | `coverStyle` | a style for the cover the theme may know, such as `ink` in hems |
-| `og:image` | the page's og image instead of the one hadley makes: a file of the bundle or an http(s) URL |
+| `og:image` | the page's og image instead of the one hadley makes: a file of the bundle or an http(s) URL; `false` makes one without a picture (config.md, "og images") |
+| `ogPosition` | where hadley's og image cuts a picture that does not fit it: `centre` (default), `top`, `bottom`, `left` or `right` |
 | `category` | one word (site.md, "Categories and tags") |
 | `tags` | a list of words |
 | `author` | a person, `$(persons/<name>)` (themes.md, "Persons") |
