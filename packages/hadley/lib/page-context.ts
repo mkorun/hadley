@@ -3,6 +3,7 @@
  * only values a template writes as HTML). Pure: everything it reads was decided before (lib/site.ts).
  */
 import { hasCode } from '../case/index.ts'
+import type { CoverMatrices } from './cover-matrices.ts'
 import { jsonLd } from './json-ld.ts'
 import type { Config, Language, Locale, Page, Site } from './site.ts'
 import type { SiteView } from './site-view.ts'
@@ -14,6 +15,7 @@ export interface ContextOptions {
   assets: Readonly<Record<string, string>>
   isPublish: boolean
   og: boolean // config.lima turns og images on
+  coverMatrices: CoverMatrices // how the theme draws its cover styles (lib/cover-matrices.ts)
   comments: string | undefined // the bundle's _comments.html
   feed: { url: string; pages: Page[] } | undefined // the feed of the page's language, when config.lima turns feeds on
 }
@@ -273,6 +275,10 @@ export function pageContext(page: Page, options: ContextOptions): Record<string,
     mainArticle: page.mainArticle ?? null,
     isAiCover: page.isAiCover ?? false,
     coverAiTool: page.coverAiTool ?? '',
+    // the colour matrix of the page's cover style, for the theme's filter, or empty
+    coverMatrix:
+      (typeof page.metadata.coverStyle === 'string' && options.coverMatrices[page.metadata.coverStyle]?.join(' ')) ||
+      '',
     // the page's own cover as values, as an entry of a list holds it (docs/themes.md "Covers")
     cover: page.listCover ?? null,
     // the only values a template writes as HTML ({@raw html.…}); everything else it escapes

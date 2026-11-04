@@ -36,13 +36,13 @@ describe('readCssTokens', () => {
 describe('readCssTokensStartingWith', () => {
   it('reads every token of the :root block that begins with the prefix, by the rest of its name', async () => {
     css(
-      ':root {\n  --og-cover-doodle: 1 2;\n  --og-cover-ink: 3;\n  --og-cover-: 4;\n  --og-accent: #c00;\n}\n.a { --og-cover-x: 5; }',
+      ':root {\n  --cover-doodle: 1 2;\n  --cover-ink: 3;\n  --cover-: 4;\n  --og-accent: #c00;\n}\n.a { --cover-x: 5; }',
     )
-    assert.deepEqual(await readCssTokensStartingWith(siteDir, '--og-cover-'), { doodle: '1 2', ink: '3' })
+    assert.deepEqual(await readCssTokensStartingWith(siteDir, '--cover-'), { doodle: '1 2', ink: '3' })
   })
 
   it('reads none without a stylesheet', async () => {
     rmSync(join(siteDir, 'theme'), { recursive: true })
-    assert.deepEqual(await readCssTokensStartingWith(siteDir, '--og-cover-'), {})
+    assert.deepEqual(await readCssTokensStartingWith(siteDir, '--cover-'), {})
   })
 })

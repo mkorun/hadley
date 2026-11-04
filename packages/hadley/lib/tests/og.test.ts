@@ -32,8 +32,8 @@ afterEach(() => {
 
 describe('the design of og images', () => {
   it('is off unless config.lima enables it, whatever the site has', async () => {
-    assert.equal(await loadOgDesign(dir, {}, content, 'de'), undefined)
-    assert.equal(await loadOgDesign(dir, { og: { enabled: 'yes' } }, content, 'de'), undefined)
+    assert.equal(await loadOgDesign(dir, {}, content, 'de', {}), undefined)
+    assert.equal(await loadOgDesign(dir, { og: { enabled: 'yes' } }, content, 'de', {}), undefined)
   })
 
   it('reads the logo, the colours and the claim of every language', async () => {
@@ -43,6 +43,7 @@ describe('the design of og images', () => {
       on,
       { ...content, en: { claim: 'A claim', origin: 'https://example.test' } },
       'de',
+      {},
     )
     assert.equal(design?.background, '#102030')
     assert.equal(design?.accent, '#ABCDEF')
@@ -55,7 +56,7 @@ describe('the design of og images', () => {
   it('stops the build with everything it lacks named, instead of guessing', async () => {
     theme(':root { --og-background: navy; }', false)
     await assert.rejects(
-      loadOgDesign(dir, on, { de: {}, en: { claim: 'A claim' } }, 'de'),
+      loadOgDesign(dir, on, { de: {}, en: { claim: 'A claim' } }, 'de', {}),
       /need a logo .*, --og-background as #rrggbb .*, --og-accent as #rrggbb .*, a claim for the language de$/,
     )
   })
@@ -84,19 +85,7 @@ describe('the overlay of an og image', () => {
 // 2026-11-05: mko.run draws a doodle cover on its stage through a colour matrix, and its og image showed the white file
 const DOODLE = '-0.042 0 0.042 0 0.957  -0.363 0 0.363 0 0.945  -0.984 0 0.984 0 0.918  0 0 -1.35 1.35 0'
 
-describe('a cover style for og images', () => {
-  it('is read from --og-cover-<style>, as 20 numbers', async () => {
-    theme(`:root { --og-background: #102030; --og-accent: #ABCDEF; --og-cover-doodle: ${DOODLE}; }`)
-    const design = (await loadOgDesign(dir, on, content, 'de'))!
-    assert.equal(design.coverMatrices.doodle?.length, 20)
-    assert.equal(design.coverMatrices.doodle?.[4], 0.957)
-  })
-
-  it('stops the build when one is not 20 numbers', async () => {
-    theme(':root { --og-background: #102030; --og-accent: #ABCDEF; --og-cover-ink: 1 0 0; }')
-    await assert.rejects(loadOgDesign(dir, on, content, 'de'), /--og-cover-ink as 20 numbers/)
-  })
-
+describe('a cover style in an og image', () => {
   it('goes through its matrix as feColorMatrix applies it: white goes, ink turns paper, amber stays', async () => {
     const m = DOODLE.split(/\s+/).map(Number)
     const pixel = async (colour: string) => {
@@ -119,7 +108,7 @@ describe('a cover style for og images', () => {
 describe('the og image of a page', () => {
   it('is taken from the store while its title is the same, and made anew when the title changes', async () => {
     theme(':root { --og-background: #102030; --og-accent: #ABCDEF; }')
-    const design = (await loadOgDesign(dir, on, content, 'de'))!
+    const design = (await loadOgDesign(dir, on, content, 'de', {}))!
     const source = join(dir, 'a.png')
     await sharp({ create: { width: 8, height: 8, channels: 3, background: '#336699' } })
       .png()
@@ -150,7 +139,7 @@ describe('the og image of a page', () => {
     const badge = join(dir, 'theme', 'assets', 'icons', 'ai-badge.svg')
     mkdirSync(join(dir, 'theme', 'assets', 'icons'), { recursive: true })
     writeFileSync(badge, '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1140 512"/>')
-    const design = (await loadOgDesign(dir, on, content, 'de'))!
+    const design = (await loadOgDesign(dir, on, content, 'de', {}))!
     const source = join(dir, 'a.png')
     const xmp =
       '<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' +

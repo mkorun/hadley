@@ -78,6 +78,7 @@ The page:
 | `hasCode` | whether it has a code block that names its language (highlighting.md) |
 | `readingTimeMinutes`, `charCount` | for an article; the characters of its text |
 | `cover`, `isAiCover`, `coverAiTool` | its cover as values ("Covers"); whether it is AI-generated; the AI tool its XMP names (`aiTool` in any namespace, as aiprov writes it), else empty |
+| `coverMatrix` | the colour matrix of its `coverStyle` ("Covers"), else empty |
 | `newer`, `older` | for an article ("Newer and older") |
 | `mainArticle` | for a variant, the id of its bundle's page |
 | `html.markup` | its text |
@@ -147,7 +148,11 @@ either end. Any other page has both `null`.
 
 A page's `cover` is its picture, which a template writes as `html.cover`. `coverStyle` names a style for it; hadley
 hands it to the template as it is (`meta.coverStyle`), as it hands on the `data-style` of an image in the text
-(`<m data-style=ink>`). A theme draws the styles it knows, and any other cover as it is.
+(`<m data-style=ink>`). A theme draws the styles it knows, and any other cover as it is. A style it draws through a
+colour matrix it gives as a token `--cover-<style>` in the `:root` of `assets/css/style.css`, 20 numbers as SVG's
+`feColorMatrix` takes them; a template writes the matrix of its page's style as `coverMatrix` into its filter
+(`<feColorMatrix type="matrix" values="{ coverMatrix }">`), and the og image goes through it too (config.md, "og
+images"). A token that is not 20 numbers stops the build.
 
 An entry of a list holds the cover of its page as that page shows it: each entry of `featuredList`, `articleList` and
 `feed.items` whose page shows a cover (its template has a `cover` image config) has `item.cover`, the picture as values

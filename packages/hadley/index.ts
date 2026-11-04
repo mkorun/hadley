@@ -21,6 +21,7 @@ import { feedLanguages, feedUrl, feedXml } from './lib/feed.ts'
 import { generateOgDefault } from './lib/generate-og-default.ts'
 import { llmsTxt } from './lib/llms.ts'
 import { markdownPath } from './lib/markdown.ts'
+import { readCoverMatrices } from './lib/cover-matrices.ts'
 import { loadOgDesign } from './lib/og.ts'
 import { Output } from './lib/output.ts'
 import { settle } from './lib/problems.ts'
@@ -76,8 +77,10 @@ export async function build(
   // under maintenance a publish build makes the 503 page alone: no feed, sitemap, llms.txt or search (config.md)
   const maintenance = isPublish && underMaintenance(site.config)
   const feeds = maintenance ? [] : feedLanguages(site)
+  // how the theme draws its cover styles, for its templates and the og images (lib/cover-matrices.ts)
+  const coverMatrices = await readCoverMatrices(siteDir)
   // undefined unless config.lima enables og images; then their design is complete, or the build stops here
-  const og = await loadOgDesign(siteDir, site.config, site.content, site.defaultLanguage)
+  const og = await loadOgDesign(siteDir, site.config, site.content, site.defaultLanguage, coverMatrices)
   // what the theme publishes, by output path, under its final name: writeTheme() writes it, templates read the names
   // as assets, and a site path in content names one
   const themeDir = joinPath(siteDir, 'theme')
@@ -221,6 +224,7 @@ export async function build(
     assets: assetsFor(assetNames),
     isPublish,
     og: og !== undefined,
+    coverMatrices,
   })
   doneRender(`${pages.count} pages → ${outputDir}/`, settle(pages.problems, isPublish))
   if (isVerbose) {

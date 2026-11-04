@@ -93,10 +93,9 @@ its cover or its first picture, with its title. It needs the site's logo (`--og-
 `--og-background` and `--og-accent` in that stylesheet; a missing one stops the build with all of them named.
 `--og-background` is the ground of `og-default.jpg` and shades the title, and a transparent picture lies on it; the
 edges of a picture that does not fit 1200 × 630 take the colour of its own; `--og-accent` underlines the claim on
-`og-default.jpg`. A token `--og-cover-<style>` gives the covers of pages with `coverStyle: <style>` a colour matrix, 20
-numbers as SVG's `feColorMatrix` takes them, that the cover goes through before it lies on `--og-background`: so an og
-image can draw a style as the theme draws it on the page (themes.md, "Covers"). The title is set in Noto Sans where the
-system has it (`fonts-noto-core` on Debian and Ubuntu). The JSON-LD of an article whose og image is AI-generated
+`og-default.jpg`. A cover whose style the theme draws through a colour matrix (themes.md, "Covers") goes through it
+before it lies on `--og-background`, so that its og image shows it as its page does. The title is set in Noto Sans where
+the system has it (`fonts-noto-core` on Debian and Ubuntu). The JSON-LD of an article whose og image is AI-generated
 describes that image with what its XMP gives: its creator (`dc:creator`), its credit (`photoshop:Credit`, else the
 creator) and its description (`dc:description`).
 

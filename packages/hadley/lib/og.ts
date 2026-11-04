@@ -2,15 +2,16 @@
  * The design of a site's og images, read once: off unless config.lima sets `og: enabled: true`. Then the site's logo
  * (resolveLogoPath), its claim in every language and the tokens `--og-background` and `--og-accent` of its style.css
  * are required; a missing one stops the build with all of them named. `--og-background` is the ground of
- * og-default.jpg and the shade under the title of a page's og image. A token `--og-cover-<style>` gives a cover of that
- * coverStyle a colour matrix to go through first. An AI-generated image needs the theme's `assets/icons/ai-badge.svg`,
- * which generateOgImage() asks for when it meets one.
+ * og-default.jpg and the shade under the title of a page's og image. A cover goes through the colour matrix of its
+ * style first, where the theme gives one (lib/cover-matrices.ts). An AI-generated image needs the theme's
+ * `assets/icons/ai-badge.svg`, which generateOgImage() asks for when it meets one.
  */
 
 import sharp from 'sharp'
 import { readFile } from 'node:fs/promises'
 import { join as joinPath } from 'node:path'
-import { readCssTokens, readCssTokensStartingWith } from './read-css-tokens.ts'
+import type { CoverMatrices } from './cover-matrices.ts'
+import { readCssTokens } from './read-css-tokens.ts'
 import { resolveLogoPath } from './resolve-logo-path.ts'
 
 export interface OgDesign {
@@ -18,8 +19,8 @@ export interface OgDesign {
   background: string // #rrggbb
   accent: string
   claims: Record<string, string> // by language
-  // by cover style: the 4 × 5 colour matrix (as SVG's feColorMatrix takes it) a cover of that style goes through
-  coverMatrices: Record<string, number[]>
+  // by cover style: the colour matrix a cover of that style goes through (lib/cover-matrices.ts)
+  coverMatrices: CoverMatrices
   origins: Record<string, string>
   defaultLanguage: string
   aiBadgePath: string
@@ -32,6 +33,7 @@ export async function loadOgDesign(
   config: { og?: { enabled?: unknown } },
   content: Record<string, { claim?: string | undefined; origin?: string }>,
   defaultLanguage: string,
+  coverMatrices: CoverMatrices,
 ): Promise<OgDesign | undefined> {
   if (config.og?.enabled !== true) return undefined
   const missing: string[] = []
@@ -54,13 +56,6 @@ export async function loadOgDesign(
   const tokens = await readCssTokens(siteDir, ['--og-background', '--og-accent'])
   for (const name of ['--og-background', '--og-accent']) {
     if (!HEX.test(tokens[name] ?? '')) missing.push(`${name} as #rrggbb in the :root of theme/assets/css/style.css`)
-  }
-
-  const coverMatrices: Record<string, number[]> = {}
-  for (const [style, value] of Object.entries(await readCssTokensStartingWith(siteDir, '--og-cover-'))) {
-    const numbers = value.split(/[\s,]+/).map(Number)
-    if (numbers.length === 20 && numbers.every(Number.isFinite)) coverMatrices[style] = numbers
-    else missing.push(`--og-cover-${style} as 20 numbers, a colour matrix as feColorMatrix takes it`)
   }
 
   const claims: Record<string, string> = {}

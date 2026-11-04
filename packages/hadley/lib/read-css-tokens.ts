@@ -40,7 +40,7 @@ export async function readCssTokens(siteDir: string, names: string[]): Promise<R
   return result
 }
 
-/** Every token whose name begins with `prefix`, by the rest of its name (`--og-cover-doodle` → `doodle`). */
+/** Every token whose name begins with `prefix`, by the rest of its name (`--cover-doodle` → `doodle`). */
 export async function readCssTokensStartingWith(siteDir: string, prefix: string): Promise<Record<string, string>> {
   const result: Record<string, string> = {}
   for (const [name, value] of (await rootTokens(siteDir)) ?? [])
