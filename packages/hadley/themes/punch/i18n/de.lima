@@ -35,9 +35,6 @@ status:
   scheduled: Geplant
   updated:   Aktualisiert
 
-footer:
-  builtWith: Erstellt mit
-
 image:
   aiGenerated:    KI-generiert
   aiGeneratedAlt: (KI-generiert)

@@ -6,7 +6,7 @@
     {/each}
   </nav>
   {/if}
-  <p>© { copyrightYear } { site.title } · { t.footer.builtWith } <a href="https://hadley.sh">hadley</a></p>
+  <p>© { copyrightYear } { site.title } · Built with <a href="https://hadley.sh">hadley</a></p>
 </footer>
 {#if site.search}
 <dialog class="search" aria-label="{ t.search.label }" data-results="{ t.search.results }" data-none="{ t.search.none }">

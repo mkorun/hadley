@@ -35,9 +35,6 @@ status:
   scheduled: Programado
   updated:   Actualizado
 
-footer:
-  builtWith: Hecho con
-
 image:
   aiGenerated:    Generado por IA
   aiGeneratedAlt: (generado por IA)
