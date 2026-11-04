@@ -44,7 +44,7 @@ const launcher = join(repo, 'services', 'launcher')
 /** The Bun of the programs, the one `.github/actions/tools` names, as a test checks. */
 export const BUN_VERSION = '1.4.0'
 /** The Pagefind of the programs, the one bun.lock names, as a test checks: the package talks to this binary. */
-export const PAGEFIND_VERSION = '1.5.2'
+export const PAGEFIND_VERSION = '1.6.0'
 
 interface Asset {
   name: string
@@ -74,7 +74,7 @@ export const TARGETS: Target[] = [
     },
     pagefind: {
       name: 'x86_64-unknown-linux-musl',
-      sha256: 'afb824a9e7f64905a934900481cea5be679c03975e527329e0e5e6cc70f5feda',
+      sha256: '004d40c9a644c995dadc42b8031196c6f17e7a6dacf9a6c15c63286dd6ead5f2',
     },
   },
   {
@@ -84,7 +84,7 @@ export const TARGETS: Target[] = [
     bun: { name: 'bun-linux-aarch64', sha256: '4b1a332ee861983eb93bcfe6f770fff94e3e31b2c388bdaea3c8ed35e58eed0e' },
     pagefind: {
       name: 'aarch64-unknown-linux-musl',
-      sha256: 'f50ec608bcbf431cebd84e0efa3a5b041ee63df2ad81f138023e0cfd2f509424',
+      sha256: 'ad286f25e3109a2c6c740bb46998f75e1eae93df41f64c4699f0c2bc8db101ce',
     },
   },
   {
@@ -97,7 +97,7 @@ export const TARGETS: Target[] = [
     },
     pagefind: {
       name: 'x86_64-apple-darwin',
-      sha256: '26f51b4ba921897142338fb13b836420696e251fe197b1782ea7981de311156d',
+      sha256: '2459b1ab8b5d27375a4aedf856f1d6060e5508d18a769238d672c07eaca2fe96',
     },
   },
   {
@@ -107,7 +107,7 @@ export const TARGETS: Target[] = [
     bun: { name: 'bun-darwin-aarch64', sha256: 'c669e97f6164e1c96e0701748db98dfa77492908cbd8394c7557134a735de381' },
     pagefind: {
       name: 'aarch64-apple-darwin',
-      sha256: '7286f394a349bd37677d44a65a20078a02b1747da0b0814d83403bf86be17abe',
+      sha256: '43f17bec7ad55947f06c8f9689a1ac2c5d1ea7c96294bceaa3cc4e7152c1cf55',
     },
   },
   {
@@ -120,7 +120,7 @@ export const TARGETS: Target[] = [
     },
     pagefind: {
       name: 'x86_64-pc-windows-msvc',
-      sha256: 'fab125d5e8e2d3481ffe7d36dec6e101f54a6581cd51cf5e2e09220d4bc78e9c',
+      sha256: '11fc76e8efec23bae11b7100fbf596438b59cc6da2097cf63f3a8ced3802f270',
     },
   },
 ]
