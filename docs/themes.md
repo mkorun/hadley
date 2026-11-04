@@ -5,7 +5,7 @@ on the site changes it as it likes.
 
 ```
 theme/
-  templates/     the pages' templates (.chase), their partials (.sort), markup/heading.sort and markup/note.sort
+  templates/     the pages' templates (.chase), their partials (.sort) and markup/heading.sort
   i18n/          the theme's texts, one file per language (en.lima, de.lima, …), `t` in templates
   highlighting/  the theme's own colours for code (Shiki themes), which config.lima names
   static/        files published at the root of the site (robots.txt, favicon.ico, …)
@@ -85,7 +85,6 @@ The page:
 | `html.tldr` | its `:::tldr` summary |
 | `html.jsonLd` | its JSON-LD, a `<script type="application/ld+json">` |
 | `html.comments` | its comments, which the comments tool writes (comments.md) |
-| `html.notes` | the notes of its language as the theme writes them ("Notes") |
 | `html.fields.<field>` | the HTML of a field `config.lima` gives a template (config.md) |
 
 The site and the build:
@@ -97,7 +96,7 @@ The site and the build:
 | `navigations` | each navigation of `config.lima`: `id`, `title`, `urlPath`, `unpublished` |
 | `homeUrl` | the home page in the page's language ("Home page") |
 | `featuredList`, `articleList` | on the home page, the featured articles (with their `label`, and `isSeries` for the latest of a series); on every page, the listed articles, newest first (with `year`, `yearChanged`, `isDraft`), on the home page without the featured ones |
-| `noteList` | the notes of the page's language, newest first, as values ("Notes") |
+| `noteList` | the notes of the page's language, newest first ("Notes") |
 | `feed` | where the language has a feed: its `url`, and its articles as `items` |
 | `copyrightYear` | `site.since` to this year, `2026–2027`, or this year alone |
 | `assets` | the URL path a theme file is published under, by its own: `assets['/assets/css/style.css']` |
@@ -105,27 +104,18 @@ The site and the build:
 
 An entry of a list (`featuredList`, `articleList`, `feed.items`, `newer`, `older`) holds `urlPath`, `title`,
 `subtitle`, `description`, `publishFrom`, `updatedAt`, `displayDate` (the later of the two), `isUpdated`, `status`,
-`showBadge`, `category`, `categoryLabel`, `cover` and `isAiCover`.
+`showBadge`, `category`, `categoryLabel`, `link` (or empty), `cover` and `isAiCover`.
 
 ## Notes
 
-Templates read the notes of the page's language (content.md, "Notes") as `noteList`, newest first by `publishFrom`: a
-publish build the published ones, a dev build drafts and seeds as well, with `isDraft`. An entry holds `id` (the name of
-its file or bundle), `title`, `publishFrom`, `link` (or empty), `category`, `categoryLabel`, `tags`, `ageDays` (the
-days from its `publishFrom` to the day of the build) and `meta` (its front matter, with the fields `config.lima`
-declares). Ties in `publishFrom` are ordered by `id`, ascending by UTF-16 code unit.
-
-A note's text is HTML, which a template writes only as `html.*`; so a theme with `templates/markup/note.sort` writes
-each note, as `heading.sort` writes a heading ("Headings"). The template gets the entry's values, the note's text as
-`html.text`, and the page's `t` and `meta.lang`; hadley writes the notes with it, newest first, as `html.notes`.
-Without the file, `html.notes` is empty.
+A note is a page with the template `note` (`templates/note.chase`), as an article has `article`. Every template reads
+the notes of its page's language (content.md, "Notes") as `noteList`, newest first by `publishFrom` and, on the same
+day, by `id`: a publish build the published ones, a dev build drafts and seeds as well. An entry holds what an entry
+of a list holds ("What a template reads"), and `tags`, `ageDays` (the days from its `publishFrom` to the day of the
+build) and `isDraft`.
 
 ```
-<article class="note">
-  <h3>{#if link}<a href="{ link }">{ title }</a>{:else}{ title }{/if}</h3>
-  <p><time datetime="{ publishFrom | isoDate }">{ publishFrom | dateFormat('yyyy-MM-dd') }</time> · { categoryLabel }</p>
-  {@raw html.text}
-</article>
+{#each noteList as note}<li><a href="{#if note.link}{ note.link }{:else}{ note.urlPath }{/if}">{ note.title }</a> { note.description }</li>{/each}
 ```
 
 ## Headings

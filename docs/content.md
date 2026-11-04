@@ -46,7 +46,7 @@ author: $(persons/ada)
 | `sitemap` | `false` leaves the page out of `sitemap.xml`, the feed, the search index and `llms.txt` |
 | `markdown` | `false` leaves out its Markdown twin when the site makes them (deploy.md, "Markdown for language models") |
 | `urlPath` | its URL path instead of `/<file name>/`; an error page takes none (site.md) |
-| `link` | for a note, the address it points to ("Notes") |
+| `link` | the address on another site the page points to, `https`, such as a note's issue ("Notes") |
 | `template`, `type` | another template or type than its root gives (site.md) |
 | `vgwort_pixel` | the counting pixel of VG Wort; `config.lima` says how it is written (config.md, "Fields of a page") |
 
@@ -55,10 +55,11 @@ page"). Any other field is a problem of the page; so is a value of the wrong kin
 
 ## Notes
 
-A note (`notes/`, site.md) is a short piece of news, written as any page: its title is its first `#` heading (or its
-`title`, "Title"), its text a few lines of Markanto. Its front matter gives its day, `publishFrom`; where it points
-somewhere, `link`, its `https` address; and, as on any page, its kind as `category` and its groups as
-`tags`, with the values `config.lima` allows (config.md, "Fields of a page").
+A note (`notes/`, site.md) is a short dated page, written and built as any page: its title, a few lines of text, its
+`publishFrom` and its `description`, the line a list shows of it. Where it points somewhere else, `link` is that
+address, as on any page: `https`, and on another site, as a page of this one is linked by its id in the text (`$id`).
+Its kind is its `category` and its groups are its `tags`, with the values `config.lima` allows (config.md, "Fields of
+a page").
 
 ```markdown
 ---
@@ -66,15 +67,17 @@ publishFrom: 2026-11-04
 category: issue
 tags: [staticcheck, go]
 link: https://github.com/dominikh/go-tools/issues/1847
+description: staticcheck skips every package under the user cache directory, taking it for Go's build cache.
 ---
 # staticcheck ignores its config under ~/.cache
 
-staticcheck skips every package whose path starts with the user cache directory, taking it for Go's build cache.
+Reported with a script that plays every case; the suggestion is to compare against `GOCACHE` instead.
 ```
 
-A note without a title or a `publishFrom`, or with a `link` that is not `https`, is a problem of the note; `link` on any
-other page is a problem of that page. A note has no page, so no feed, sitemap, search index or `llms.txt` names it;
-templates show it (themes.md, "Notes").
+A note without a `publishFrom` is a problem of the note, and so is, on any page, a `link` that is not `https` or
+names this site. A note that stands alone as a `.md` file has no bundle, so a file it names is a problem; a note with
+files is a bundle, as an article is. Templates list the notes as `noteList` (themes.md, "Notes"); the home page's
+list and the feed name none.
 
 ## Markanto in hadley
 

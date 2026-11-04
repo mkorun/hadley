@@ -44,7 +44,7 @@ The folders of `content/` are its roots. A root gives its pages their type, its 
 | `articles/` | article | dated; in the home page's list, the feed and the search; an og image when the site makes them |
 | `essays/` | essay | as an article |
 | `pages/` | page | a page of its own, listed only where a navigation or a template names it |
-| `notes/` | note | no page of its own; templates show it (themes.md, "Notes"); a note may also stand alone as a `.md` file, in a collection too |
+| `notes/` | note | dated, a short page of its own; in templates' `noteList`, not in the home page's list or the feed; a note may also stand alone as a `.md` file, in a collection too, and names no file then |
 
 The front matter's `type` gives a page another type, `template` another template; `templates` of `config.lima` gives a
 whole root one (config.md). Without either, a page's template is its root's type: `templates/article.chase`.
