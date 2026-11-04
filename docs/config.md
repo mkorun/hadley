@@ -87,13 +87,15 @@ theme's own `robots.txt` takes precedence ([deploy.md](deploy.md)).
 
 ### og images
 
-With `og: enabled: true`, hadley makes `og-default.jpg` for the site and an `og.jpg` for every article and essay,
-from its cover or its first picture, with its title. It needs the site's logo (`--og-logo` in the theme's
+With `og: enabled: true`, hadley makes `og-default.jpg` for the site and an `og.jpg` for every article and essay, from
+its cover or its first picture, with its title. It needs the site's logo (`--og-logo` in the theme's
 `assets/css/style.css`, else `theme/assets/images/logo.svg` or `logo.png`), a `claim` in every language, and the tokens
-`--og-background` and `--og-accent` in that stylesheet; a missing one stops the build with all of them named. The
-title is set in Noto Sans where the system has it (`fonts-noto-core` on Debian and Ubuntu). The JSON-LD of an
-article whose og image is AI-generated describes that image with what its XMP gives: its creator (`dc:creator`), its
-credit (`photoshop:Credit`, else the creator) and its description (`dc:description`).
+`--og-background` and `--og-accent` in that stylesheet; a missing one stops the build with all of them named.
+`--og-background` is the ground of `og-default.jpg` and shades the title, and a transparent picture lies on it; the
+edges of a picture that does not fit 1200 × 630 take the colour of its own; `--og-accent` underlines the claim on
+`og-default.jpg`. The title is set in Noto Sans where the system has it (`fonts-noto-core` on Debian and Ubuntu). The
+JSON-LD of an article whose og image is AI-generated describes that image with what its XMP gives: its creator
+(`dc:creator`), its credit (`photoshop:Credit`, else the creator) and its description (`dc:description`).
 
 ## Fields of a page
 

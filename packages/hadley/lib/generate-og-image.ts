@@ -40,9 +40,9 @@ import { element, xmlDocument, type XmlElement } from './xml.ts'
 
 const OG_WIDTH = 1200
 const OG_HEIGHT = 630
-const OG_BG = { r: 252, g: 252, b: 252, alpha: 1 as const }
-// Bump version when overlay design changes to invalidate the cache, or what the cache keeps of an image (v14: creator)
-const OG_CONFIG_HASH = 'og:1200x630:v14'
+// Bump version when overlay design changes to invalidate the cache, or what the cache keeps of an image (v14: creator;
+// v15: the edges in the colour of the picture's own)
+const OG_CONFIG_HASH = 'og:1200x630:v15'
 
 // Insert XMP APP1 segment after SOI — skip APP0 (JFIF) if present so the
 // JFIF spec (APP0 must immediately follow SOI) is not violated.
@@ -58,6 +58,36 @@ const injectJpegXmp = (jpegBuf: Buffer, xmpBuf: Buffer): Buffer => {
   let insertAt = 2
   if (jpegBuf[2] === 0xff && jpegBuf[3] === 0xe0) insertAt = 4 + jpegBuf.readUInt16BE(4)
   return Buffer.concat([jpegBuf.subarray(0, insertAt), seg, jpegBuf.subarray(insertAt)])
+}
+
+/**
+ * The mean colour of the edges of a picture that the og image's edges continue: its top and bottom rows when it is
+ * wider than the image, else its left and right columns. Read from a small copy, over `ground` where it is
+ * transparent, as the og image lays it.
+ */
+export const edgeColour = async (
+  bytes: Buffer,
+  aspect: number,
+  ground: string,
+): Promise<{ r: number; g: number; b: number }> => {
+  const N = 32
+  const { data } = await sharp(bytes)
+    .timeout({ seconds: IMAGE_SECONDS })
+    .flatten({ background: ground })
+    .resize(N, N, { fit: 'fill' })
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+  const wide = aspect > OG_WIDTH / OG_HEIGHT
+  const sum = [0, 0, 0]
+  let n = 0
+  for (let y = 0; y < N; y++)
+    for (let x = 0; x < N; x++) {
+      if (wide ? y !== 0 && y !== N - 1 : x !== 0 && x !== N - 1) continue
+      for (let c = 0; c < 3; c++) sum[c]! += data[(y * N + x) * 3 + c]!
+      n++
+    }
+  const [r, g, b] = sum.map((v) => Math.round(v / n)) as [number, number, number]
+  return { r, g, b }
 }
 
 // Approximate text wrapping for Noto Sans Bold.
@@ -269,12 +299,18 @@ export async function generateOgImage(
 
     // portrait: cropped (cover, centre); landscape or square: contained and padded (see the top of the file)
     const isPortrait = w < h
+    // a transparent picture lies on the site's ground, as one with coverStyle lines lies on its stage
     const baseImage = sharp(bytes)
       .timeout({ seconds: IMAGE_SECONDS })
+      .flatten({ background: design.background })
       .resize(
         OG_WIDTH,
         OG_HEIGHT,
-        isPortrait ? { fit: 'cover', position: 'centre' } : { fit: 'contain', background: OG_BG },
+        // the edges of a picture that does not fit take the colour of its own, so that a light etching and a dark
+        // picture both run on into them
+        isPortrait
+          ? { fit: 'cover', position: 'centre' }
+          : { fit: 'contain', background: await edgeColour(bytes, w / h, design.background) },
       )
 
     // Read source metadata once for AI-detection and XMP extraction
