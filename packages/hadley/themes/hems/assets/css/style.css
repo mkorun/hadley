@@ -6,10 +6,9 @@
 /* ---------- tokens ---------- */
 
 :root {
-  /* the og images (hadley reads these two as literal values), which set claim and title in white, so they take the
-     paper and red of the dark scheme */
+  /* the ground of the og images (hadley reads it as a literal value), which set claim and title in white, so it takes
+     the paper of the dark scheme */
   --og-background: #161512;
-  --og-accent: #e0705a;
 
   --paper: light-dark(#faf9f4, #161512);
   --paper-sunk: light-dark(#f2f0e6, #1d1c18);

@@ -8,9 +8,8 @@
 /* ---------- tokens ---------- */
 
 :root {
-  /* the og images (hadley reads these two as literal values) */
+  /* the ground of the og images (hadley reads it as a literal value) */
   --og-background: #1b1d23;
-  --og-accent: #d58b6c;
 
   --bg: light-dark(#f4f0e9, #1b1d23);
   --surface: light-dark(#fbf9f5, #23262e);

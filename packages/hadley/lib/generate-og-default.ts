@@ -3,7 +3,8 @@
  *
  * Makes a site's og-default.jpg; the build (index.ts) calls generateOgDefault().
  * Layout: the logo, or the site's name where it has none, and the claim (in two lines) large in the centre, the URL
- * small at the bottom right.
+ * small at the bottom right. Straight and plain unless the theme sets `--og-accent` (a line under the claim) or
+ * `--og-tilt` (the claim turned by it, the logo by half), as teblo.de does.
  *
  * System requirement: fonts-noto-core (sudo apt install -y fonts-noto-core)
  */
@@ -84,7 +85,8 @@ export async function generateOgDefault(design: OgDesign, outputPath: string, st
   const line2Y = line1Y + size + LINE_GAP // baseline of line 2
   const textMidY = hasSplit ? (line1Y + line2Y) / 2 : line1Y - size / 2
 
-  // an accent line under each line, as wide as its text; a second line broken at a space is drawn as the first
+  // where the theme sets --og-accent, a line under each line, as wide as its text; a second line broken at a space is
+  // drawn as the first
   const half1 = Math.round(size * ACCENT_F1 * (line1.length / 2)) - 18
   const half2 = !hasSplit
     ? 0
@@ -103,7 +105,7 @@ export async function generateOgDefault(design: OgDesign, outputPath: string, st
   const logoCX = logoX + LOGO_W / 2
   const logoCY = logoY + LOGO_H / 2
 
-  // Claim and origin are drawn in white over the background; the claim is underlined per line in the accent colour
+  // Claim and origin are drawn in white over the background
   const text = (x: number, y: number, attrs: XmlElement['attrs'], value: string) =>
     element('text', [['x', `${x}`], ['y', `${y}`], ['font-family', FONT], ...attrs], value)
   const claimLine = (value: string, y: number, from: number, to: number, accentY: number) => [
@@ -118,15 +120,22 @@ export async function generateOgDefault(design: OgDesign, outputPath: string, st
       ],
       value,
     ),
-    element('line', [
-      ['x1', `${from}`],
-      ['y1', `${accentY}`],
-      ['x2', `${to}`],
-      ['y2', `${accentY}`],
-      ['stroke', ACCENT],
-      ['stroke-width', '4'],
-    ]),
+    ...(ACCENT === undefined
+      ? []
+      : [
+          element('line', [
+            ['x1', `${from}`],
+            ['y1', `${accentY}`],
+            ['x2', `${to}`],
+            ['y2', `${accentY}`],
+            ['stroke', ACCENT],
+            ['stroke-width', '4'],
+          ]),
+        ]),
   ]
+  // a group turned by `angle` about (x, y), or one left as it is
+  const turned = (angle: number, x: number, y: number) =>
+    angle === 0 ? [] : ([['transform', `rotate(${angle}, ${x}, ${y})`]] as XmlElement['attrs'])
 
   const layers: XmlElement[] = [
     element('rect', [
@@ -136,7 +145,7 @@ export async function generateOgDefault(design: OgDesign, outputPath: string, st
     ]),
     element(
       'g',
-      [['transform', `rotate(-1, ${logoCX}, ${logoCY})`]],
+      turned(design.tilt / 2, logoCX, logoCY),
       'logo' in brand
         ? element('image', [
             ['href', `data:${brand.logo.mime};base64,${brand.logo.data}`],
@@ -159,7 +168,7 @@ export async function generateOgDefault(design: OgDesign, outputPath: string, st
     ),
     element(
       'g',
-      [['transform', `rotate(-2, ${CX}, ${textMidY})`]],
+      turned(design.tilt, CX, textMidY),
       ...claimLine(line1, line1Y, acc1L, acc1R, accent1Y),
       ...(hasSplit ? claimLine(line2, line2Y, acc2L, acc2R, accent2Y) : []),
     ),

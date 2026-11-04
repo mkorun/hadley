@@ -48,6 +48,7 @@ describe('the design of og images', () => {
     )
     assert.equal(design?.background, '#102030')
     assert.equal(design?.accent, '#ABCDEF')
+    assert.equal(design?.tilt, 0)
     assert.deepEqual(design?.claims, { de: 'Ein Claim', en: 'A claim' })
     assert.equal(design?.logo?.aspect, 2)
     assert.equal(design?.defaultLanguage, 'de')
@@ -65,11 +66,23 @@ describe('the design of og images', () => {
 
   // they fell back to teblo.de's colours, a guessed logo ratio and an empty claim
   it('stops the build with everything it lacks named, instead of guessing', async () => {
-    theme(':root { --og-background: navy; }', false)
+    theme(':root { --og-background: navy; --og-accent: blue; --og-tilt: a bit; }', false)
     await assert.rejects(
       loadOgDesign(dir, on, { de: {}, en: { claim: 'A claim' } }, 'de', {}),
-      /need --og-background as #rrggbb .*, --og-accent as #rrggbb .*, a claim for the language de, a logo .* or a title for the language de, a logo .* or a title for the language en$/,
+      /need --og-background as #rrggbb .*, --og-accent as #rrggbb .*, or none, --og-tilt as an angle .*, or none, a claim for the language de, a logo .* or a title for the language de, a logo .* or a title for the language en$/,
     )
+  })
+
+  // 2026-11-05: the slant and the line under the claim are teblo.de's, and every other site had them too
+  it('sets og-default.jpg straight and plain, unless the theme turns or underlines its claim', async () => {
+    theme(':root { --og-background: #102030; }')
+    const plain = (await loadOgDesign(dir, on, content, 'de', {}))!
+    assert.equal(plain.accent, undefined)
+    assert.equal(plain.tilt, 0)
+    theme(':root { --og-background: #102030; --og-accent: #00b1ed; --og-tilt: -2deg; }')
+    const teblo = (await loadOgDesign(dir, on, content, 'de', {}))!
+    assert.equal(teblo.accent, '#00b1ed')
+    assert.equal(teblo.tilt, -2)
   })
 })
 
