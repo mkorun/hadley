@@ -91,7 +91,9 @@ With `og: enabled: true`, hadley makes `og-default.jpg` for the site and an `og.
 from its cover or its first picture, with its title. It needs the site's logo (`--og-logo` in the theme's
 `assets/css/style.css`, else `theme/assets/images/logo.svg` or `logo.png`), a `claim` in every language, and the tokens
 `--og-background` and `--og-accent` in that stylesheet; a missing one stops the build with all of them named. The
-title is set in Noto Sans where the system has it (`fonts-noto-core` on Debian and Ubuntu).
+title is set in Noto Sans where the system has it (`fonts-noto-core` on Debian and Ubuntu). The JSON-LD of an
+article whose og image is AI-generated describes that image with what its XMP gives: its creator (`dc:creator`), its
+credit (`photoshop:Credit`, else the creator) and its description (`dc:description`).
 
 ## Fields of a page
 

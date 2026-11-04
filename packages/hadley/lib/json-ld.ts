@@ -48,14 +48,17 @@ export function jsonLd(page: Page, language: Language, lang: string, ogImage: st
 
   const meta = page.metadata
   if (!page.articleLike || !meta.publishFrom) return ''
-  const authorName = typeof meta.author === 'object' ? meta.author.name : meta.author
+  // the page's author, else the site's owner (themes.md, "Persons")
+  const owner = (language.ownerLinks ?? {}) as Record<string, string | undefined>
+  const authorName = (typeof meta.author === 'object' ? meta.author.name : meta.author) || owner.name
   const image =
     !page.ogImage && page.isAiOg
       ? {
           '@type': 'ImageObject',
           url: ogImage,
           digitalSourceType: 'https://schema.org/TrainedAlgorithmicMediaDigitalSource',
-          ...(authorName ? { creator: { '@type': 'Person', name: authorName } } : {}),
+          // the image's own creator, who need not be the article's author
+          ...(page.ogCreator ? { creator: { '@type': 'Person', name: page.ogCreator } } : {}),
           ...(page.ogCreditText ? { creditText: page.ogCreditText } : {}),
           ...(page.ogImageDesc ? { description: page.ogImageDesc } : {}),
         }

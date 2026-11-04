@@ -194,6 +194,7 @@ export interface CacheEntry {
   // the AI tool its XMP names (aiToolOf), null for none; undefined in an entry written before hadley read it
   aiTool?: string | null
   // undefined when the source image carries no XMP metadata; JSON.stringify drops it from the cache file
+  creator?: string | undefined
   creditText?: string | undefined
   imageDescription?: string | undefined
 }

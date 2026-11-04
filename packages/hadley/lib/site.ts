@@ -99,6 +99,7 @@ export interface Page {
   coverAiTool?: string | undefined // the AI tool the cover's XMP names
   hasOgImage?: boolean
   isAiOg?: boolean
+  ogCreator?: string | undefined // the creator its og image's XMP names
   ogCreditText?: string | undefined
   ogImageDesc?: string | undefined
 }

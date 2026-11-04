@@ -41,8 +41,8 @@ import { element, xmlDocument, type XmlElement } from './xml.ts'
 const OG_WIDTH = 1200
 const OG_HEIGHT = 630
 const OG_BG = { r: 252, g: 252, b: 252, alpha: 1 as const }
-// Bump version when overlay design changes to invalidate the cache
-const OG_CONFIG_HASH = 'og:1200x630:v13'
+// Bump version when overlay design changes to invalidate the cache, or what the cache keeps of an image (v14: creator)
+const OG_CONFIG_HASH = 'og:1200x630:v14'
 
 // Insert XMP APP1 segment after SOI — skip APP0 (JFIF) if present so the
 // JFIF spec (APP0 must immediately follow SOI) is not violated.
@@ -214,6 +214,7 @@ export interface OgImageResult {
   result: 'generated' | 'cached'
   isAi: boolean
   // undefined when the source image carries no XMP metadata
+  creator?: string | undefined
   creditText?: string | undefined
   imageDescription?: string | undefined
 }
@@ -249,6 +250,7 @@ export async function generateOgImage(
       return {
         result: 'cached',
         isAi: cached.isAi ?? false,
+        creator: cached.creator,
         creditText: cached.creditText,
         imageDescription: cached.imageDescription,
       }
@@ -278,9 +280,8 @@ export async function generateOgImage(
     // Read source metadata once for AI-detection and XMP extraction
     const srcXmp = meta.xmp ?? null
     const ai = srcXmp ? /trainedAlgorithmicMedia/i.test(srcXmp.toString('utf-8')) : false
-    const creditText = srcXmp
-      ? (extractXmpText(srcXmp, 'photoshop:Credit') ?? extractXmpText(srcXmp, 'dc:creator'))
-      : undefined
+    const creator = srcXmp ? extractXmpText(srcXmp, 'dc:creator') : undefined
+    const creditText = srcXmp ? (extractXmpText(srcXmp, 'photoshop:Credit') ?? creator) : undefined
     const imageDescription = srcXmp ? extractXmpText(srcXmp, 'dc:description') : undefined
 
     if (ai && badge === undefined) throw new Error(`an AI-generated og image needs the badge ${design.aiBadgePath}`)
@@ -316,11 +317,12 @@ export async function generateOgImage(
       naturalHeight: h,
       validWidths: [OG_WIDTH],
       isAi: ai,
+      creator,
       creditText,
       imageDescription,
     }
 
-    return { result: 'generated', isAi: ai, creditText, imageDescription }
+    return { result: 'generated', isAi: ai, creator, creditText, imageDescription }
   } finally {
     endTurn()
   }

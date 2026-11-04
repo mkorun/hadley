@@ -200,9 +200,9 @@ A page with a drawing needs `t.drawing.enlarge` in the theme's texts of its lang
 ## Persons
 
 A person is a file in `content/meta/persons/`; a page names one as its `author` (`author: $(persons/odile)`),
-`config.lima` one as the site's `owner`. Templates read them as `meta.author` and `site.ownerLinks`. A person's fields
-are those of the site's default language; a block named after another language of the site replaces fields for its
-pages, as in `config.lima`:
+`config.lima` one as the site's `owner`. Templates read them as `meta.author` and `site.ownerLinks`; the JSON-LD of an
+article names its author, else the owner. A person's fields are those of the site's default language; a block named
+after another language of the site replaces fields for its pages, as in `config.lima`:
 
 ```lima
 name: Odile Lemoine

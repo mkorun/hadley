@@ -226,6 +226,7 @@ export async function buildOgImages(options: FilesOptions): Promise<Counted> {
         }
         page.hasOgImage = true
         page.isAiOg = ogResult.isAi
+        page.ogCreator = ogResult.creator
         page.ogCreditText = ogResult.creditText
         page.ogImageDesc = ogResult.imageDescription
         return ogResult.result
