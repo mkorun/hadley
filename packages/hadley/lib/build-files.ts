@@ -62,7 +62,7 @@ export const buildPageFiles = async (
     place: (name: string, what: string) => string
     urlPath: string
     store: string // where derivatives are kept between builds
-    base: string // what its files are named from: '' beside the page, its URL path for an error page (pageBase)
+    base: string // what its files are named from: '' beside the page, its URL path for an error page
   },
   cache: ImageCache,
   aiLabels: AiLabels | undefined,
@@ -169,7 +169,7 @@ export const buildPageFiles = async (
       fail('could not be copied')
       return
     }
-    const href = `${target.base}${urlOf(file.rel)}`
+    const href = `${urlOf(target.base + file.rel)}`
     files.set(node, { kind: 'drawing', id, href, wide, ...(narrow ? { narrow } : {}) })
   }
 
@@ -190,7 +190,7 @@ export const buildPageFiles = async (
         const meta = ref.kind === 'native' ? await sharp(await pictureBytes(file.source)).metadata() : undefined
         const ai = labelled(meta?.xmp !== undefined && /trainedAlgorithmicMedia/i.test(meta.xmp.toString('utf-8')))
         await copyInto(file.source, destFile)
-        const href = `${target.base}${urlOf(file.rel)}${ref.suffix}`
+        const href = `${urlOf(target.base + file.rel)}${ref.suffix}`
         files.set(
           ref.node,
           meta

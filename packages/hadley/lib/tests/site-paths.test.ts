@@ -43,6 +43,26 @@ describe('findContentFile', () => {
     assert.deepEqual(await findContentFile(page, 'none.png'), { refused: 'does not exist' })
   })
 
+  it('never searches the directory of a solitary note, including in a collection', async () => {
+    for (const location of ['notes', 'notes/@series', 'notes/@series[1]']) {
+      const page = join(dir, location, 'evil.md')
+      mkdirSync(join(dir, location), { recursive: true })
+      writeFileSync(join(dir, location, 'private.pdf'), 'PRIVATE')
+      assert.deepEqual(lookupDirs(page), [])
+      assert.deepEqual(await findContentFile(page, 'private.pdf'), { refused: 'has no bundle to name a file of' })
+    }
+  })
+
+  it('recognises only a whole bracketed directory name as a bundle', async () => {
+    const collection = join(dir, '@series[1]')
+    const bundle = join(collection, '[b]')
+    mkdirSync(join(bundle, 'de'), { recursive: true })
+    writeFileSync(join(collection, 'private.pdf'), 'PRIVATE')
+    assert.deepEqual(lookupDirs(join(bundle, 'page.md')), [bundle])
+    assert.deepEqual(lookupDirs(join(bundle, 'de', 'page.md')), [join(bundle, 'de'), bundle])
+    assert.deepEqual(await findContentFile(join(bundle, 'page.md'), 'private.pdf'), { refused: 'does not exist' })
+  })
+
   it('does not look above a page that is not in a language directory', async () => {
     assert.deepEqual(lookupDirs(join(dir, '[b]', 'page.md')), [join(dir, '[b]')])
   })

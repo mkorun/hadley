@@ -3,14 +3,13 @@
  * only values a template writes as HTML). Pure: everything it reads was decided before (lib/site.ts).
  */
 import { hasCode } from '../case/index.ts'
-import type { Notes } from './notes.ts'
 import { jsonLd } from './json-ld.ts'
 import type { Config, Language, Locale, Page, Site } from './site.ts'
 import type { SiteView } from './site-view.ts'
 
 export interface ContextOptions {
   site: Site
-  notes: Notes // prepared once for the page’s language
+  notes: ReturnType<typeof notesFor> // prepared once for the page’s language
   view: SiteView // the page's language as its template sees it
   assets: Readonly<Record<string, string>>
   isPublish: boolean
@@ -72,7 +71,8 @@ const i18nLabel = (label: unknown, lang: string): string | null => {
 
 export const categoryLabel = (locale: Locale, category: string | undefined): string | undefined => {
   if (!category) return undefined
-  return (locale.categories as Record<string, string> | undefined)?.[category] ?? category
+  const categories = locale.categories as Record<string, string> | undefined
+  return categories && Object.hasOwn(categories, category) ? categories[category] : category
 }
 
 // a listed article as a list shows it
@@ -87,11 +87,32 @@ const listEntry = (page: Page, locale: Locale) => ({
   displayDate: page.metadata.updatedAt ?? page.metadata.publishFrom ?? '',
   status: page.state,
   showBadge: page.unpublished,
+  link: page.metadata.link ?? '',
   category: page.metadata.category ?? '',
   categoryLabel: categoryLabel(locale, page.metadata.category),
   cover: page.listCover ?? null,
   isAiCover: page.isAiCover ?? false,
 })
+
+/** Notes in the page's language, ordered by publication day and then id (docs/themes.md, "Notes"). */
+export function notesFor(site: Site, lang: string, isPublish: boolean) {
+  const locale = site.locales[lang] ?? {}
+  const today = Date.parse(site.today)
+  return Object.values(site.content[lang]!.pages)
+    .flatMap((page) => {
+      // A missing date is already a problem of the note; a dev build cannot order or age it.
+      if (page.type !== 'note' || !page.metadata.publishFrom || (isPublish && page.state !== 'published')) return []
+      return [{ page, date: page.metadata.publishFrom }]
+    })
+    .sort((a, b) => b.date.getTime() - a.date.getTime() || (a.page.id < b.page.id ? -1 : a.page.id > b.page.id ? 1 : 0))
+    .map(({ page, date }) => ({
+      ...listEntry(page, locale),
+      tags: page.metadata.tags ?? [],
+      // Calendar days, independent of time of day and daylight saving, on the build's scheduling day.
+      ageDays: (today - Date.parse(date.toISOString().slice(0, 10))) / 86_400_000,
+      isDraft: page.state === 'draft' || page.state === 'seed',
+    }))
+}
 
 const featured = (language: Language, lang: string, config: Config, locale: Locale) => {
   const featuredIds = new Set<string>()
@@ -101,7 +122,7 @@ const featured = (language: Language, lang: string, config: Config, locale: Loca
     const id: string = entry.id
     if (!id) continue
     const page = language.listed[id]
-    if (!page) continue
+    if (!page?.articleLike) continue
     featuredIds.add(id)
     items.push({ ...listEntry(page, locale), label: i18nLabel(entry.label, lang), isSeries: false })
   }
@@ -114,7 +135,9 @@ const featured = (language: Language, lang: string, config: Config, locale: Loca
     const latest = collIds
       .flatMap((cid) => {
         const page = language.listed[cid]
-        return page?.metadata.publishFrom ? [{ cid, page, publishFrom: page.metadata.publishFrom }] : []
+        return page?.articleLike && page.metadata.publishFrom
+          ? [{ cid, page, publishFrom: page.metadata.publishFrom }]
+          : []
       })
       .sort((a, b) => b.publishFrom.getTime() - a.publishFrom.getTime())[0]
     if (!latest) continue
@@ -225,7 +248,7 @@ export function pageContext(page: Page, options: ContextOptions): Record<string,
     readingTimeMinutes: isArticle ? readingTimeMinutes(page) : 0,
     seriesData: isArticle ? seriesData(page, language) : [],
     featuredList: home?.items ?? [],
-    noteList: options.notes.list,
+    noteList: options.notes,
     articleList: articleList(language, home?.featuredIds ?? new Set(), locale),
     ...neighbours(page, language, locale),
     navigations: language.navigations,
@@ -253,7 +276,6 @@ export function pageContext(page: Page, options: ContextOptions): Record<string,
     // the only values a template writes as HTML ({@raw html.…}); everything else it escapes
     html: {
       markup: page.markup,
-      notes: options.notes.html,
       jsonLd: jsonLd(page, language, lang, ogImage),
       cover: page.coverImageHtml ?? null,
       comments: options.comments ?? null,

@@ -15,7 +15,7 @@ import {
 } from './case/index.ts'
 import { logger, isVerbose, formatMs } from './lib/logger.ts'
 import loadSite from './lib/load-site.ts'
-import compileTemplates, { compileHeading, compileNote } from './lib/compile-templates.ts'
+import compileTemplates, { compileHeading } from './lib/compile-templates.ts'
 import type { ImageCache, ImageConfigs } from './lib/images.ts'
 import { feedLanguages, feedUrl, feedXml } from './lib/feed.ts'
 import { generateOgDefault } from './lib/generate-og-default.ts'
@@ -68,7 +68,6 @@ export async function build(
   }
   const templates = await compileTemplates(galleyOptions)
   const headingTemplate = await compileHeading(galleyOptions)
-  const noteTemplate = await compileNote(galleyOptions)
   doneTemplates()
 
   const doneSite = logger.step('load site')
@@ -216,18 +215,13 @@ export async function build(
   doneOg(og ? `${ogImages.built} new · ${ogImages.cached} cached` : 'off', settle(ogImages.problems, isPublish))
 
   const doneRender = logger.step('render pages')
-  const pages = await writePages(
-    templates,
-    output,
-    {
-      site,
-      feeds,
-      assets: assetsFor(assetNames),
-      isPublish,
-      og: og !== undefined,
-    },
-    noteTemplate,
-  )
+  const pages = await writePages(templates, output, {
+    site,
+    feeds,
+    assets: assetsFor(assetNames),
+    isPublish,
+    og: og !== undefined,
+  })
   doneRender(`${pages.count} pages → ${outputDir}/`, settle(pages.problems, isPublish))
   if (isVerbose) {
     logger.verbose(

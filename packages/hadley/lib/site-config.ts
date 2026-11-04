@@ -211,7 +211,10 @@ export function languageRecord(
     editors: config.editors ?? [],
     data: {},
     collections: {},
-    taxonomy: { categories: {}, tags: {} },
+    taxonomy: {
+      categories: Object.create(null) as Record<string, string[]>,
+      tags: Object.create(null) as Record<string, string[]>,
+    },
     pages: {},
     listed: {},
   }

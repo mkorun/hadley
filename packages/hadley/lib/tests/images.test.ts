@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   copyInto,
   pictureTurn,
+  pictureOf,
   resolveConfig,
   replaceJpegXmp,
   replacePngXmp,
@@ -63,6 +64,21 @@ const AI_XMP = `<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
     </rdf:Description>
   </rdf:RDF>
 </x:xmpmeta>`
+
+describe('pictureOf', () => {
+  test('percent-encodes a list cover’s page path in src and srcset (review 3.4)', () => {
+    const urlPath = '/a,b;+[x]{y}^`/über/'
+    const encoded = urlPath.split('/').map(encodeURIComponent).join('/')
+    const picture = pictureOf(
+      'pic.png',
+      { naturalWidth: 8, naturalHeight: 8, validWidths: [4] },
+      { widths: [4], formats: ['webp'], sizes: '100vw', quality: 80 },
+      urlPath,
+    )
+    assert.equal(picture.src, `${encoded}pic-4w.webp`)
+    assert.equal(picture.sources[0]!.srcset, `${encoded}pic-4w.webp 4w`)
+  })
+})
 
 describe('stripAiPromptFromXmp — namespace-agnostic (independent of the aiprov config)', () => {
   test('removes aiPrompt under an entirely different, unknown namespace', () => {

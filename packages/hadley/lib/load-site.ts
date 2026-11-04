@@ -94,7 +94,7 @@ const loadSite = async (siteDir: string, isPublish = false, localServer = false)
     }
     for (const file of files) {
       const language = languageOf(file.language)
-      const { page, problems } = await readPage(file, root, reading)
+      const { page, problems } = await readPage(file, root, reading, language.origin)
       if (language.pages[page.id]) {
         throw new Error(`${file.file}: the id ${page.id} is ${language.pages[page.id]!.file}'s already`)
       }
@@ -157,6 +157,7 @@ async function readPage(
   file: PageFile,
   root: (typeof CONTENT_ROOTS)[number],
   { config, schema, partials, defaultLanguage, isPublish, today }: Reading,
+  siteOrigin: string,
 ): Promise<{ page: Page; problems: Omit<Problem, 'page'>[] }> {
   const { language, variant, bundleId, collectionId } = file
   const source = String(await readFile(file.file))
@@ -218,13 +219,17 @@ async function readPage(
     problems.push({ message: 'has no publishFrom', hint: true })
   }
   if (metadata.link !== undefined) {
+    const link = URL.parse(metadata.link)
+    const origin = URL.parse(siteOrigin)
+    if (!origin) throw new Error(`${file.file}: link requires a valid site.origin in config.lima`)
     const message =
-      type !== 'note'
-        ? 'the front matter field link is allowed only on a note'
-        : !/^https:\/\//i.test(metadata.link) || URL.parse(metadata.link)?.protocol !== 'https:'
-          ? 'the note field link must be an https URL'
+      !/^https:\/\//i.test(metadata.link) || link?.protocol !== 'https:'
+        ? 'the field link must be an https URL'
+        : link.hostname === origin.hostname
+          ? 'the field link must name another site'
           : undefined
     if (message) {
+      delete metadata.link
       const line = fieldLine(source, 'link')
       problems.push({ message, ...(line === undefined ? {} : { line }) })
     }
@@ -270,8 +275,7 @@ async function readPage(
     status === 'published' && publishDay !== undefined && publishDay > today ? 'scheduled' : status
   ) as PageState
   const articleLike = type === 'article' || type === 'essay'
-  const html = type !== 'note'
-  const linkable = html && state === 'published'
+  const linkable = state === 'published'
   const inSiteFiles = linkable && front.inSitemap && collectionId !== 'errors'
   // llms.txt lists a published page of these; a dev build shows the twin of every one of them, drafts too
   const llmsKind = articleLike ? front.inSitemap : front.inSitemap && collectionId !== 'errors' && template !== 'home'
@@ -294,16 +298,16 @@ async function readPage(
     linkable,
     unpublished: state !== 'published',
     outputs: {
-      html,
-      listed: isPublish ? linkable : html,
+      html: true,
+      listed: !isPublish || linkable,
       // a page search engines are asked not to index is no URL the sitemap offers them; feed and search keep it
       sitemap: inSiteFiles && metadata.noindex !== true,
       feed: inSiteFiles && articleLike,
       llms: inLlms,
       // a twin of every page llms.txt lists, unless the page declines (docs/deploy.md)
-      markdown: config.markdown?.enabled === true && (isPublish ? inLlms : html && llmsKind) && front.inMarkdown,
+      markdown: config.markdown?.enabled === true && (isPublish ? inLlms : llmsKind) && front.inMarkdown,
       search: inSiteFiles,
-      indexed: html && state !== 'archived' && metadata.noindex !== true,
+      indexed: state !== 'archived' && metadata.noindex !== true,
     },
     metadata,
     collections: collectionId ? [collectionId] : [],

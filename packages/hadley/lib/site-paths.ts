@@ -4,7 +4,7 @@
  * it goes into the page's output directory. A name that would leave either is refused, and so is a URL path that
  * would put a page's output directory outside the site's.
  */
-import { dirname, isAbsolute, join, relative } from 'node:path'
+import { basename, dirname, isAbsolute, join, relative } from 'node:path'
 import { existsExactly, isSystemFile } from './platform.ts'
 
 /** A file content names: its path relative to the page's directory, and where it was found. */
@@ -31,14 +31,18 @@ export function contentPath(rel: string): { rel: string } | Refused {
 export function lookupDirs(pageFile: string): string[] {
   const dir = dirname(pageFile)
   const parent = dirname(dir)
-  return /\[[^\]]+\]$/.test(parent) ? [dir, parent] : [dir]
+  const isBundle = (path: string) => /^\[[^\]]+\]$/.test(basename(path))
+  if (isBundle(dir)) return [dir]
+  return isBundle(parent) ? [dir, parent] : []
 }
 
 /** Finds the file of the bundle a page's content names (`rel`, decoded), or says why there is none. */
 export async function findContentFile(pageFile: string, rel: string): Promise<ContentFile | Refused> {
   const path = contentPath(rel)
   if ('refused' in path) return path
-  for (const dir of lookupDirs(pageFile)) {
+  const dirs = lookupDirs(pageFile)
+  if (dirs.length === 0) return { refused: 'has no bundle to name a file of' }
+  for (const dir of dirs) {
     const source = join(dir, path.rel)
     // spelled as content names it, so a site that builds on macOS or Windows builds on Linux
     if (existsExactly(dir, path.rel)) return { rel: path.rel, source }

@@ -60,7 +60,7 @@ export function sitelinksJson(site: Site): string {
   const pages = []
   for (const [lang, language] of Object.entries(site.content)) {
     for (const [id, page] of Object.entries(language.pages)) {
-      // the pages a $id link can reach: a note has no page of its own yet
+      // the pages a $id link can reach
       if (!page.outputs.html) continue
       pages.push({ id, lang, title: page.metadata.title, status: page.state, urlPath: page.urlPath, type: page.type })
     }

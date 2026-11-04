@@ -33,7 +33,7 @@ export function llmsTxt(site: Site): string {
   // the owner's person file, which config.lima names
   const owner = (language.ownerLinks ?? {}) as Record<string, string | undefined>
   const labels = { ...LABELS, ...(site.locales[site.defaultLanguage]?.llms as Record<string, string>) }
-  const homePage = Object.values(language.pages).find((p) => p.template === 'home')
+  const homePage = Object.values(language.listed).find((p) => p.template === 'home')
   const origin = language.origin
   const issn: string = site.config.site?.issn ?? ''
   const repository: string = site.config.site?.repository ?? ''

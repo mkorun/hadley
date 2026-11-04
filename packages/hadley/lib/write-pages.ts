@@ -3,14 +3,13 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, join as joinPath } from 'node:path'
 import quad from '@mkorun/quad'
 import util from '@mkorun/galley/util'
-import type { SyncTemplate } from '@mkorun/galley'
 import type compileTemplates from './compile-templates.ts'
-import { notesFor } from './notes.ts'
 import type { Output } from './output.ts'
 import type { Problem } from './problems.ts'
 import { feedPages, feedUrl } from './feed.ts'
 import { pageOwner } from './page-files.ts'
-import { pageContext, type ContextOptions } from './page-context.ts'
+import { notesFor, pageContext, type ContextOptions } from './page-context.ts'
+import { lookupDirs } from './site-paths.ts'
 import { siteView } from './site-view.ts'
 import { markdownPath, markdownTwin } from './markdown.ts'
 import type { Page } from './site.ts'
@@ -38,7 +37,6 @@ export async function writePages(
   templates: Templates,
   output: Output,
   { feeds, ...options }: Omit<ContextOptions, 'view' | 'comments' | 'feed' | 'notes'> & { feeds: string[] },
-  noteTemplate?: SyncTemplate,
 ): Promise<Written> {
   const { site, isPublish } = options
   const written: Written = { count: 0, problems: [], searchable: [], timings: [] }
@@ -64,7 +62,7 @@ export async function writePages(
   for (const [lang, language] of Object.entries(site.content)) {
     // what a template sees of its language (lib/site-view.ts)
     const view = siteView(language, lang)
-    const notes = notesFor(site, lang, isPublish, noteTemplate)
+    const notes = notesFor(site, lang, isPublish)
     const feed = feeds.includes(lang) ? { url: feedUrl(site, lang), pages: feedPages(site, lang) } : undefined
     for (const page of Object.values(language.pages)) {
       if (!page.outputs.html) continue
@@ -73,10 +71,11 @@ export async function writePages(
       const t0 = performance.now()
       // the comments of an article, which the comments tool writes into its bundle, those of another language than the
       // default into that language's folder of it (addons/forms, services/forms/CONTRACT.md C10)
-      const commentsDir = lang === site.defaultLanguage ? page.bundleDir : joinPath(page.bundleDir, lang)
-      const comments = page.articleLike
-        ? await readFile(joinPath(commentsDir, '_comments.html'), 'utf-8').catch(() => undefined)
-        : undefined
+      const commentsDir = lookupDirs(page.file)[0]
+      const comments =
+        page.articleLike && commentsDir
+          ? await readFile(joinPath(commentsDir, '_comments.html'), 'utf-8').catch(() => undefined)
+          : undefined
       const context = pageContext(page, { ...options, view, comments, feed, notes })
       const html = formatHtml(
         page,

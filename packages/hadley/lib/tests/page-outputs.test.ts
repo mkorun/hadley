@@ -12,7 +12,7 @@ import { build } from '../../index.ts'
 import { runPagefind } from '../search.ts'
 
 // What a publish build writes and lists for a page (page.outputs in lib/load-site.ts): an archived page keeps its URL
-// but is listed and linked nowhere and not indexed; a note has no page of its own, so nothing lists or links it.
+// but is listed and linked nowhere and not indexed; notes have the outputs of ordinary pages.
 
 const SITE_CONFIG = `site:
   origin: https://outputs.example
@@ -85,6 +85,7 @@ async function publish(
   await mkdir(join(root, 'theme', 'templates'), { recursive: true })
   await writeFile(join(root, 'theme', 'templates', 'article.chase'), template)
   await writeFile(join(root, 'theme', 'templates', 'home.chase'), template)
+  await writeFile(join(root, 'theme', 'templates', 'note.chase'), template)
   await writeFile(join(root, 'config.lima'), config)
   const write = process.stdout.write.bind(process.stdout)
   process.stdout.write = () => true
@@ -211,15 +212,23 @@ describe('the outputs of a page in a publish build', () => {
     assert.doesNotMatch(await readFile(out('aktuell/index.html'), 'utf8'), /noindex/)
   })
 
-  // review 2026-10-24: the sitemap and llms.txt listed archived pages, and llms.txt notes without a page
-  it('list an archived page and a note nowhere: not in the sitemap, the feed, llms.txt or the search index', async () => {
+  // Archived pages are absent from discovery files; notes have pages, but no feed entries.
+  it('list notes in the sitemap, llms.txt and search, and leave archived pages out', async () => {
     for (const file of ['sitemap.xml', 'feed.xml', 'llms.txt']) {
       const text = await readFile(out(file), 'utf8')
       assert.match(text, /outputs\.example\/aktuell\//, `${file} lists the current article`)
       assert.doesNotMatch(text, /outputs\.example\/alt\//, `${file} lists the archived page`)
-      assert.doesNotMatch(text, /outputs\.example\/notiz\//, `${file} lists the note`)
+      if (file === 'feed.xml') assert.doesNotMatch(text, /outputs\.example\/notiz\//)
+      else assert.match(text, /outputs\.example\/notiz\//)
     }
-    const pages = ['aktuell/index.html', 'index.html', 'knapp/index.html', 'teil1/index.html', 'teil3/index.html']
+    const pages = [
+      'aktuell/index.html',
+      'index.html',
+      'knapp/index.html',
+      'notiz/index.html',
+      'teil1/index.html',
+      'teil3/index.html',
+    ]
     assert.deepEqual(searchable.sort(), pages)
     // review 2026-10-24 (follow-up): the test held only the plan; the index Pagefind writes holds those pages alone
     const write = process.stdout.write.bind(process.stdout)
@@ -230,7 +239,7 @@ describe('the outputs of a page in a publish build', () => {
       process.stdout.write = write
     }
     // review 2026-10-24 (final): the count alone let another page of the same number through
-    assert.deepEqual(await indexed(), ['/', '/aktuell/', '/knapp/', '/teil1/', '/teil3/'])
+    assert.deepEqual(await indexed(), ['/', '/aktuell/', '/knapp/', '/notiz/', '/teil1/', '/teil3/'])
   })
 
   it('leave a page marked noindex out of the sitemap, and keep it in the feed and the search index', async () => {
@@ -283,21 +292,16 @@ describe('the outputs of a page in a publish build', () => {
     assert.deepEqual(await files(), made)
   })
 
-  // review 2026-10-24 (follow-up): the home page's lists linked archived articles, a navigation and a $id link
-  // linked a note without a page, and the links between language versions named a draft
-  it('link an archived page, a note and a draft nowhere: lists, series, navigations, language versions, $id links', async () => {
+  // review 2026-10-24: lists linked archived articles, and links between language versions named a draft
+  it('link notes and keep archived pages and drafts out of: lists, series, navigations, language versions, $id links', async () => {
     const pages = ['index.html', 'aktuell/index.html', 'teil1/index.html', 'teil3/index.html']
     const html: Record<string, string> = {}
     for (const file of pages) html[file] = await readFile(out(file), 'utf8')
     for (const [file, text] of Object.entries(html)) {
-      assert.doesNotMatch(
-        text,
-        /href="[^"]*\/(?:alt|notiz|teil2|en\/aktuell)\/"/,
-        `${file} links a page nothing may link`,
-      )
+      assert.doesNotMatch(text, /href="[^"]*\/(?:alt|teil2|en\/aktuell)\/"/, `${file} links a page nothing may link`)
     }
     assert.match(html['index.html']!, /<li><a href="\/aktuell\/">Aktuell<\/a><\/li>/, 'the home page lists the article')
-    assert.match(html['index.html']!, /<nav><a href="\/aktuell\/">Aktuell<\/a><\/nav>/)
+    assert.match(html['index.html']!, /<nav><a href="\/notiz\/">Notiz<\/a><a href="\/aktuell\/">Aktuell<\/a><\/nav>/)
     // review 2026-10-24 (final): a tag named a variant by its bundle, the archived page, and a page kept its draft
     // variant; templates that read site.taxonomy, site.collections or variants got ids of pages nothing may link
     const tagged = [...html['index.html']!.matchAll(/<li class="tag"><a href="([^"]*)">/g)].map((m) => m[1])
@@ -305,13 +309,13 @@ describe('the outputs of a page in a publish build', () => {
     assert.doesNotMatch(html['index.html']!, /class="variant"/)
     const series = /<ol>([\s\S]*?)<\/ol>/.exec(html['teil1/index.html']!)?.[1] ?? ''
     assert.deepEqual([...series.matchAll(/href="([^"]*)"/g)].map((m) => m[1]).sort(), ['/teil1/', '/teil3/'])
-    assert.match(html['aktuell/index.html']!, /<p>Siehe Alt und Notiz\.<\/p>/)
+    assert.match(html['aktuell/index.html']!, /<p>Siehe Alt und <a href="\/notiz\/">Notiz<\/a>\.<\/p>/)
     assert.match(html['aktuell/index.html']!, /<link rel="alternate" hreflang="de" href="\/aktuell\/">/)
     assert.doesNotMatch(html['aktuell/index.html']!, /hreflang="en"/)
   })
 
   // review 2026-10-24 (final): sitelinks.json, which the editor tools read, decided state and pages on its own
-  it('give the page list of a dev build the state load-site decided, and no note without a page', async () => {
+  it('give the page list of a dev build the state load-site decided, including notes', async () => {
     await publish(
       'dev',
       {
@@ -325,6 +329,7 @@ describe('the outputs of a page in a publish build', () => {
     assert.deepEqual(pages.map(({ id, status }: { id: string; status: string }) => [id, status]).sort(), [
       ['bald', 'scheduled'],
       ['home', 'published'],
+      ['n', 'published'],
     ])
   })
 
@@ -339,7 +344,6 @@ describe('the outputs of a page in a publish build', () => {
     for (const [id, mode] of [
       ['alt', 'publish'],
       ['neu', 'publish'],
-      ['notiz', 'dev'],
       ['tippfehler', 'dev'],
     ] as const) {
       await assert.rejects(
@@ -495,8 +499,8 @@ describe('the outputs of a page in a publish build', () => {
     }
   })
 
-  it('write no page for a note', () => {
-    assert.equal(existsSync(out('notiz/index.html')), false)
+  it('write a page for a note', () => {
+    assert.equal(existsSync(out('notiz/index.html')), true)
   })
 
   // review 2026-10-24: a cover was accepted, but neither shown nor made into an og image

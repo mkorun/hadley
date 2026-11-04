@@ -81,6 +81,28 @@ const page = async (
 }
 
 describe('files the content names', () => {
+  it('percent-encodes the page path alike in file href, image src and srcset (review 3.4)', async () => {
+    const urlPath = '/a,b;+[x]{y}^`/über/'
+    const encoded = urlPath.split('/').map(encodeURIComponent).join('/')
+    const doc = parseDocument('[Paper](paper.pdf)\n\n![Picture](a.png)\n', {})
+    const requests = fileRequests(doc, { bundlePath: bundle, urlPath, lang: 'en' })
+    const files = await (
+      await buildPageFiles(
+        { file: join(bundle, 'page.md') },
+        requests,
+        configs,
+        { place: (name) => join(dir, name), urlPath, store: join(dir, 'store'), base: urlPath },
+        {},
+        undefined,
+      )
+    ).written
+    assert.deepEqual(files.failures, [])
+    const html = render(doc, { bundlePath: bundle, urlPath, lang: 'en', files: files.files }).html
+    assert.ok(html.includes(`href="${encoded}paper.pdf"`), html)
+    assert.ok(html.includes(`src="${encoded}a-4w.webp"`), html)
+    assert.ok(html.includes(`srcset="${encoded}a-4w.webp 4w"`), html)
+  })
+
   it('builds a bundle image and writes it as a figure with the attributes of its <m>', async () => {
     const html = await page('<m lang=fr data-credit=me>![x](a.png "Titel")</m>\n')
     assert.equal(

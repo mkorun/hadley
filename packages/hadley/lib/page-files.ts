@@ -15,14 +15,6 @@ import type { Problem } from './problems.ts'
 import { renderOptions } from './render-content.ts'
 import type { Page, Site } from './site.ts'
 
-/**
- * What a page names its own files from: nothing, beside it, as a page is read at its own URL path; an error page's
- * URL path, as the server shows it at any address that fails (deploy.md); a note's URL path, as its text appears on
- * other pages. There a name beside the page would lead nowhere.
- */
-const pageBase = (page: Pick<Page, 'collections' | 'urlPath' | 'type'>): string =>
-  page.type === 'note' || page.collections.includes('errors') ? page.urlPath : ''
-
 /** The owner of a page's HTML in the output plan; its files are `<owner>: <what>`. */
 export const pageOwner = (page: Page) => `page ${page.language}/${page.id}`
 
@@ -97,7 +89,7 @@ export async function buildFiles(
           place: placeFor(output, page),
           urlPath: page.urlPath,
           store: storeOf(options, page),
-          base: pageBase(page),
+          base: page.collections.includes('errors') ? page.urlPath : '',
         },
         options.imageCache,
         aiLabels,
@@ -111,7 +103,7 @@ export async function buildFiles(
         page.files = files.files
         page.cover = named.cover
         page.ogSource = named.cover ?? files.firstImage
-        // beside the page, or on an error page a path of the site already (pageBase)
+        // beside the page, or on an error page a path of the site already
         page.ogImage =
           ogFile?.kind === 'file' ? new URL(ogFile.href, language.origin + page.urlPath).href : named.ogImage
       })
@@ -171,7 +163,7 @@ export async function buildCovers(options: FilesOptions): Promise<Counted> {
             page.urlPath,
             options.imageCache,
             storeOf(options, page),
-            pageBase(page),
+            page.collections.includes('errors') ? page.urlPath : '',
           )
         } catch (error) {
           return { page, message: `cover ${cover.rel} could not be built: ${why(error)}` }

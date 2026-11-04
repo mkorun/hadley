@@ -328,13 +328,13 @@ export const pictureOf = (
   cfg: ImageConfig,
   base = '',
 ): Picture => ({
-  src: base + urlOf(derivativeName(rel, result.validWidths[0]!, cfg.formats[0]!)),
+  src: urlOf(base + derivativeName(rel, result.validWidths[0]!, cfg.formats[0]!)),
   width: result.naturalWidth,
   height: result.naturalHeight,
   sizes: cfg.sizes,
   sources: cfg.formats.map((format) => ({
     type: `image/${format}`,
-    srcset: result.validWidths.map((w) => `${base}${urlOf(derivativeName(rel, w, format))} ${w}w`).join(', '),
+    srcset: result.validWidths.map((w) => `${urlOf(base + derivativeName(rel, w, format))} ${w}w`).join(', '),
   })),
 })
 

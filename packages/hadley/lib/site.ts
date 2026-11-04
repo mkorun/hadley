@@ -51,7 +51,7 @@ export type PageState = 'draft' | 'seed' | 'scheduled' | 'archived' | 'published
  * that is not left out of the sitemap or an error page.
  */
 export interface PageOutputs {
-  html: boolean // a note has no page of its own
+  html: boolean // the page has its own HTML
   listed: boolean // a publish build lists a linkable page, a dev build every page with its own, marked by its state
   sitemap: boolean
   feed: boolean

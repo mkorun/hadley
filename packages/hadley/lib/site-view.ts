@@ -1,7 +1,7 @@
 /**
  * What a template sees of its language as `site`: the language's values and, as `site.pages`, its listed pages alone
- * (lib/site.ts, PageOutputs.listed). A template that asks for any other page stops the build, so a draft, a note, an
- * archived or a mistyped page never shows up as an empty link.
+ * (lib/site.ts, PageOutputs.listed). A template that asks for any other page stops the build, so a draft, an archived
+ * or a mistyped page never shows up as an empty link.
  */
 import type { Language, Page } from './site.ts'
 
