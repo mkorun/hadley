@@ -27,14 +27,14 @@ const PALETTES: Record<Colours, Record<'check' | 'muted' | 'detail' | 'warn' | '
   truecolor: {
     check: fg(135, 154, 57),
     muted: fg(141, 146, 155),
-    detail: fg(109, 167, 236),
+    detail: fg(126, 167, 216),
     warn: fg(229, 192, 123),
-    error: fg(208, 70, 62),
+    error: fg(195, 82, 75),
   },
   '256': {
     check: '\x1b[38;5;106m',
     muted: '\x1b[38;5;245m',
-    detail: '\x1b[38;5;75m',
+    detail: '\x1b[38;5;110m',
     warn: '\x1b[38;5;180m',
     error: '\x1b[38;5;167m',
   },
@@ -69,7 +69,7 @@ let running: { label: string; short?: string | undefined; t0: number } | undefin
  */
 export function stepRow(
   step: {
-    mark: '●' | '✕'
+    mark: '◉' | '✕'
     label: string
     short?: string | undefined
     ms: number
@@ -84,7 +84,7 @@ export function stepRow(
   const gap = narrow ? ' ' : '  '
   const name = narrow ? `${step.short ?? step.label} `.padEnd(15) : step.label.padEnd(24)
   const time = formatMs(step.ms).padStart(narrow ? 6 : 8)
-  const head = `${lead}${paint[step.mark === '●' ? 'check' : 'error']}${step.mark}${paint.reset}${gap}${name}`
+  const head = `${lead}${paint[step.mark === '◉' ? 'check' : 'error']}${step.mark}${paint.reset}${gap}${name}`
   const headWidth = lead.length + 1 + gap.length + name.length + time.length
   const said = [step.detail, step.warns ? `· ${step.warns} !` : undefined].filter((part) => part !== undefined)
   const saidWidth = said.join('  ').length
@@ -188,7 +188,7 @@ export const logger = {
     const t0 = performance.now()
     running = { label, short, t0 }
     if (isTTY) {
-      // a ring while the step is running, which its row overwrites
+      // an empty ring while the step is running, which its row overwrites with a full one
       const narrow = columns() < NARROW
       process.stdout.write(
         `${narrow ? ' ' : '  '}${c.muted}○${narrow ? ' ' : '  '}${narrow ? (short ?? label) : label}${c.reset}`,
@@ -197,7 +197,7 @@ export const logger = {
     return (detail?: string, warns?: string[]) => {
       running = undefined
       const row = stepRow(
-        { mark: '●', label, short, ms: performance.now() - t0, detail, warns: warns?.length },
+        { mark: '◉', label, short, ms: performance.now() - t0, detail, warns: warns?.length },
         columns(),
       )
       process.stdout.write(`${isTTY ? '\r' : ''}${row}\n`)
@@ -228,7 +228,7 @@ export const logger = {
 
   /** A command that did what it was asked, in a line of its own, with the path it wrote. */
   success(msg: string, path?: string) {
-    process.stdout.write(`${c.check}●${c.reset} ${msg}${path === undefined ? '' : ` ${c.detail}${path}${c.reset}`}\n`)
+    process.stdout.write(`${c.check}✓${c.reset} ${msg}${path === undefined ? '' : ` ${c.detail}${path}${c.reset}`}\n`)
   },
 
   warn(msg: string) {
