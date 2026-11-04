@@ -9,7 +9,8 @@ Makes a new site in `dir`, by default the current directory, which must be empty
 Feather Cat, a small blog with articles, a series and pictures to read and make one's own; punch brings Noa Varela, a
 personal site with a few posts. `--blank` takes the starter `blank` instead, which goes with any theme: a home page, an
 imprint, a feed page and a 404 page, and nothing to delete. A theme hadley does not bring stops it, naming those it
-does. The blocks of the theme's `starter:` (`theme.lima`) go into the new `config.lima`.
+does. The blocks of the theme's `starter:` (`theme.lima`) go into the new `config.lima`, and the year `init` runs in
+as `site.since`, the first year of the copyright line ([config.md](config.md)).
 
 `--language` names the site's languages, its default first: `de` for German alone, `de,en` for German with English.
 `all` stands for all the starter is written in, `en,de,fr,es,it` for every one. Without it the site is English. A

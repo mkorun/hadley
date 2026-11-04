@@ -8,6 +8,7 @@ import {
   BLANK,
   STARTERS,
   THEMES,
+  configFor,
   init,
   namesOf,
   pageFor,
@@ -67,6 +68,18 @@ describe('what hadley init writes', () => {
   it('leaves out the blocks and keys of the languages not named, and keeps the blank line after one', () => {
     const lima = 'site:\n  en:\n    claim: A\n  fr:\n    claim: B\n\n# next\nlabel:\n  en: Essay\n  fr: Essai\n'
     assert.equal(withoutLanguages(lima, ['fr']), 'site:\n  en:\n    claim: A\n\n# next\nlabel:\n  en: Essay\n')
+  })
+
+  it("writes the year it runs in as the site's since, after its owner, and stops on a starter without one", () => {
+    const lima = 'site:\n  origin: https://example.org\n  owner: $(persons/ada)\n  default:\n    language: en\n'
+    assert.equal(
+      configFor(lima, ['en'], ['en'], '', 2031),
+      'site:\n  origin: https://example.org\n  owner: $(persons/ada)\n  since: 2031  # the first year of the copyright line\n  default:\n    language: en\n',
+    )
+    assert.throws(
+      () => configFor('site:\n  default:\n    language: en\n', ['en'], ['en'], '', 2031),
+      /names no site owner/,
+    )
   })
 
   it("takes the blocks of the theme's starter: as top-level Lima", () => {
@@ -130,6 +143,7 @@ describe('a site hadley init makes', () => {
             process.stdout.write = write
           }
           const home = await readFile(join(site, '.hadley', 'publish', 'index.html'), 'utf-8')
+          assert.ok(home.includes(`© ${new Date().getFullYear()} `), 'the copyright line starts in the year of init')
           assert.ok(home.includes(`<html lang="${languages[0]}"`), `the home page is in ${languages[0]}`)
           const pages = await readdir(join(site, '.hadley', 'publish'))
           for (const other of languages.slice(1)) assert.ok(pages.includes(other), `${other}/ is published`)

@@ -91,13 +91,14 @@ export function starterBlocks(themeLima: string): string {
 
 /**
  * A starter's `config.lima` for `languages` of those it is `written` in, the first the default, with the blocks of the
- * theme's `starter:`.
+ * theme's `starter:` and `year` as the site's `since`.
  */
 export function configFor(
   config: string,
   languages: readonly string[],
   written: readonly string[],
   themeLima: string,
+  year: number,
 ): string {
   const text = withoutLanguages(
     config,
@@ -107,6 +108,9 @@ export function configFor(
   const at = lines.findIndex((line) => line.trim() === `language: ${STARTER_DEFAULT}` && /^\s/.test(line))
   if (at === -1) throw new Error(`the starter's config.lima names no default language ${STARTER_DEFAULT}`)
   lines[at] = lines[at]!.replace(STARTER_DEFAULT, () => languages[0]!)
+  const owner = lines.findIndex((line) => /^  owner:/.test(line))
+  if (owner === -1) throw new Error("the starter's config.lima names no site owner")
+  lines.splice(owner + 1, 0, `  since: ${year}  # the first year of the copyright line`)
   const own = lines.join('\n').trimEnd()
   const blocks = starterBlocks(themeLima)
   return blocks
@@ -164,7 +168,7 @@ export async function init(dir: string, languages: readonly string[], theme: str
   await cp(themeDir, join(dir, 'theme'), { recursive: true })
   const themeLima = lf(await readFile(join(themeDir, 'theme.lima'), 'utf-8').catch(() => ''))
   const config = lf(await readFile(join(starterDir, 'config.lima'), 'utf-8'))
-  await writeFile(join(dir, 'config.lima'), configFor(config, languages, written, themeLima))
+  await writeFile(join(dir, 'config.lima'), configFor(config, languages, written, themeLima, new Date().getFullYear()))
 
   const dropped = written.filter((language) => !languages.includes(language))
   const content = join(starterDir, 'content')
