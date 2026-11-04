@@ -1,6 +1,7 @@
 // hems: the search (config.lima search.enabled) in a dialog, on Pagefind's search API: Pagefind finds, the theme
 // shows. Pagefind's script and index load the first time the dialog opens, so a page nobody searches on loads neither.
-// The results are those of the page's language (data-pagefind-filter on main): the index holds every language.
+// The results are those of the page's language: Pagefind keeps an index for each language and loads the one of the
+// page (its html lang), and the filter on main (data-pagefind-filter) keeps them to it as well.
 const dialog = document.querySelector('dialog.search')
 const button = document.querySelector('.search-open')
 // how many results the list shows

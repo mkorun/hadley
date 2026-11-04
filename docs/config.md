@@ -62,7 +62,7 @@ navigations as `navigations.main`, `navigations.footer`, the featured articles a
 | `typography: enabled: true` | typographic quotes, dashes and ellipses in the text, by the page's language |
 | `rss: enabled: true` | a feed for each language (`/feed.xml`, `/de/feed.xml`) and its page with the `feed` template |
 | `markdown: enabled: true` | a Markdown twin of every page in `llms.txt` ([deploy.md](deploy.md#markdown-for-language-models)) |
-| `search: enabled: true` | a [Pagefind](https://pagefind.app) index of the published pages, which the theme searches |
+| `search: enabled: true` | a [Pagefind](https://pagefind.app) index of the published pages, one for each language with its word forms, which the theme searches |
 | `og: enabled: true` | og images (below) |
 | `maintenance: enabled: true` | the site is under maintenance: a publish build makes only its page `@errors/[503]` (site.md), at each language's home and `404.html` too, and marks the build for the server (deploy.md, "Maintenance"); `hadley dev` builds the whole site as ever |
 | `highlighting` | the colours of code blocks ([highlighting.md](highlighting.md)) |

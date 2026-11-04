@@ -2,10 +2,6 @@ import { createHash } from 'node:crypto'
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join as joinPath, resolve } from 'node:path'
 
-// forceLanguage: 'en' works around Pagefind bug #724: its German language module takes umlauts for word breaks
-// ("zündung" becomes "zu" and "ndung").
-const OPTIONS = { forceLanguage: 'en' }
-
 /**
  * Indexes the pages the build lists (`searchable`, paths in `outputDir`), not every HTML file there, into
  * `outputDir/pagefind`, which it empties first: a dev build keeps its output, and an index of an earlier build would
@@ -22,7 +18,7 @@ export async function runPagefind(outputDir: string, searchable: string[], cache
   const pagefind = new URL('../package.json', import.meta.resolve('pagefind'))
   const { version } = JSON.parse(await readFile(pagefind, 'utf-8'))
   const key = createHash('sha256')
-    .update(JSON.stringify([version, OPTIONS, pages]))
+    .update(JSON.stringify([version, pages]))
     .digest('hex')
   const cached = joinPath(cacheDir, 'pagefind')
   if ((await readFile(joinPath(cacheDir, 'key'), 'utf-8').catch(() => '')) === key) {
@@ -31,7 +27,8 @@ export async function runPagefind(outputDir: string, searchable: string[], cache
   }
 
   const { createIndex } = await import('pagefind')
-  const { index, errors } = await createIndex(OPTIONS)
+  // an index for each language, read from a page's html element, each with that language's word forms
+  const { index, errors } = await createIndex()
   if (!index) throw new Error(`Pagefind createIndex failed: ${errors.join(', ')}`)
   // released again when written: the Pagefind service keeps every index it made, and a dev server builds many
   try {
