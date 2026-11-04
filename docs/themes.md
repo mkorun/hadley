@@ -5,7 +5,7 @@ on the site changes it as it likes.
 
 ```
 theme/
-  templates/     the pages' templates (.chase), their partials (.sort) and markup/heading.sort
+  templates/     the pages' templates (.chase), their partials (.sort), markup/heading.sort and markup/note.sort
   i18n/          the theme's texts, one file per language (en.lima, de.lima, …), `t` in templates
   highlighting/  the theme's own colours for code (Shiki themes), which config.lima names
   static/        files published at the root of the site (robots.txt, favicon.ico, …)
