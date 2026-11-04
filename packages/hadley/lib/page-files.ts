@@ -17,10 +17,11 @@ import type { Page, Site } from './site.ts'
 
 /**
  * What a page names its own files from: nothing, beside it, as a page is read at its own URL path; an error page's
- * URL path, as the server shows it at any address that fails (deploy.md), where a name beside it would lead nowhere.
+ * URL path, as the server shows it at any address that fails (deploy.md); a note's URL path, as its text appears on
+ * other pages. There a name beside the page would lead nowhere.
  */
-const pageBase = (page: { collections: string[]; urlPath: string }): string =>
-  page.collections.includes('errors') ? page.urlPath : ''
+const pageBase = (page: Pick<Page, 'collections' | 'urlPath' | 'type'>): string =>
+  page.type === 'note' || page.collections.includes('errors') ? page.urlPath : ''
 
 /** The owner of a page's HTML in the output plan; its files are `<owner>: <what>`. */
 export const pageOwner = (page: Page) => `page ${page.language}/${page.id}`

@@ -58,6 +58,7 @@ const loadSite = async (siteDir: string, isPublish = false, localServer = false)
   const site: Site = {
     config,
     defaultLanguage,
+    today: reading.today,
     content: {},
     translationMappings: {},
     unpublishedIds: {},
@@ -209,8 +210,25 @@ async function readPage(
   if (!KNOWN_TYPES.has(type))
     problems.push({ message: `its type ${type} is not one of ${[...KNOWN_TYPES].join(', ')}` })
   // an undated article is listed first; that may be meant
-  if (root !== 'pages' && variant === null && !metadata.publishFrom)
+  if (type === 'note') {
+    if (!metadata.publishFrom) problems.push({ message: 'the note requires publishFrom' })
+    if (typeof doc.metadata.title === 'string' && !doc.metadata.title.trim())
+      problems.push({ message: 'the note requires a title' })
+  } else if (root !== 'pages' && variant === null && !metadata.publishFrom) {
     problems.push({ message: 'has no publishFrom', hint: true })
+  }
+  if (metadata.link !== undefined) {
+    const message =
+      type !== 'note'
+        ? 'the front matter field link is allowed only on a note'
+        : !/^https:\/\//i.test(metadata.link) || URL.parse(metadata.link)?.protocol !== 'https:'
+          ? 'the note field link must be an https URL'
+          : undefined
+    if (message) {
+      const line = fieldLine(source, 'link')
+      problems.push({ message, ...(line === undefined ? {} : { line }) })
+    }
+  }
 
   // A field with a template keeps its value as text in meta; the template makes its HTML (html.fields). A publishOnly
   // field is shown as text in the dev overlay instead (devFields).

@@ -3,12 +3,14 @@
  * only values a template writes as HTML). Pure: everything it reads was decided before (lib/site.ts).
  */
 import { hasCode } from '../case/index.ts'
+import type { Notes } from './notes.ts'
 import { jsonLd } from './json-ld.ts'
 import type { Config, Language, Locale, Page, Site } from './site.ts'
 import type { SiteView } from './site-view.ts'
 
 export interface ContextOptions {
   site: Site
+  notes: Notes // prepared once for the page’s language
   view: SiteView // the page's language as its template sees it
   assets: Readonly<Record<string, string>>
   isPublish: boolean
@@ -68,7 +70,7 @@ const i18nLabel = (label: unknown, lang: string): string | null => {
   return null
 }
 
-const categoryLabel = (locale: Locale, category: string | undefined): string | undefined => {
+export const categoryLabel = (locale: Locale, category: string | undefined): string | undefined => {
   if (!category) return undefined
   return (locale.categories as Record<string, string> | undefined)?.[category] ?? category
 }
@@ -223,6 +225,7 @@ export function pageContext(page: Page, options: ContextOptions): Record<string,
     readingTimeMinutes: isArticle ? readingTimeMinutes(page) : 0,
     seriesData: isArticle ? seriesData(page, language) : [],
     featuredList: home?.items ?? [],
+    noteList: options.notes.list,
     articleList: articleList(language, home?.featuredIds ?? new Set(), locale),
     ...neighbours(page, language, locale),
     navigations: language.navigations,
@@ -250,6 +253,7 @@ export function pageContext(page: Page, options: ContextOptions): Record<string,
     // the only values a template writes as HTML ({@raw html.…}); everything else it escapes
     html: {
       markup: page.markup,
+      notes: options.notes.html,
       jsonLd: jsonLd(page, language, lang, ogImage),
       cover: page.coverImageHtml ?? null,
       comments: options.comments ?? null,

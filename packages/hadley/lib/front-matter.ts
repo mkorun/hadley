@@ -25,6 +25,7 @@ const TEXT_FIELDS = [
   'description',
   'htmlTitle',
   'category',
+  'link',
   'archetype',
   'coverStyle', // a style for the cover the theme may know (docs/themes.md, "Covers")
 ] as const

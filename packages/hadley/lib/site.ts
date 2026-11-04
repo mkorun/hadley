@@ -28,6 +28,7 @@ export interface Metadata {
   updatedAt?: Date
   tags?: string[]
   category?: string
+  link?: string
   archetype?: string
   author?: string | { name?: string }
   vgwort_pixel?: string
@@ -50,7 +51,7 @@ export type PageState = 'draft' | 'seed' | 'scheduled' | 'archived' | 'published
  * that is not left out of the sitemap or an error page.
  */
 export interface PageOutputs {
-  html: boolean // a note has no page of its own yet
+  html: boolean // a note has no page of its own
   listed: boolean // a publish build lists a linkable page, a dev build every page with its own, marked by its state
   sitemap: boolean
   feed: boolean
@@ -148,6 +149,7 @@ export interface Language {
 
 export interface Site {
   config: Config
+  today: string // the build’s local day (YYYY-MM-DD), also used for scheduled pages
   defaultLanguage: string // config.lima `site.default.language`
   content: Record<string, Language> // the default language first, the others by name
   translationMappings: Record<string, Record<string, string>> // by page id and language, the URL path of a listed page

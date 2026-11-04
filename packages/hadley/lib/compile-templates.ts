@@ -99,11 +99,20 @@ export const checked = (options: GalleyOptions): GalleyOptions => {
  * `meta.lang`. A theme without the file has none.
  */
 export async function compileHeading(options: GalleyOptions): Promise<SyncTemplate | undefined> {
-  const path = joinPath(options.includes.basedir ?? './', 'markup', 'heading.sort')
+  return compileMarkup(options, 'heading')
+}
+
+/** The optional note template, checked and compiled just like the heading template. */
+export async function compileNote(options: GalleyOptions): Promise<SyncTemplate | undefined> {
+  return compileMarkup(options, 'note')
+}
+
+async function compileMarkup(options: GalleyOptions, name: 'heading' | 'note'): Promise<SyncTemplate | undefined> {
+  const path = joinPath(options.includes.basedir ?? './', 'markup', `${name}.sort`)
   if (!existsSync(path)) return undefined
   const source = await checked(options).includes.import(path, 'utf-8')
   const template = await galley(source, { ...checked(options), sourceId: path })
-  if (template.async) throw new Error(`${path}: a heading template renders without waiting (no async snippet)`)
+  if (template.async) throw new Error(`${path}: a ${name} template renders without waiting (no async snippet)`)
   return template
 }
 

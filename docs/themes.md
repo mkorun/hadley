@@ -113,7 +113,7 @@ Templates read the notes of the page's language (content.md, "Notes") as `noteLi
 publish build the published ones, a dev build drafts and seeds as well, with `isDraft`. An entry holds `id` (the name of
 its file or bundle), `title`, `publishFrom`, `link` (or empty), `category`, `categoryLabel`, `tags`, `ageDays` (the
 days from its `publishFrom` to the day of the build) and `meta` (its front matter, with the fields `config.lima`
-declares).
+declares). Ties in `publishFrom` are ordered by `id`, ascending by UTF-16 code unit.
 
 A note's text is HTML, which a template writes only as `html.*`; so a theme with `templates/markup/note.sort` writes
 each note, as `heading.sort` writes a heading ("Headings"). The template gets the entry's values, the note's text as
@@ -123,7 +123,7 @@ Without the file, `html.notes` is empty.
 ```
 <article class="note">
   <h3>{#if link}<a href="{ link }">{ title }</a>{:else}{ title }{/if}</h3>
-  <p><time datetime="{ publishFrom }">{ publishFrom }</time> · { categoryLabel }</p>
+  <p><time datetime="{ publishFrom | isoDate }">{ publishFrom | dateFormat('yyyy-MM-dd') }</time> · { categoryLabel }</p>
   {@raw html.text}
 </article>
 ```
