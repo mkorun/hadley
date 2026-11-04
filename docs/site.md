@@ -63,8 +63,8 @@ so its images and files stay in its bundle, but its HTML names them from its own
 
 The site's languages are the blocks of `site:` in `config.lima`, its default language `site.default.language`. A
 page in the default language lies in the bundle, in another language in the bundle's folder of that language. Its URL
-path is its file's name, `/first-steps/`, and `/de/erste-schritte/` in German; the front matter's `urlPath` sets
-another one.
+path is its file's name, `/first-steps/`, and `/de/erste-schritte/` in German; a note's lies under `notes/`,
+`/notes/first-issue/` and `/de/notes/erstes-issue/`. The front matter's `urlPath` sets another one.
 
 ## The states of a page
 
