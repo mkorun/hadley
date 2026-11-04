@@ -46,11 +46,35 @@ author: $(persons/ada)
 | `sitemap` | `false` leaves the page out of `sitemap.xml`, the feed, the search index and `llms.txt` |
 | `markdown` | `false` leaves out its Markdown twin when the site makes them (deploy.md, "Markdown for language models") |
 | `urlPath` | its URL path instead of `/<file name>/`; an error page takes none (site.md) |
+| `link` | for a note, the address it points to ("Notes") |
 | `template`, `type` | another template or type than its root gives (site.md) |
 | `vgwort_pixel` | the counting pixel of VG Wort; `config.lima` says how it is written (config.md, "Fields of a page") |
 
 `config.lima` may declare more fields for its theme, and the values a field may have (config.md, "Fields of a
 page"). Any other field is a problem of the page; so is a value of the wrong kind, such as a date that is no date.
+
+## Notes
+
+A note (`notes/`, site.md) is a short piece of news, written as any page: its title is its first `#` heading (or its
+`title`, "Title"), its text a few lines of Markanto. Its front matter gives its day, `publishFrom`; where it points
+somewhere, `link`, its `https` address; and, as on any page, its kind as `category` and its groups as
+`tags`, with the values `config.lima` allows (config.md, "Fields of a page").
+
+```markdown
+---
+publishFrom: 2026-11-04
+category: issue
+tags: [staticcheck, go]
+link: https://github.com/dominikh/go-tools/issues/1847
+---
+# staticcheck ignores its config under ~/.cache
+
+staticcheck skips every package whose path starts with the user cache directory, taking it for Go's build cache.
+```
+
+A note without a title or a `publishFrom`, or with a `link` that is not `https`, is a problem of the note; `link` on any
+other page is a problem of that page. A note has no page, so no feed, sitemap, search index or `llms.txt` names it;
+templates show it (themes.md, "Notes").
 
 ## Markanto in hadley
 

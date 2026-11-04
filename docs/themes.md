@@ -85,6 +85,7 @@ The page:
 | `html.tldr` | its `:::tldr` summary |
 | `html.jsonLd` | its JSON-LD, a `<script type="application/ld+json">` |
 | `html.comments` | its comments, which the comments tool writes (comments.md) |
+| `html.notes` | the notes of its language as the theme writes them ("Notes") |
 | `html.fields.<field>` | the HTML of a field `config.lima` gives a template (config.md) |
 
 The site and the build:
@@ -96,6 +97,7 @@ The site and the build:
 | `navigations` | each navigation of `config.lima`: `id`, `title`, `urlPath`, `unpublished` |
 | `homeUrl` | the home page in the page's language ("Home page") |
 | `featuredList`, `articleList` | on the home page, the featured articles (with their `label`, and `isSeries` for the latest of a series); on every page, the listed articles, newest first (with `year`, `yearChanged`, `isDraft`), on the home page without the featured ones |
+| `noteList` | the notes of the page's language, newest first, as values ("Notes") |
 | `feed` | where the language has a feed: its `url`, and its articles as `items` |
 | `copyrightYear` | `site.since` to this year, `2026–2027`, or this year alone |
 | `assets` | the URL path a theme file is published under, by its own: `assets['/assets/css/style.css']` |
@@ -104,6 +106,27 @@ The site and the build:
 An entry of a list (`featuredList`, `articleList`, `feed.items`, `newer`, `older`) holds `urlPath`, `title`,
 `subtitle`, `description`, `publishFrom`, `updatedAt`, `displayDate` (the later of the two), `isUpdated`, `status`,
 `showBadge`, `category`, `categoryLabel`, `cover` and `isAiCover`.
+
+## Notes
+
+Templates read the notes of the page's language (content.md, "Notes") as `noteList`, newest first by `publishFrom`: a
+publish build the published ones, a dev build drafts and seeds as well, with `isDraft`. An entry holds `id` (the name of
+its file or bundle), `title`, `publishFrom`, `link` (or empty), `category`, `categoryLabel`, `tags`, `ageDays` (the
+days from its `publishFrom` to the day of the build) and `meta` (its front matter, with the fields `config.lima`
+declares).
+
+A note's text is HTML, which a template writes only as `html.*`; so a theme with `templates/markup/note.sort` writes
+each note, as `heading.sort` writes a heading ("Headings"). The template gets the entry's values, the note's text as
+`html.text`, and the page's `t` and `meta.lang`; hadley writes the notes with it, newest first, as `html.notes`.
+Without the file, `html.notes` is empty.
+
+```
+<article class="note">
+  <h3>{#if link}<a href="{ link }">{ title }</a>{:else}{ title }{/if}</h3>
+  <p><time datetime="{ publishFrom }">{ publishFrom }</time> · { categoryLabel }</p>
+  {@raw html.text}
+</article>
+```
 
 ## Headings
 
