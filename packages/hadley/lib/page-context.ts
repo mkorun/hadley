@@ -186,10 +186,9 @@ const htmlTitle = (page: Page, language: Language): string => {
   return page.metadata.title
 }
 
-const copyrightYear = (since: number | undefined): string => {
-  const y = new Date().getFullYear()
-  return since && since < y ? `${since}-${y}` : String(y)
-}
+// a span of years takes an en dash, as typesetting has it
+export const copyrightYear = (since: number | undefined, y = new Date().getFullYear()): string =>
+  since && since < y ? `${since}–${y}` : String(y)
 
 export function pageContext(page: Page, options: ContextOptions): Record<string, unknown> {
   const { site, isPublish } = options

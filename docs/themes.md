@@ -97,7 +97,7 @@ The site and the build:
 | `homeUrl` | the home page in the page's language ("Home page") |
 | `featuredList`, `articleList` | on the home page, the featured articles (with their `label`, and `isSeries` for the latest of a series); on every page, the listed articles, newest first (with `year`, `yearChanged`, `isDraft`), on the home page without the featured ones |
 | `feed` | where the language has a feed: its `url`, and its articles as `items` |
-| `copyrightYear` | `site.since` to this year, `2026-2027`, or this year alone |
+| `copyrightYear` | `site.since` to this year, `2026–2027`, or this year alone |
 | `assets` | the URL path a theme file is published under, by its own: `assets['/assets/css/style.css']` |
 | `isDevBuild`, `devFields` | whether the build is for the dev server; the fields a dev build shows of the page |
 

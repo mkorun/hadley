@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { readingTimeMinutes } from '../page-context.ts'
+import { copyrightYear, readingTimeMinutes } from '../page-context.ts'
 import type { Page } from '../site.ts'
 
 // The language of a page is where its file lies in the bundle (page.language), not a front matter field.
@@ -21,5 +21,13 @@ describe('readingTimeMinutes', () => {
   it('gives no minutes to an article without text and at least one to any other', () => {
     assert.equal(readingTimeMinutes(article('de', 0)), 0)
     assert.equal(readingTimeMinutes(article('de', 10)), 1)
+  })
+})
+
+describe('copyrightYear', () => {
+  it('spans the years from site.since with an en dash, and gives one year when there is no span', () => {
+    assert.equal(copyrightYear(2026, 2028), '2026–2028')
+    assert.equal(copyrightYear(2026, 2026), '2026')
+    assert.equal(copyrightYear(undefined, 2027), '2027')
   })
 })
