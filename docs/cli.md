@@ -9,6 +9,11 @@ else the nearest directory, from the current one upwards, that holds a `config.l
 `-h`) prints a command's options; `--verbose` (or `-v`), anywhere on the line, or the environment variable `DEBUG`
 adds the stack trace to a failure. A command that fails says why and exits with 1.
 
+On a terminal hadley colours what it prints, unless the environment variable `NO_COLOR` is set: in its own tones where
+the terminal announces 24-bit colour (`COLORTERM` is `truecolor` or `24bit`) or 256 colours (`TERM` contains `256`),
+else in the terminal's basic colours. On a terminal narrower than 70 columns a build gives its steps short names, and
+what a step reports goes on the line below it when it does not fit beside it.
+
 | Command | What it does | More |
 | --- | --- | --- |
 | `hadley init [dir]` | a new site in `dir` (default: here), which must be empty or not exist | [init.md](init.md) |

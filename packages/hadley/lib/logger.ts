@@ -11,30 +11,48 @@ export const isVerbose = process.argv.some((arg) => VERBOSE.has(arg)) || !!proce
 /** A command's arguments without the verbose options, which the logger has read already. */
 export const withoutVerbose = (args: readonly string[]): string[] => args.filter((arg) => !VERBOSE.has(arg))
 
-// ANSI colour codes — only applied when writing to a real terminal
-const c = isTTY
-  ? {
-      reset: '\x1b[0m',
-      bold: '\x1b[1m',
-      dim: '\x1b[2m',
-      bGreen: '\x1b[92m', // bright green  — ✓ checkmark
-      bYellow: '\x1b[93m', // bright yellow — total time
-      bCyan: '\x1b[96m', // bright cyan   — brand name
-      green: '\x1b[32m', // green         — build mode
-      magenta: '\x1b[35m', // magenta       — publish mode
-      red: '\x1b[91m', // bright red    — errors
-      gray: '\x1b[90m', // dark gray     — verbose items
-      cyan: '\x1b[36m', // cyan          — detail text
-    }
-  : (Object.fromEntries(
-      ['reset', 'bold', 'dim', 'bGreen', 'bYellow', 'bCyan', 'green', 'magenta', 'red', 'gray', 'cyan'].map((k) => [
-        k,
-        '',
-      ]),
-    ) as Record<string, string>)
+/** How a terminal takes colour (docs/cli.md): hadley's own tones in 24 bits or 256, the terminal's basic ones, none. */
+export type Colours = 'truecolor' | '256' | 'basic' | 'none'
 
-const SEP_WIDTH = 54
-const sep = () => c.dim + '─'.repeat(SEP_WIDTH) + c.reset
+export function colours(env: Record<string, string | undefined>, tty: boolean): Colours {
+  if (!tty || (env.NO_COLOR ?? '') !== '' || env.TERM === 'dumb') return 'none'
+  if (/^(truecolor|24bit)$/i.test(env.COLORTERM ?? '')) return 'truecolor'
+  return /256/.test(env.TERM ?? '') ? '256' : 'basic'
+}
+
+// the name and the total in Claude's orange, a step done in olive, what is said about it and a path in blue,
+// times and lines in the grey of hadley.sh; red only for a failure. Text keeps the terminal's own colour.
+const fg = (r: number, g: number, b: number) => `\x1b[38;2;${r};${g};${b}m`
+const PALETTES: Record<Colours, Record<'brand' | 'check' | 'muted' | 'detail' | 'warn' | 'error', string>> = {
+  truecolor: {
+    brand: fg(215, 119, 87),
+    check: fg(135, 154, 57),
+    muted: fg(141, 146, 155),
+    detail: fg(109, 167, 236),
+    warn: fg(229, 192, 123),
+    error: fg(208, 70, 62),
+  },
+  '256': {
+    brand: '\x1b[38;5;173m',
+    check: '\x1b[38;5;106m',
+    muted: '\x1b[38;5;245m',
+    detail: '\x1b[38;5;75m',
+    warn: '\x1b[38;5;180m',
+    error: '\x1b[38;5;167m',
+  },
+  basic: { brand: '', check: '\x1b[32m', muted: '\x1b[2m', detail: '\x1b[2m', warn: '\x1b[33m', error: '\x1b[91m' },
+  none: { brand: '', check: '', muted: '', detail: '', warn: '', error: '' },
+}
+const level = colours(process.env, isTTY)
+const c = {
+  ...PALETTES[level],
+  ...(level === 'none' ? { reset: '', bold: '' } : { reset: '\x1b[0m', bold: '\x1b[1m' }),
+}
+
+/** Below this many columns a build's steps take their short names. */
+const NARROW = 70
+const columns = () => (isTTY ? (process.stdout.columns ?? Infinity) : Infinity)
+const sep = () => c.muted + '─'.repeat(Math.min(54, columns() - 1)) + c.reset
 
 export const formatMs = (ms: number) => (ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(2)} s`)
 
@@ -45,7 +63,42 @@ export function clearScreen(out: { isTTY?: boolean; write(text: string): unknown
 
 let buildStart = 0
 // the step under way, which a failure marks
-let running: { label: string; t0: number } | undefined
+let running: { label: string; short?: string | undefined; t0: number } | undefined
+
+/**
+ * A step as the command line writes it: its mark, its name, its time and what it says about its work. Below NARROW
+ * columns it takes its short name; what it says that does not fit beside it goes on the next line.
+ */
+export function stepRow(
+  step: {
+    mark: '✓' | '✗'
+    label: string
+    short?: string | undefined
+    ms: number
+    detail?: string | undefined
+    warns?: number | undefined
+  },
+  width: number,
+  paint: Record<'reset' | 'bold' | 'check' | 'error' | 'muted' | 'detail' | 'warn', string> = c,
+): string {
+  const narrow = width < NARROW
+  const lead = narrow ? ' ' : '  '
+  const gap = narrow ? ' ' : '  '
+  const name = narrow ? `${step.short ?? step.label} `.padEnd(15) : step.label.padEnd(24)
+  const time = formatMs(step.ms).padStart(narrow ? 6 : 8)
+  const head = `${lead}${paint[step.mark === '✓' ? 'check' : 'error']}${step.mark}${paint.reset}${gap}${name}`
+  const headWidth = lead.length + 1 + gap.length + name.length + time.length
+  const said = [step.detail, step.warns ? `· ${step.warns} ⚠` : undefined].filter((part) => part !== undefined)
+  const saidWidth = said.join('  ').length
+  const saidText = [
+    ...(step.detail === undefined ? [] : [`${paint.detail}${step.detail}${paint.reset}`]),
+    ...(step.warns ? [`${paint.bold}${paint.warn}· ${step.warns} ⚠${paint.reset}`] : []),
+  ].join('  ')
+  const row = `${head}${paint.muted}${time}${paint.reset}`
+  if (said.length === 0) return row
+  if (headWidth + 2 + saidWidth < width) return `${row}  ${saidText}`
+  return `${row}\n${' '.repeat(lead.length + 1 + gap.length + 2)}${saidText}`
+}
 
 // a line of a failure that names a file of the site: `content/…/a.md: what is wrong`, `theme/…/a.chase:12: …`
 const FILE_LINE = /^(\S[^:]*\.(?:md|lima|chase|sort|json|css|ts|js|png|jpe?g|webp|avif|gif|svg)(?::\d+){0,2}): (.+)$/
@@ -80,20 +133,20 @@ export function failureText(error: unknown, siteDir?: string): string {
   // the line the place names, written once the messages about it are
   let quoted: string | undefined
   const quote = () => {
-    if (quoted !== undefined) out.push(`     ${c.dim}${quoted}${c.reset}`)
+    if (quoted !== undefined) out.push(`     ${c.muted}${quoted}${c.reset}`)
     quoted = undefined
   }
   for (const line of message.split('\n')) {
     const galley = GALLEY_LINE.exec(line)
     if (galley) {
       quote()
-      out.push(`  ${c.bold}${galley[2]}${c.reset}`, `     ${galley[3]} ${c.dim}(${galley[1]})${c.reset}`)
+      out.push(`  ${c.bold}${c.detail}${galley[2]}${c.reset}`, `     ${galley[3]} ${c.muted}(${galley[1]})${c.reset}`)
       file = undefined
       source = true
       continue
     }
     if (source && line.trim() !== '') {
-      out.push(`  ${c.dim}${line}${c.reset}`)
+      out.push(`  ${c.muted}${line}${c.reset}`)
       continue
     }
     source = false
@@ -101,7 +154,7 @@ export function failureText(error: unknown, siteDir?: string): string {
     if (named) {
       if (named[1] !== file) {
         quote()
-        out.push(`  ${c.bold}${named[1]}${c.reset}`)
+        out.push(`  ${c.bold}${c.detail}${named[1]}${c.reset}`)
         quoted = sourceLine(siteDir, named[1]!)
       }
       file = named[1]
@@ -110,51 +163,49 @@ export function failureText(error: unknown, siteDir?: string): string {
     }
     quote()
     file = undefined
-    if (/^\S.*:$/.test(line)) out.push(`  ${c.bold}${c.red}${line.slice(0, -1)}${c.reset}`, '')
+    if (/^\S.*:$/.test(line)) out.push(`  ${c.bold}${c.error}${line.slice(0, -1)}${c.reset}`, '')
     else out.push(`  ${line}`)
   }
   quote()
-  if (isVerbose && error instanceof Error && error.stack) out.push('', c.gray + error.stack + c.reset)
+  if (isVerbose && error instanceof Error && error.stack) out.push('', c.muted + error.stack + c.reset)
   return out.join('\n') + '\n'
 }
 
 export const logger = {
   header(mode: 'dev' | 'publish') {
     buildStart = performance.now()
-    const modeStr = mode === 'publish' ? `${c.bold}${c.magenta}publish${c.reset}` : `${c.bold}${c.green}dev${c.reset}`
-    const title = `  ${c.bold}${c.bCyan}hadley${c.reset} ${c.dim}—${c.reset} ${modeStr}`
+    const title = `  ${c.bold}${c.brand}hadley${c.reset} ${c.muted}—${c.reset} ${c.bold}${mode}${c.reset}`
     process.stdout.write(`\n${sep()}\n${title}\n${sep()}\n`)
   },
 
   /**
-   * Call at step start — returns a done() function to call on completion.
+   * Call at step start, with the name and the short name for a narrow terminal — returns a done() function to call on
+   * completion.
    *
-   * const done = logger.step('render pages')
+   * const done = logger.step('generate cover images', 'covers')
    * // ... work ...
-   * done('8 pages → .hadley/dev/')
+   * done('0 new · 2 cached')
    */
-  step(label: string) {
+  step(label: string, short?: string) {
     const t0 = performance.now()
-    running = { label, t0 }
+    running = { label, short, t0 }
     if (isTTY) {
-      // Show a dim dot while the step is running — overwritten on done()
-      process.stdout.write(`  ${c.dim}·  ${label}${c.reset}`)
+      // a dot while the step is running, which its row overwrites
+      const narrow = columns() < NARROW
+      process.stdout.write(
+        `${narrow ? ' ' : '  '}${c.muted}·${narrow ? ' ' : '  '}${narrow ? (short ?? label) : label}${c.reset}`,
+      )
     }
     return (detail?: string, warns?: string[]) => {
       running = undefined
-      const ms = performance.now() - t0
-      const time = c.dim + formatMs(ms).padStart(8) + c.reset
-      const info = detail ? `  ${c.dim}${c.cyan}${detail}${c.reset}` : ''
-      const warnInfo = warns?.length ? `  ${c.bold}${c.bYellow}· ${warns.length} ⚠${c.reset}` : ''
-      const row = `  ${c.bGreen}✓${c.reset}  ${label.padEnd(24)}${time}${info}${warnInfo}\n`
-      if (isTTY) {
-        process.stdout.write('\r' + row)
-      } else {
-        process.stdout.write(row)
-      }
+      const row = stepRow(
+        { mark: '✓', label, short, ms: performance.now() - t0, detail, warns: warns?.length },
+        columns(),
+      )
+      process.stdout.write(`${isTTY ? '\r' : ''}${row}\n`)
       if (warns?.length && isVerbose) {
         for (const w of warns) {
-          process.stdout.write(`       ${c.gray}⚠  ${w}${c.reset}\n`)
+          process.stdout.write(`       ${c.warn}⚠  ${w}${c.reset}\n`)
         }
       }
     }
@@ -164,7 +215,7 @@ export const logger = {
   verbose(items: string[]) {
     if (!isVerbose) return
     for (const item of items) {
-      process.stdout.write(`       ${c.gray}${item}${c.reset}\n`)
+      process.stdout.write(`       ${c.muted}${item}${c.reset}\n`)
     }
   },
 
@@ -173,23 +224,30 @@ export const logger = {
     const now = new Date()
     const ts = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     process.stdout.write(
-      `${sep()}\n  ${c.bold}done${c.reset} in ${c.bold}${c.bYellow}${formatMs(total)}${c.reset}${c.dim} · ${ts}${c.reset}\n\n`,
+      `${sep()}\n  ${c.bold}done${c.reset} in ${c.bold}${c.brand}${formatMs(total)}${c.reset}${c.muted} · ${ts}${c.reset}\n\n`,
     )
   },
 
+  /** A command that did what it was asked, in a line of its own, with the path it wrote. */
+  success(msg: string, path?: string) {
+    process.stdout.write(`${c.check}✓${c.reset} ${msg}${path === undefined ? '' : ` ${c.detail}${path}${c.reset}`}\n`)
+  },
+
   warn(msg: string) {
-    process.stderr.write(`  ${c.bold}${c.bYellow}⚠${c.reset}  ${c.dim}${msg}${c.reset}\n`)
+    process.stderr.write(`  ${c.bold}${c.warn}⚠${c.reset}  ${c.warn}${msg}${c.reset}\n`)
   },
 
   error(msg: string) {
-    process.stderr.write(`  ${c.bold}${c.red}✗${c.reset}  ${msg}\n`)
+    process.stderr.write(`  ${c.bold}${c.error}✗${c.reset}  ${msg}\n`)
   },
 
   /** A build that stopped: the step under way marked, then the failure (failureText). */
   failed(error: unknown, siteDir?: string) {
     if (running) {
-      const time = c.dim + formatMs(performance.now() - running.t0).padStart(8) + c.reset
-      process.stdout.write(`${isTTY ? '\r' : ''}  ${c.red}×${c.reset}  ${running.label.padEnd(24)}${time}\n`)
+      const { label, short, t0 } = running
+      process.stdout.write(
+        `${isTTY ? '\r' : ''}${stepRow({ mark: '✗', label, short, ms: performance.now() - t0 }, columns())}\n`,
+      )
       running = undefined
     }
     process.stderr.write(failureText(error, siteDir))

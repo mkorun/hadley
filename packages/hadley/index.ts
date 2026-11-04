@@ -61,7 +61,7 @@ export async function build(
     await writeFile(file, text)
   }
 
-  const doneTemplates = logger.step('compile templates')
+  const doneTemplates = logger.step('compile templates', 'templates')
   const templatesDir = joinPath(siteDir, 'theme', 'templates')
   const galleyOptions = {
     includes: { import: (path: string, enc: string) => readFile(path, enc as BufferEncoding), basedir: templatesDir },
@@ -161,7 +161,7 @@ export async function build(
     isPublish,
   }
 
-  const doneImages = logger.step('generate images')
+  const doneImages = logger.step('generate images', 'images')
   const files = await buildFiles(filesOptions)
   doneImages(`${files.images.built} new · ${files.images.cached} cached`, settle(files.problems, isPublish))
 
@@ -179,7 +179,7 @@ export async function build(
     assetNames.set(syntaxPath, css.name)
   }
 
-  const doneCover = logger.step('generate cover images')
+  const doneCover = logger.step('generate cover images', 'covers')
   const covers = await buildCovers(filesOptions)
   doneCover(`${covers.built} new · ${covers.cached} cached`, settle(covers.problems, isPublish))
   planOgImages(filesOptions)
@@ -188,7 +188,7 @@ export async function build(
   const robots = !maintenance && !output.writesFile('robots.txt')
   if (robots) output.claim('robots.txt', 'site: robots.txt')
 
-  const donePaths = logger.step('check site paths')
+  const donePaths = logger.step('check site paths', 'check paths')
   const pathProblems = checkSitePaths(filesOptions, files.requests, assetNames)
   donePaths(`${files.requests.size} pages`, settle(pathProblems, isPublish))
 
@@ -209,7 +209,7 @@ export async function build(
 
   if (isHighlightingCacheModified()) await writeFile(hlCachePath, JSON.stringify(getHighlightingCache()))
 
-  const doneOg = logger.step('generate og images')
+  const doneOg = logger.step('generate og images', 'og images')
   const ogImages = await buildOgImages(filesOptions)
   await writeFile(cachePath, JSON.stringify(imageCache))
   doneOg(og ? `${ogImages.built} new · ${ogImages.cached} cached` : 'off', settle(ogImages.problems, isPublish))
@@ -233,7 +233,7 @@ export async function build(
   }
 
   if (copies.length > 0) {
-    const doneCopies = logger.step('copy error pages')
+    const doneCopies = logger.step('copy error pages', 'error pages')
     for (const { rel, page } of copies)
       await write(
         rel,
@@ -247,19 +247,19 @@ export async function build(
     // the mark a server answers every page by with the 503 page (deploy.md, "Maintenance")
     await write('.maintenance', 'site: the mark of maintenance', '')
   } else {
-    const doneSitemap = logger.step('generate sitemap')
+    const doneSitemap = logger.step('generate sitemap', 'sitemap')
     const sitemap = sitemapXml(site)
     await write('sitemap.xml', 'site: sitemap', sitemap.text)
     doneSitemap(`${sitemap.count} URLs`)
     if (robots) {
-      const doneRobots = logger.step('generate robots.txt')
+      const doneRobots = logger.step('generate robots.txt', 'robots.txt')
       await write('robots.txt', 'site: robots.txt', robotsTxt(site))
       doneRobots()
     }
   }
 
   if (feeds.length > 0) {
-    const doneRss = logger.step('generate feeds')
+    const doneRss = logger.step('generate feeds', 'feeds')
     const counts = []
     for (const lang of feeds) {
       const feed = feedXml(site, lang)
@@ -276,19 +276,19 @@ export async function build(
 
   // from the claim and logo when og images are on; a failure stops the build
   if (og) {
-    const doneOgDefault = logger.step('generate og-default')
+    const doneOgDefault = logger.step('generate og-default', 'og-default')
     await generateOgDefault(og, output.claim('og-default.jpg', 'site: og-default'), joinPath(cacheDir, 'images'))
     doneOgDefault()
   }
 
   if (!maintenance) {
-    const doneLlms = logger.step('generate llms.txt')
+    const doneLlms = logger.step('generate llms.txt', 'llms.txt')
     await write('llms.txt', 'site: llms.txt', llmsTxt(site))
     doneLlms()
   }
 
   const writeSearch = async () => {
-    const doneSearch = logger.step('build search index')
+    const doneSearch = logger.step('build search index', 'search index')
     await runPagefind(outDir, pages.searchable, joinPath(cacheDir, 'search', outputMode))
     doneSearch(`${pages.searchable.length} pages`)
   }

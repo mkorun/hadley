@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { mkdir, readFile, rm } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, relative, resolve } from 'node:path'
 import { parse as limaparse } from '@limaformat/lima'
 import { build } from './index.ts'
 import { logger, withoutVerbose } from './lib/logger.ts'
@@ -173,8 +173,8 @@ try {
         const starter = await starterOf(theme, rest.includes('--blank'))
         const languages = parseLanguages(value('--language'), await starterLanguages(starter))
         await init(dir, languages, theme, starter)
-        console.log(`✅ A new site in ${dir}: ${theme} with the starter ${starter}, in ${languages.join(', ')}`)
-        console.log(`   Next: ${positional[0] ? `cd ${positional[0]} && ` : ''}hadley dev`)
+        logger.success(`A new site in ${dir}: ${theme} with the starter ${starter}, in ${languages.join(', ')}`)
+        console.log(`  Next: ${positional[0] ? `cd ${positional[0]} && ` : ''}hadley dev`)
       } catch (error) {
         fail(error)
       }
@@ -205,7 +205,9 @@ try {
       if (hasBuildFlag) await build(root, 'publish') // production URLs
       else await build(root, 'publish', { localServer: true }) // comments go to the local server
 
-      console.log(`\n✅ Published → ${publishDir}/`)
+      // relative where it lies within the current directory, as the build's own lines name it
+      const shown = relative(process.cwd(), publishDir)
+      logger.success('Published →', `${shown && !shown.startsWith('..') && !isAbsolute(shown) ? shown : publishDir}/`)
 
       if (!hasBuildFlag) {
         await startDevServer({ siteDir: root, outputMode: 'publish', serve, noWatch: true, noBuild: true })

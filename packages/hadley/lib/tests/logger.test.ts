@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { clearScreen, failureText, withoutVerbose } from '../logger.ts'
+import { clearScreen, colours, failureText, stepRow, withoutVerbose } from '../logger.ts'
 
 // `hadley dev` on Bun erased the terminal's history (console.clear() sends ESC[3J there).
 describe('clearing the terminal', () => {
@@ -71,5 +71,53 @@ describe('the verbose options', () => {
   it('leave a command its own arguments, wherever they stand', () => {
     assert.deepEqual(withoutVerbose(['--verbose', 'build', '--root', 'site', '-v']), ['build', '--root', 'site'])
     assert.deepEqual(withoutVerbose(['init', 'my-site']), ['init', 'my-site'])
+  })
+})
+
+// 2026-11-04: on a phone of 43 columns every row with a detail broke, and the separators too
+describe('a step on a wide and on a narrow terminal', () => {
+  const plain = { reset: '', bold: '', check: '', error: '', muted: '', detail: '', warn: '' }
+  const covers = {
+    mark: '✓' as const,
+    label: 'generate cover images',
+    short: 'covers',
+    ms: 4,
+    detail: '0 new · 2 cached',
+  }
+
+  it('keeps its long name and its detail beside it on a wide one', () => {
+    assert.equal(stepRow(covers, 120, plain), '  ✓  generate cover images       4 ms  0 new · 2 cached')
+  })
+
+  it('takes its short name below 70 columns', () => {
+    assert.equal(stepRow(covers, 43, plain), ' ✓ covers           4 ms  0 new · 2 cached')
+  })
+
+  it('puts what does not fit beside it on the line below', () => {
+    const pages = { mark: '✓' as const, label: 'render pages', ms: 69, detail: '26 pages → .hadley/publish/' }
+    assert.equal(stepRow(pages, 43, plain), ' ✓ render pages    69 ms\n     26 pages → .hadley/publish/')
+  })
+
+  it('counts its warnings with what it says, and marks a failed step', () => {
+    assert.equal(
+      stepRow({ ...covers, warns: 2 }, 120, plain),
+      '  ✓  generate cover images       4 ms  0 new · 2 cached  · 2 ⚠',
+    )
+    assert.equal(stepRow({ mark: '✗', label: 'load site', ms: 3 }, 43, plain), ' ✗ load site        3 ms')
+  })
+})
+
+describe('the colours a terminal takes', () => {
+  it('are none outside a terminal, with NO_COLOR, or on a dumb one', () => {
+    assert.equal(colours({ COLORTERM: 'truecolor' }, false), 'none')
+    assert.equal(colours({ COLORTERM: 'truecolor', NO_COLOR: '1' }, true), 'none')
+    assert.equal(colours({ TERM: 'dumb' }, true), 'none')
+  })
+
+  it("are hadley's own where the terminal announces 24 bits or 256 colours, else its basic ones", () => {
+    assert.equal(colours({ COLORTERM: 'truecolor', TERM: 'xterm' }, true), 'truecolor')
+    assert.equal(colours({ COLORTERM: '24bit' }, true), 'truecolor')
+    assert.equal(colours({ TERM: 'xterm-256color' }, true), '256')
+    assert.equal(colours({ TERM: 'xterm', NO_COLOR: '' }, true), 'basic')
   })
 })
