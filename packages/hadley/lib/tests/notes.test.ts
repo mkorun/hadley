@@ -9,6 +9,7 @@ import loadSite from '../load-site.ts'
 import { categoryLabel, notesFor } from '../page-context.ts'
 import { settle } from '../problems.ts'
 import { linksJson } from '../site-data.ts'
+import { slashed } from '../platform.ts'
 import { renderContent } from '../render-content.ts'
 
 let dir: string
@@ -647,8 +648,10 @@ describe('notes review round 2', () => {
       await put(`content/${second}`, note())
       for (const publish of [false, true]) {
         await assert.rejects(load(publish), (error: Error) => {
-          assert.ok(error.message.includes(first), error.message)
-          assert.ok(error.message.includes(second), error.message)
+          // the message names both files as the file system spells them, with \ on Windows
+          const message = slashed(error.message)
+          assert.ok(message.includes(first), error.message)
+          assert.ok(message.includes(second), error.message)
           assert.match(error.message, /id .*already/)
           return true
         })
