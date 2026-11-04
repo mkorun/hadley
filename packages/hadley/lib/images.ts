@@ -48,6 +48,42 @@ export const pictureTurn = async (): Promise<() => void> => {
  */
 export const pictureBytes = (file: string): Promise<Buffer> => readFile(file)
 
+const XML_ENTITIES: Record<string, string> = { lt: '<', gt: '>', quot: '"', apos: "'", amp: '&' }
+
+// XML's five entities and its character references (&#39;, &#x27;, as ExifTool writes an apostrophe), in one pass, so
+// that what one gives is not read again ("&amp;#39;" stays "&#39;"); a reference to no character stays as it is
+const decodeXmlText = (s: string): string =>
+  s.trim().replace(/&(?:(lt|gt|quot|apos|amp)|#(\d+)|#x([0-9a-f]+));/gi, (whole, name, dec, hex) => {
+    if (name) return XML_ENTITIES[name.toLowerCase()] ?? whole
+    const code = dec ? Number(dec) : parseInt(hex, 16)
+    return code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff) ? String.fromCodePoint(code) : whole
+  })
+
+// Extract a text value from an XMP XML buffer by element name (e.g. "photoshop:Credit").
+// Handles both simple elements (<ns:Field>value</ns:Field>) and container elements
+// (rdf:Seq / rdf:Bag / rdf:Alt → first rdf:li child). String search, so no pattern is built from the name.
+export const extractXmpText = (xmp: Buffer, field: string): string | undefined => {
+  const s = xmp.toString('utf-8')
+  const open = `<${field}>`
+  const start = s.indexOf(open)
+  if (start === -1) return undefined
+  const end = s.indexOf(`</${field}>`, start)
+  if (end === -1) return undefined
+  const inner = s.slice(start + open.length, end)
+  if (!inner.includes('<')) return inner ? decodeXmlText(inner) : undefined
+  const li = inner.indexOf('<rdf:li')
+  const textStart = li === -1 ? -1 : inner.indexOf('>', li) + 1
+  const textEnd = textStart > 0 ? inner.indexOf('<', textStart) : -1
+  return textEnd > textStart ? decodeXmlText(inner.slice(textStart, textEnd)) : undefined
+}
+
+// The AI tool an image's XMP names, in whatever namespace the tool that described it uses (aiprov writes `mko:aiTool`);
+// none when it names none
+export const aiToolOf = (xmp: Buffer | undefined): string | undefined => {
+  const named = xmp && /<[\w.-]+:aiTool>([^<]*)<\/[\w.-]+:aiTool>/.exec(xmp.toString('utf-8'))
+  return (named && decodeXmlText(named[1]!)) || undefined
+}
+
 // Whatever the namespace: matches aiPrompt under any XMP prefix, whichever tool (aiprov or another) described the
 // image in whichever namespace; hadley need not know or configure one.
 export const stripAiPromptFromXmp = (xmp: Buffer): Buffer => {
@@ -155,6 +191,8 @@ export interface CacheEntry {
   naturalHeight: number
   validWidths: number[]
   isAi?: boolean
+  // the AI tool its XMP names (aiToolOf), null for none; undefined in an entry written before hadley read it
+  aiTool?: string | null
   // undefined when the source image carries no XMP metadata; JSON.stringify drops it from the cache file
   creditText?: string | undefined
   imageDescription?: string | undefined
@@ -219,6 +257,7 @@ export const processImage = async (
   naturalHeight: number
   validWidths: number[]
   isAi: boolean
+  aiTool: string | undefined
   fromCache: boolean
   written: Promise<void>
 }> => {
@@ -239,6 +278,8 @@ export const processImage = async (
     // copied from the store, where the build that made them left them
     const stored = await Promise.all(expectedFiles.map((f) => fileExists(kept(f))))
     if (stored.every(Boolean)) {
+      // an entry from before hadley read the tool: read from the source's metadata alone, nothing made again
+      cached.aiTool ??= aiToolOf((await sharp(await pictureBytes(sourceFile)).metadata()).xmp) ?? null
       // every name claimed before any is written, as when they are made
       const targets = expectedFiles.map((f) => place(f))
       const written = Promise.all(expectedFiles.map((f, i) => copyInto(kept(f), targets[i]!))).then(() => {})
@@ -247,6 +288,7 @@ export const processImage = async (
         naturalHeight: cached.naturalHeight,
         validWidths: cached.validWidths,
         isAi: cached.isAi ?? false,
+        aiTool: cached.aiTool ?? undefined,
         fromCache: true,
         written: handled(written),
       }
@@ -266,6 +308,7 @@ export const processImage = async (
     if (validWidths.length === 0 && naturalWidth > 0) validWidths.push(naturalWidth)
 
     const isAi = meta.xmp !== undefined && /trainedAlgorithmicMedia/i.test(meta.xmp.toString('utf-8'))
+    const aiTool = aiToolOf(meta.xmp)
 
     // For AI images: patch aiPrompt out of the source buffer before handing to sharp.
     // libvips copies XMP from source at decode time regardless of withMetadata() options,
@@ -295,10 +338,18 @@ export const processImage = async (
         await copyInto(kept(name), targets[i]!)
       }),
     ).then(() => {
-      cache[cacheKey] = { sourceChanged, configHash, naturalWidth, naturalHeight, validWidths, isAi }
+      cache[cacheKey] = {
+        sourceChanged,
+        configHash,
+        naturalWidth,
+        naturalHeight,
+        validWidths,
+        isAi,
+        aiTool: aiTool ?? null,
+      }
     })
 
-    return { naturalWidth, naturalHeight, validWidths, isAi, fromCache: false, written: handled(written) }
+    return { naturalWidth, naturalHeight, validWidths, isAi, aiTool, fromCache: false, written: handled(written) }
   } finally {
     if (written) void written.then(endTurn, endTurn)
     else endTurn()
@@ -347,7 +398,13 @@ export const buildCover = async (
   cache: ImageCache,
   store: string,
   base = '', // what the page's own picture is named from: its URL path for an error page, which shows at any address
-): Promise<{ picture: Picture; listCover: ListCover; isAiGenerated: boolean; fromCache: boolean }> => {
+): Promise<{
+  picture: Picture
+  listCover: ListCover
+  isAiGenerated: boolean
+  aiTool: string | undefined
+  fromCache: boolean
+}> => {
   const result = await processImage(
     cover.source,
     urlPath + cover.rel,
@@ -364,6 +421,7 @@ export const buildCover = async (
     picture: pictureOf(cover.rel, result, cfg, base),
     listCover,
     isAiGenerated: result.isAi,
+    aiTool: result.aiTool,
     fromCache: result.fromCache,
   }
 }

@@ -77,7 +77,7 @@ The page:
 | `toc`, `hasToc` | its `##` headings (`id`, `text`), and whether there are more than two |
 | `hasCode` | whether it has a code block that names its language (highlighting.md) |
 | `readingTimeMinutes`, `charCount` | for an article; the characters of its text |
-| `cover`, `isAiCover` | its cover as values ("Covers"); whether it is AI-generated |
+| `cover`, `isAiCover`, `coverAiTool` | its cover as values ("Covers"); whether it is AI-generated; the AI tool its XMP names (`aiTool` in any namespace, as aiprov writes it), else empty |
 | `newer`, `older` | for an article ("Newer and older") |
 | `mainArticle` | for a variant, the id of its bundle's page |
 | `html.markup` | its text |
@@ -104,7 +104,7 @@ The site and the build:
 
 An entry of a list (`featuredList`, `articleList`, `feed.items`, `newer`, `older`) holds `urlPath`, `title`,
 `subtitle`, `description`, `publishFrom`, `updatedAt`, `displayDate` (the later of the two), `isUpdated`, `status`,
-`showBadge`, `category`, `categoryLabel`, `link` (or empty), `cover` and `isAiCover`.
+`showBadge`, `category`, `categoryLabel`, `link` (or empty), `cover`, `isAiCover` and `coverAiTool`.
 
 ## Notes
 
@@ -150,10 +150,10 @@ hands it to the template as it is (`meta.coverStyle`), as it hands on the `data-
 (`<m data-style=ink>`). A theme draws the styles it knows, and any other cover as it is.
 
 An entry of a list holds the cover of its page as that page shows it: each entry of `featuredList`, `articleList` and
-`feed.items` whose page shows a cover (its template has a `cover` image config) has `item.cover`, the picture as
-values — `src`, `width`, `height` and `sources`, each with a `type` and a `srcset` — and `item.isAiCover`; any other
-entry's `item.cover` is `null`. The template writes the picture with the `sizes` of its list, and alt text empty, as
-the entry's title names the page; a theme gives its `cover` image config a width small enough for its lists. A
+`feed.items` whose page shows a cover (its template has a `cover` image config) has `item.cover`, the picture as values
+— `src`, `width`, `height` and `sources`, each with a `type` and a `srcset` — `item.isAiCover` and `item.coverAiTool`;
+any other entry's `item.cover` is `null`. The template writes the picture with the `sizes` of its list, and alt text
+empty, as the entry's title names the page; a theme gives its `cover` image config a width small enough for its lists. A
 page's template reads its own cover the same way, as `cover`, such as for the picture its search shows:
 
 ```

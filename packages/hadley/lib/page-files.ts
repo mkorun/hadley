@@ -180,6 +180,7 @@ export async function buildCovers(options: FilesOptions): Promise<Counted> {
         )
         page.listCover = coverResult.listCover
         page.isAiCover = coverResult.isAiGenerated
+        page.coverAiTool = coverResult.aiTool
         return coverResult.fromCache ? 'cached' : 'generated'
       }),
     ),

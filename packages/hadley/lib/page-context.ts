@@ -92,6 +92,7 @@ const listEntry = (page: Page, locale: Locale) => ({
   categoryLabel: categoryLabel(locale, page.metadata.category),
   cover: page.listCover ?? null,
   isAiCover: page.isAiCover ?? false,
+  coverAiTool: page.coverAiTool ?? '',
 })
 
 /** Notes in the page's language, ordered by publication day and then id (docs/themes.md, "Notes"). */
@@ -271,6 +272,7 @@ export function pageContext(page: Page, options: ContextOptions): Record<string,
     hasCode: hasCode(page.doc),
     mainArticle: page.mainArticle ?? null,
     isAiCover: page.isAiCover ?? false,
+    coverAiTool: page.coverAiTool ?? '',
     // the page's own cover as values, as an entry of a list holds it (docs/themes.md "Covers")
     cover: page.listCover ?? null,
     // the only values a template writes as HTML ({@raw html.…}); everything else it escapes

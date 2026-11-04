@@ -8,9 +8,12 @@ import {
   replaceJpegXmp,
   replacePngXmp,
   stripAiPromptFromXmp,
+  extractXmpText,
+  aiToolOf,
+  buildCover,
+  type ImageCache,
   type ImageConfigs,
 } from '../images.ts'
-import { extractXmpText } from '../generate-og-image.ts'
 import sharp from 'sharp'
 import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
@@ -337,5 +340,59 @@ describe('pictureTurn', () => {
     await Promise.all(waiting)
     assert.equal(turns.length, 6)
     for (const end of turns.slice(2)) end()
+  })
+})
+
+// 2026-11-04: mko.run's badge named Ideogram for a cover made with ChatGPT; the tool is now read from the image
+describe('the AI tool an image names', () => {
+  const tagged = (field: string) =>
+    Buffer.from(`<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+  <rdf:Description rdf:about="" xmlns:mko="https://mko.run/ns/1.0/" xmlns:acme="urn:acme">${field}</rdf:Description>
+</rdf:RDF></x:xmpmeta>`)
+
+  test('in whatever namespace it is written', () => {
+    assert.equal(aiToolOf(tagged('<mko:aiTool>ChatGPT</mko:aiTool>')), 'ChatGPT')
+    assert.equal(aiToolOf(tagged('<acme:aiTool>Ideogram 3.0</acme:aiTool>')), 'Ideogram 3.0')
+    assert.equal(aiToolOf(tagged('<mko:aiTool>Tom &amp; Jerry&#39;s</mko:aiTool>')), "Tom & Jerry's")
+  })
+
+  test('none when the image names none, or an empty one', () => {
+    assert.equal(aiToolOf(tagged('<mko:destination>mko.run</mko:destination>')), undefined)
+    assert.equal(aiToolOf(tagged('<mko:aiTool></mko:aiTool>')), undefined)
+    assert.equal(aiToolOf(undefined), undefined)
+  })
+
+  test('comes with the cover, made or from the cache, also from a cache entry written before it was read', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'hadley-aitool-test-'))
+    try {
+      const xmp = AI_XMP.replace('<mko:aiPrompt>', '<mko:aiTool>ChatGPT</mko:aiTool>\n      <mko:aiPrompt>')
+      const source = join(dir, 'cover.png')
+      await writeFile(source, injectPngXmp(await plainPng(), xmp))
+      const cover = { rel: 'cover.png', source }
+      const cache: ImageCache = {}
+      const build = () =>
+        buildCover(
+          cover,
+          { widths: [4], formats: ['webp'], sizes: '100vw', quality: 80 },
+          (name) => join(dir, 'out', name),
+          '/a/',
+          cache,
+          join(dir, 'store'),
+        )
+      const made = await build()
+      assert.equal(made.fromCache, false)
+      assert.equal(made.aiTool, 'ChatGPT')
+      const again = await build()
+      assert.equal(again.fromCache, true)
+      assert.equal(again.aiTool, 'ChatGPT')
+      // an entry of an earlier hadley, without the tool
+      delete cache['/a/cover.png']!.aiTool
+      const old = await build()
+      assert.equal(old.fromCache, true)
+      assert.equal(old.aiTool, 'ChatGPT')
+      assert.equal(cache['/a/cover.png']!.aiTool, 'ChatGPT')
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
   })
 })

@@ -96,6 +96,7 @@ export interface Page {
   coverImageHtml?: string
   listCover?: ListCover // the cover as a list shows it (lib/page-context.ts)
   isAiCover?: boolean
+  coverAiTool?: string | undefined // the AI tool the cover's XMP names
   hasOgImage?: boolean
   isAiOg?: boolean
   ogCreditText?: string | undefined

@@ -25,7 +25,14 @@ import { createHash } from 'node:crypto'
 import sharp from 'sharp'
 import { copyFile, mkdir, stat, readFile, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
-import { IMAGE_SECONDS, pictureBytes, pictureTurn, stripAiPromptFromXmp, type ImageCache } from './images.ts'
+import {
+  extractXmpText,
+  IMAGE_SECONDS,
+  pictureBytes,
+  pictureTurn,
+  stripAiPromptFromXmp,
+  type ImageCache,
+} from './images.ts'
 import type { ContentFile } from './site-paths.ts'
 import type { OgDesign } from './og.ts'
 import type { Page } from './site.ts'
@@ -51,35 +58,6 @@ const injectJpegXmp = (jpegBuf: Buffer, xmpBuf: Buffer): Buffer => {
   let insertAt = 2
   if (jpegBuf[2] === 0xff && jpegBuf[3] === 0xe0) insertAt = 4 + jpegBuf.readUInt16BE(4)
   return Buffer.concat([jpegBuf.subarray(0, insertAt), seg, jpegBuf.subarray(insertAt)])
-}
-
-const XML_ENTITIES: Record<string, string> = { lt: '<', gt: '>', quot: '"', apos: "'", amp: '&' }
-
-// XML's five entities and its character references (&#39;, &#x27;, as ExifTool writes an apostrophe), in one pass, so
-// that what one gives is not read again ("&amp;#39;" stays "&#39;"); a reference to no character stays as it is
-const decodeXmlText = (s: string): string =>
-  s.trim().replace(/&(?:(lt|gt|quot|apos|amp)|#(\d+)|#x([0-9a-f]+));/gi, (whole, name, dec, hex) => {
-    if (name) return XML_ENTITIES[name.toLowerCase()] ?? whole
-    const code = dec ? Number(dec) : parseInt(hex, 16)
-    return code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff) ? String.fromCodePoint(code) : whole
-  })
-
-// Extract a text value from an XMP XML buffer by element name (e.g. "photoshop:Credit").
-// Handles both simple elements (<ns:Field>value</ns:Field>) and container elements
-// (rdf:Seq / rdf:Bag / rdf:Alt → first rdf:li child). String search, so no pattern is built from the name.
-export const extractXmpText = (xmp: Buffer, field: string): string | undefined => {
-  const s = xmp.toString('utf-8')
-  const open = `<${field}>`
-  const start = s.indexOf(open)
-  if (start === -1) return undefined
-  const end = s.indexOf(`</${field}>`, start)
-  if (end === -1) return undefined
-  const inner = s.slice(start + open.length, end)
-  if (!inner.includes('<')) return inner ? decodeXmlText(inner) : undefined
-  const li = inner.indexOf('<rdf:li')
-  const textStart = li === -1 ? -1 : inner.indexOf('>', li) + 1
-  const textEnd = textStart > 0 ? inner.indexOf('<', textStart) : -1
-  return textEnd > textStart ? decodeXmlText(inner.slice(textStart, textEnd)) : undefined
 }
 
 // Approximate text wrapping for Noto Sans Bold.

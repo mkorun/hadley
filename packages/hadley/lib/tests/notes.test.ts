@@ -151,6 +151,7 @@ describe('noteList', () => {
       categoryLabel: 'Issue',
       cover: null,
       isAiCover: false,
+      coverAiTool: '',
       tags: ['tools', 'go'],
       ageDays: 2,
       isDraft: false,
