@@ -53,14 +53,16 @@ const injectJpegXmp = (jpegBuf: Buffer, xmpBuf: Buffer): Buffer => {
   return Buffer.concat([jpegBuf.subarray(0, insertAt), seg, jpegBuf.subarray(insertAt)])
 }
 
+const XML_ENTITIES: Record<string, string> = { lt: '<', gt: '>', quot: '"', apos: "'", amp: '&' }
+
+// XML's five entities and its character references (&#39;, &#x27;, as ExifTool writes an apostrophe), in one pass, so
+// that what one gives is not read again ("&amp;#39;" stays "&#39;"); a reference to no character stays as it is
 const decodeXmlText = (s: string): string =>
-  s
-    .trim()
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&amp;/g, '&')
+  s.trim().replace(/&(?:(lt|gt|quot|apos|amp)|#(\d+)|#x([0-9a-f]+));/gi, (whole, name, dec, hex) => {
+    if (name) return XML_ENTITIES[name.toLowerCase()] ?? whole
+    const code = dec ? Number(dec) : parseInt(hex, 16)
+    return code > 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff) ? String.fromCodePoint(code) : whole
+  })
 
 // Extract a text value from an XMP XML buffer by element name (e.g. "photoshop:Credit").
 // Handles both simple elements (<ns:Field>value</ns:Field>) and container elements

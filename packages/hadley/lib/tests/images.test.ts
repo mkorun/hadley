@@ -285,6 +285,19 @@ describe('extractXmpText', () => {
     assert.equal(extractXmpText(buf, 'photoshop:Credit'), 'Jane & Doe / Ideogram')
   })
 
+  // 2026-11-04: teblo.de's structured data said "archivist&#39;s", as ExifTool writes an apostrophe in XMP
+  test('character references decoded, decimal and hexadecimal', () => {
+    const buf = xmp(
+      "<dc:description><rdf:Alt><rdf:li xml:lang='x-default'>An archivist&#39;s stamp &#x2014; O&#X27;Brien</rdf:li></rdf:Alt></dc:description>",
+    )
+    assert.equal(extractXmpText(buf, 'dc:description'), "An archivist's stamp — O'Brien")
+  })
+
+  test('decoded once: an escaped reference stays a reference, and one to no character stays as it is', () => {
+    const buf = xmp('<photoshop:Credit>&amp;#39; &#0; &#xD800; &#1114112;</photoshop:Credit>')
+    assert.equal(extractXmpText(buf, 'photoshop:Credit'), '&#39; &#0; &#xD800; &#1114112;')
+  })
+
   test('missing field returns undefined', () => {
     const buf = xmp('<photoshop:Credit>Jane Doe</photoshop:Credit>')
     assert.equal(extractXmpText(buf, 'dc:creator'), undefined)
