@@ -4,6 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { loadOgDesign } from '../og.ts'
+import { claimLines } from '../generate-og-default.ts'
 import { applyColourMatrix, buildOverlay, generateOgImage } from '../generate-og-image.ts'
 import sharp from 'sharp'
 
@@ -48,8 +49,18 @@ describe('the design of og images', () => {
     assert.equal(design?.background, '#102030')
     assert.equal(design?.accent, '#ABCDEF')
     assert.deepEqual(design?.claims, { de: 'Ein Claim', en: 'A claim' })
-    assert.equal(design?.logo.aspect, 2)
+    assert.equal(design?.logo?.aspect, 2)
     assert.equal(design?.defaultLanguage, 'de')
+  })
+
+  // 2026-11-05: the starters' themes have no logo, and turning og images on stopped their build
+  it('takes the site title where it has no logo', async () => {
+    theme(':root { --og-background: #102030; --og-accent: #ABCDEF; }', false)
+    const design = (await loadOgDesign(dir, on, { de: { claim: 'Ein Claim', title: 'Feder Katze' } }, 'de', {}))!
+    assert.equal(design.logo, undefined)
+    assert.deepEqual(design.names, { de: 'Feder Katze' })
+    const svg = buildOverlay('Ein Titel', 'Ein Claim', { name: 'Feder & Katze' }, '', false, '#102030').toString()
+    assert.match(svg, /font-weight="bold"[^>]*>Feder &amp; Katze<\/text>/)
   })
 
   // they fell back to teblo.de's colours, a guessed logo ratio and an empty claim
@@ -57,7 +68,7 @@ describe('the design of og images', () => {
     theme(':root { --og-background: navy; }', false)
     await assert.rejects(
       loadOgDesign(dir, on, { de: {}, en: { claim: 'A claim' } }, 'de', {}),
-      /need a logo .*, --og-background as #rrggbb .*, --og-accent as #rrggbb .*, a claim for the language de$/,
+      /need --og-background as #rrggbb .*, --og-accent as #rrggbb .*, a claim for the language de, a logo .* or a title for the language de, a logo .* or a title for the language en$/,
     )
   })
 })
@@ -65,7 +76,14 @@ describe('the design of og images', () => {
 describe('the overlay of an og image', () => {
   const X = `"><x-evil t=1>$&$'</x-evil>`
   const overlay = (title: string) =>
-    buildOverlay(title, `C${X}`, 'AAAA', 2, 'image/svg+xml', '', false, '#000000').toString()
+    buildOverlay(
+      title,
+      `C${X}`,
+      { logo: { data: 'AAAA', aspect: 2, mime: 'image/svg+xml' } },
+      '',
+      false,
+      '#000000',
+    ).toString()
 
   it('writes the title and the tagline as text of the SVG', () => {
     const svg = overlay(`T${X}`)
@@ -176,5 +194,35 @@ describe('the og image of a page', () => {
     await image('#996633')
     utimesSync(source, then, then)
     assert.equal((await make()).result, 'generated')
+  })
+})
+
+// 2026-11-05: hadley.sh's claim ran over both edges of og-default.jpg, which broke a claim only at " – "
+describe('the claim of og-default.jpg', () => {
+  it('breaks at an en dash, as it did', () => {
+    assert.deepEqual(claimLines('Software, tools, AI – and the thinking behind them'), {
+      line1: 'Software, tools, AI',
+      line2: '– and the thinking behind them',
+      dashed: true,
+      size: 48,
+    })
+  })
+
+  it('stays one line where it fits', () => {
+    assert.deepEqual(claimLines('Notes on type, tools and the slow web'), {
+      line1: 'Notes on type, tools and the slow web',
+      line2: '',
+      dashed: false,
+      size: 48,
+    })
+  })
+
+  it('breaks a long one at the space nearest its middle, and sets it smaller only where a line is still too wide', () => {
+    const { line1, line2, dashed, size } = claimLines('A static site generator for people who write their own tools')
+    assert.deepEqual(
+      [line1, line2, dashed, size],
+      ['A static site generator for', 'people who write their own tools', false, 48],
+    )
+    assert.ok(claimLines('x'.repeat(90)).size < 48)
   })
 })

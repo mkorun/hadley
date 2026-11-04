@@ -88,9 +88,10 @@ theme's own `robots.txt` takes precedence ([deploy.md](deploy.md)).
 ### og images
 
 With `og: enabled: true`, hadley makes `og-default.jpg` for the site and an `og.jpg` for every article and essay, from
-its cover or its first picture, with its title. It needs the site's logo (`--og-logo` in the theme's
-`assets/css/style.css`, else `theme/assets/images/logo.svg` or `logo.png`), a `claim` in every language, and the tokens
-`--og-background` and `--og-accent` in that stylesheet; a missing one stops the build with all of them named.
+its cover or its first picture, with its title. It needs a `claim` in every language and the tokens `--og-background`
+and `--og-accent` in the theme's `assets/css/style.css`; a missing one stops the build with all of them named. The
+site's logo (`--og-logo` in that stylesheet, else `theme/assets/images/logo.svg` or `logo.png`) stands at the bottom of
+a page's og image and in the middle of `og-default.jpg`; a site without one has its `title` there, in bold.
 `--og-background` is the ground of `og-default.jpg` and shades the title, and a transparent picture lies on it; the
 edges of a picture that does not fit 1200 × 630 take the colour of its own; `--og-accent` underlines the claim on
 `og-default.jpg`. A cover whose style the theme draws through a colour matrix (themes.md, "Covers") goes through it

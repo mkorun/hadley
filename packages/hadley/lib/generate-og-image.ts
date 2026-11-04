@@ -34,7 +34,7 @@ import {
   type ImageCache,
 } from './images.ts'
 import type { ContentFile } from './site-paths.ts'
-import type { OgDesign } from './og.ts'
+import { brandOf, type OgBrand, type OgDesign } from './og.ts'
 import type { Page } from './site.ts'
 import { element, xmlDocument, type XmlElement } from './xml.ts'
 
@@ -147,9 +147,7 @@ const wrapTitle = (text: string, availPx: number, fontSize: number, maxLines: nu
 export const buildOverlay = (
   title: string,
   tagline: string,
-  logoB64: string,
-  logoAspect: number,
-  logoMime: string,
+  brand: OgBrand,
   aiBadgeB64: string,
   isAi: boolean,
   shade: string,
@@ -161,9 +159,12 @@ export const buildOverlay = (
   const TITLE_LINE_H = 64
   const FONT = "'Noto Sans','DejaVu Sans',Arial,sans-serif"
 
-  // Logo dimensions: aspect ratio read from the site's own logo file (see resolveLogoPath)
+  // Logo dimensions: aspect ratio read from the site's own logo file (see resolveLogoPath); without a logo the site's
+  // name stands there, set bold, its width taken as Noto Sans Bold's average character width
   const LOGO_H = 63
-  const LOGO_W = Math.round(LOGO_H * logoAspect)
+  const NAME_SIZE = 44
+  const LOGO_W =
+    'logo' in brand ? Math.round(LOGO_H * brand.logo.aspect) : Math.round(brand.name.length * NAME_SIZE * 0.62)
   const LOGO_Y = H - PAD - LOGO_H // 523 — bottom row
 
   // Tagline: slightly above the logo's baseline (≈86% of logo height)
@@ -209,13 +210,24 @@ export const buildOverlay = (
       ['height', `${H}`],
       ['fill', 'url(#og)'],
     ]),
-    element('image', [
-      ['href', `data:${logoMime};base64,${logoB64}`],
-      ['x', `${PAD}`],
-      ['y', `${LOGO_Y}`],
-      ['width', `${LOGO_W}`],
-      ['height', `${LOGO_H}`],
-    ]),
+    'logo' in brand
+      ? element('image', [
+          ['href', `data:${brand.logo.mime};base64,${brand.logo.data}`],
+          ['x', `${PAD}`],
+          ['y', `${LOGO_Y}`],
+          ['width', `${LOGO_W}`],
+          ['height', `${LOGO_H}`],
+        ])
+      : text(
+          PAD,
+          LOGO_Y + Math.round(LOGO_H * 0.86),
+          [
+            ['font-size', `${NAME_SIZE}`],
+            ['font-weight', 'bold'],
+            ['fill', 'white'],
+          ],
+          brand.name,
+        ),
   ]
   if (tagline) {
     const attrs: XmlElement['attrs'] = [
@@ -351,13 +363,10 @@ export async function generateOgImage(
 
     if (ai && badge === undefined) throw new Error(`an AI-generated og image needs the badge ${design.aiBadgePath}`)
     const aiBadgeB64 = ai ? badge! : ''
-    const { data, aspect, mime } = design.logo
     const overlay = buildOverlay(
       title,
       design.claims[language] ?? '',
-      data,
-      aspect,
-      mime,
+      brandOf(design, language),
       aiBadgeB64,
       ai,
       design.background,
