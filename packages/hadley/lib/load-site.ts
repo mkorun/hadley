@@ -23,6 +23,7 @@ import {
   type FieldSchema,
 } from './site-config.ts'
 import { fieldLine } from './lines.ts'
+import { logger } from './logger.ts'
 import { fallingBehind, readSourceData, sourceFiles, sourcesOf } from './sources.ts'
 import { resolvePersons } from './persons.ts'
 import { urlPathProblem } from './site-paths.ts'
@@ -414,7 +415,7 @@ function navigations(config: Config, language: Language, fallback: Language | un
     for (const id of ids) {
       const page = language.pages[id] ?? fallback?.pages[id]
       if (!page) {
-        console.warn(`⚠️  Nav "${name}" references unknown page id: "${id}"`)
+        logger.warn(`Nav "${name}" references unknown page id: "${id}"`)
         continue
       }
       // a navigation shows a listed page, whatever its templates do; the dev build marks the unpublished

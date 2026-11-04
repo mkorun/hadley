@@ -79,7 +79,7 @@ a new `ref`. So that a site does not fall behind unseen, a build with `checkout`
 out there that change one of the source's pages or data files after `ref`, and warns of them:
 
 ```text
-⚠  sources.docs: 3 newer commits in /home/me/dev/tool change its files after 75b5cfe
+!  sources.docs: 3 newer commits in /home/me/dev/tool change its files after 75b5cfe
 ```
 
 The warning stops nothing; it ends when `ref` names the newest of them. A source that keeps an earlier version on

@@ -126,7 +126,7 @@ export async function startDevServer({
         .forEach((l) => console.error(`${dim}[forms]${reset} ${l.trimEnd()}`)),
     )
     commentsProcess.on('exit', (code) => {
-      if (!shuttingDown) devWarn(`⚠ Comment service exited unexpectedly (code ${code})`)
+      if (!shuttingDown) devWarn(`! Comment service exited unexpectedly (code ${code})`)
     })
 
     // Wait for the comment service to be ready before proceeding

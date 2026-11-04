@@ -20,12 +20,11 @@ export function colours(env: Record<string, string | undefined>, tty: boolean): 
   return /256/.test(env.TERM ?? '') ? '256' : 'basic'
 }
 
-// the name and the total in Claude's orange, a step done in olive, what is said about it and a path in blue,
+// the name and the total in bold, a step done in olive, what is said about it and a path in blue,
 // times and lines in the grey of hadley.sh; red only for a failure. Text keeps the terminal's own colour.
 const fg = (r: number, g: number, b: number) => `\x1b[38;2;${r};${g};${b}m`
-const PALETTES: Record<Colours, Record<'brand' | 'check' | 'muted' | 'detail' | 'warn' | 'error', string>> = {
+const PALETTES: Record<Colours, Record<'check' | 'muted' | 'detail' | 'warn' | 'error', string>> = {
   truecolor: {
-    brand: fg(215, 119, 87),
     check: fg(135, 154, 57),
     muted: fg(141, 146, 155),
     detail: fg(109, 167, 236),
@@ -33,15 +32,14 @@ const PALETTES: Record<Colours, Record<'brand' | 'check' | 'muted' | 'detail' | 
     error: fg(208, 70, 62),
   },
   '256': {
-    brand: '\x1b[38;5;173m',
     check: '\x1b[38;5;106m',
     muted: '\x1b[38;5;245m',
     detail: '\x1b[38;5;75m',
     warn: '\x1b[38;5;180m',
     error: '\x1b[38;5;167m',
   },
-  basic: { brand: '', check: '\x1b[32m', muted: '\x1b[2m', detail: '\x1b[2m', warn: '\x1b[33m', error: '\x1b[91m' },
-  none: { brand: '', check: '', muted: '', detail: '', warn: '', error: '' },
+  basic: { check: '\x1b[32m', muted: '\x1b[2m', detail: '\x1b[2m', warn: '\x1b[33m', error: '\x1b[91m' },
+  none: { check: '', muted: '', detail: '', warn: '', error: '' },
 }
 const level = colours(process.env, isTTY)
 const c = {
@@ -71,7 +69,7 @@ let running: { label: string; short?: string | undefined; t0: number } | undefin
  */
 export function stepRow(
   step: {
-    mark: '✓' | '✗'
+    mark: '●' | '✕'
     label: string
     short?: string | undefined
     ms: number
@@ -86,13 +84,13 @@ export function stepRow(
   const gap = narrow ? ' ' : '  '
   const name = narrow ? `${step.short ?? step.label} `.padEnd(15) : step.label.padEnd(24)
   const time = formatMs(step.ms).padStart(narrow ? 6 : 8)
-  const head = `${lead}${paint[step.mark === '✓' ? 'check' : 'error']}${step.mark}${paint.reset}${gap}${name}`
+  const head = `${lead}${paint[step.mark === '●' ? 'check' : 'error']}${step.mark}${paint.reset}${gap}${name}`
   const headWidth = lead.length + 1 + gap.length + name.length + time.length
-  const said = [step.detail, step.warns ? `· ${step.warns} ⚠` : undefined].filter((part) => part !== undefined)
+  const said = [step.detail, step.warns ? `· ${step.warns} !` : undefined].filter((part) => part !== undefined)
   const saidWidth = said.join('  ').length
   const saidText = [
     ...(step.detail === undefined ? [] : [`${paint.detail}${step.detail}${paint.reset}`]),
-    ...(step.warns ? [`${paint.bold}${paint.warn}· ${step.warns} ⚠${paint.reset}`] : []),
+    ...(step.warns ? [`${paint.bold}${paint.warn}· ${step.warns} !${paint.reset}`] : []),
   ].join('  ')
   const row = `${head}${paint.muted}${time}${paint.reset}`
   if (said.length === 0) return row
@@ -174,7 +172,7 @@ export function failureText(error: unknown, siteDir?: string): string {
 export const logger = {
   header(mode: 'dev' | 'publish') {
     buildStart = performance.now()
-    const title = `  ${c.bold}${c.brand}hadley${c.reset} ${c.muted}—${c.reset} ${c.bold}${mode}${c.reset}`
+    const title = `  ${c.bold}hadley${c.reset} ${c.muted}—${c.reset} ${c.bold}${mode}${c.reset}`
     process.stdout.write(`\n${sep()}\n${title}\n${sep()}\n`)
   },
 
@@ -190,22 +188,22 @@ export const logger = {
     const t0 = performance.now()
     running = { label, short, t0 }
     if (isTTY) {
-      // a dot while the step is running, which its row overwrites
+      // a ring while the step is running, which its row overwrites
       const narrow = columns() < NARROW
       process.stdout.write(
-        `${narrow ? ' ' : '  '}${c.muted}·${narrow ? ' ' : '  '}${narrow ? (short ?? label) : label}${c.reset}`,
+        `${narrow ? ' ' : '  '}${c.muted}○${narrow ? ' ' : '  '}${narrow ? (short ?? label) : label}${c.reset}`,
       )
     }
     return (detail?: string, warns?: string[]) => {
       running = undefined
       const row = stepRow(
-        { mark: '✓', label, short, ms: performance.now() - t0, detail, warns: warns?.length },
+        { mark: '●', label, short, ms: performance.now() - t0, detail, warns: warns?.length },
         columns(),
       )
       process.stdout.write(`${isTTY ? '\r' : ''}${row}\n`)
       if (warns?.length && isVerbose) {
         for (const w of warns) {
-          process.stdout.write(`       ${c.warn}⚠  ${w}${c.reset}\n`)
+          process.stdout.write(`       ${c.warn}!  ${w}${c.reset}\n`)
         }
       }
     }
@@ -224,21 +222,21 @@ export const logger = {
     const now = new Date()
     const ts = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     process.stdout.write(
-      `${sep()}\n  ${c.bold}done${c.reset} in ${c.bold}${c.brand}${formatMs(total)}${c.reset}${c.muted} · ${ts}${c.reset}\n\n`,
+      `${sep()}\n  ${c.bold}done${c.reset} in ${c.bold}${formatMs(total)}${c.reset}${c.muted} · ${ts}${c.reset}\n\n`,
     )
   },
 
   /** A command that did what it was asked, in a line of its own, with the path it wrote. */
   success(msg: string, path?: string) {
-    process.stdout.write(`${c.check}✓${c.reset} ${msg}${path === undefined ? '' : ` ${c.detail}${path}${c.reset}`}\n`)
+    process.stdout.write(`${c.check}●${c.reset} ${msg}${path === undefined ? '' : ` ${c.detail}${path}${c.reset}`}\n`)
   },
 
   warn(msg: string) {
-    process.stderr.write(`  ${c.bold}${c.warn}⚠${c.reset}  ${c.warn}${msg}${c.reset}\n`)
+    process.stderr.write(`  ${c.bold}${c.warn}!${c.reset}  ${c.warn}${msg}${c.reset}\n`)
   },
 
   error(msg: string) {
-    process.stderr.write(`  ${c.bold}${c.error}✗${c.reset}  ${msg}\n`)
+    process.stderr.write(`  ${c.bold}${c.error}✕${c.reset}  ${msg}\n`)
   },
 
   /** A build that stopped: the step under way marked, then the failure (failureText). */
@@ -246,7 +244,7 @@ export const logger = {
     if (running) {
       const { label, short, t0 } = running
       process.stdout.write(
-        `${isTTY ? '\r' : ''}${stepRow({ mark: '✗', label, short, ms: performance.now() - t0 }, columns())}\n`,
+        `${isTTY ? '\r' : ''}${stepRow({ mark: '✕', label, short, ms: performance.now() - t0 }, columns())}\n`,
       )
       running = undefined
     }

@@ -560,7 +560,7 @@ describe('hostile content, through a whole publish build', () => {
       page('title: Entwurf\nstatus: draft\ncover: ../../../../../secret.txt\n', '[x](../../../../../secret.txt)\n'),
     )
     // a draft is meant to be unfinished (lib/problems.ts); its page shows what it lacks
-    assert.doesNotMatch(await quietly('dev-read', 'dev'), /generate images .*⚠/)
+    assert.doesNotMatch(await quietly('dev-read', 'dev'), /generate images .*· \d+ !/)
     const dev = join(root, '.hadley', 'dev')
     const draft = await readFile(join(dev, 'entwurf', 'index.html'), 'utf8')
     assert.match(
@@ -578,7 +578,7 @@ describe('hostile content, through a whole publish build', () => {
   it('shows a link of a scheme or host a page may not name as text in a dev build, and fails publishing it', async () => {
     const links = '[Skript](javascript:alert(1)) und [Fremd](//evil.example/x) und <m data-href=javascript:x>D</m>'
     const root = await site('blocked', page('title: Blockiert\n', `${links}\n`))
-    assert.match(await quietly('blocked', 'dev'), /generate images .* 3 ⚠/)
+    assert.match(await quietly('blocked', 'dev'), /generate images .* · 3 !/)
     const html = await readFile(join(root, '.hadley', 'dev', 'evil', 'index.html'), 'utf8')
     assert.match(html, /Skript<!-- not built: javascript:alert\(1\) has a scheme a link may not have/)
     assert.match(html, /Fremd\s*<!-- not built: \/\/evil\.example\/x means something else on another origin -->/)
@@ -599,7 +599,7 @@ describe('hostile content, through a whole publish build', () => {
     await writeFile(join(bundle, 'bad.png'), 'not an image')
     await assert.rejects(publish('bad-cover'), /evil\.md: cover bad\.png could not be built: /)
     await writeFile(join(bundle, 'evil.md'), page('title: Cover\nstatus: draft\ncover: bad.png\n', 'Text.\n'))
-    assert.doesNotMatch(await quietly('bad-cover', 'dev'), /⚠/)
+    assert.doesNotMatch(await quietly('bad-cover', 'dev'), /· \d+ !/)
     // review 2026-10-26 (href): no warning alone passed with the draft left out of the build
     const html = await readFile(join(root, '.hadley', 'dev', 'evil', 'index.html'), 'utf8')
     assert.match(html, /<h1>Cover<\/h1>/)

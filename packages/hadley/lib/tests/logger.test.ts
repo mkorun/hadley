@@ -78,7 +78,7 @@ describe('the verbose options', () => {
 describe('a step on a wide and on a narrow terminal', () => {
   const plain = { reset: '', bold: '', check: '', error: '', muted: '', detail: '', warn: '' }
   const covers = {
-    mark: '✓' as const,
+    mark: '●' as const,
     label: 'generate cover images',
     short: 'covers',
     ms: 4,
@@ -86,24 +86,24 @@ describe('a step on a wide and on a narrow terminal', () => {
   }
 
   it('keeps its long name and its detail beside it on a wide one', () => {
-    assert.equal(stepRow(covers, 120, plain), '  ✓  generate cover images       4 ms  0 new · 2 cached')
+    assert.equal(stepRow(covers, 120, plain), '  ●  generate cover images       4 ms  0 new · 2 cached')
   })
 
   it('takes its short name below 70 columns', () => {
-    assert.equal(stepRow(covers, 43, plain), ' ✓ covers           4 ms  0 new · 2 cached')
+    assert.equal(stepRow(covers, 43, plain), ' ● covers           4 ms  0 new · 2 cached')
   })
 
   it('puts what does not fit beside it on the line below', () => {
-    const pages = { mark: '✓' as const, label: 'render pages', ms: 69, detail: '26 pages → .hadley/publish/' }
-    assert.equal(stepRow(pages, 43, plain), ' ✓ render pages    69 ms\n     26 pages → .hadley/publish/')
+    const pages = { mark: '●' as const, label: 'render pages', ms: 69, detail: '26 pages → .hadley/publish/' }
+    assert.equal(stepRow(pages, 43, plain), ' ● render pages    69 ms\n     26 pages → .hadley/publish/')
   })
 
   it('counts its warnings with what it says, and marks a failed step', () => {
     assert.equal(
       stepRow({ ...covers, warns: 2 }, 120, plain),
-      '  ✓  generate cover images       4 ms  0 new · 2 cached  · 2 ⚠',
+      '  ●  generate cover images       4 ms  0 new · 2 cached  · 2 !',
     )
-    assert.equal(stepRow({ mark: '✗', label: 'load site', ms: 3 }, 43, plain), ' ✗ load site        3 ms')
+    assert.equal(stepRow({ mark: '✕', label: 'load site', ms: 3 }, 43, plain), ' ✕ load site        3 ms')
   })
 })
 
