@@ -33,6 +33,15 @@ describe('articleDirs', () => {
     assert.equal(articleDir('essay', 'de'), join(dir, 'content/essays/[essay]'))
   })
 
+  it('maps only article and essay bundles, leaving pages and all forms of notes out', async () => {
+    await file('content/notes/solitary.md', '# Note\n')
+    await file('content/notes/[bundled]/bundled.md', '# Note\n')
+    await file('content/notes/@series/collected.md', '# Note\n')
+    await file('content/pages/[about]/about.md', '# About\n')
+    const articleDir = await articleDirs(dir, 'de')
+    for (const id of ['solitary', 'bundled', 'collected', 'about']) assert.equal(articleDir(id, 'de'), undefined, id)
+  })
+
   it('finds no directory for an id no bundle has', async () => {
     await file('content/articles/[plain]/plain.md', 'x')
     assert.equal((await articleDirs(dir, 'de'))('missing', 'de'), undefined)

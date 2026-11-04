@@ -10,6 +10,7 @@ A page's title is its front matter's `title` or, without one, the first block of
 the bold line right after that heading (`__Subtitle__`) is then its subtitle, unless the front matter has one. A
 heading or bold line that is the title or subtitle is taken out of the text, so the page shows it once. A page with
 both a `title` and such a heading gives its title twice: that is a problem, which stops a publish build of the page.
+An explicitly empty `title` is a problem.
 `linktext` is the shorter name navigations and `llms.txt` show for a page; without it, they show its title.
 
 ## Front matter
@@ -75,9 +76,11 @@ Reported with a script that plays every case; the suggestion is to compare again
 ```
 
 A note without a `publishFrom` is a problem of the note, and so is, on any page, a `link` that is not `https` or
-names this site. A note that stands alone as a `.md` file has no bundle, so a file it names is a problem; a note with
-files is a bundle, as an article is. Templates list the notes as `noteList` (themes.md, "Notes"); the home page's
-list and the feed name none.
+names this site in any language, including a host with a trailing dot. It follows the content destination rules;
+whitespace and control characters are refused, and the page keeps the normalized URL. External `link` values appear
+in `.hadley/links.json` along with content links. A note that stands alone as a `.md` file has no bundle, so a file it
+names is a problem; a note with files is a bundle, as an article is. Templates list the notes as `noteList`
+(themes.md, "Notes"); the home page's list and the feed name none.
 
 ## Markanto in hadley
 

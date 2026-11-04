@@ -218,14 +218,14 @@ describe('the outputs of a page in a publish build', () => {
       const text = await readFile(out(file), 'utf8')
       assert.match(text, /outputs\.example\/aktuell\//, `${file} lists the current article`)
       assert.doesNotMatch(text, /outputs\.example\/alt\//, `${file} lists the archived page`)
-      if (file === 'feed.xml') assert.doesNotMatch(text, /outputs\.example\/notiz\//)
-      else assert.match(text, /outputs\.example\/notiz\//)
+      if (file === 'feed.xml') assert.doesNotMatch(text, /outputs\.example\/notes\/notiz\//)
+      else assert.match(text, /outputs\.example\/notes\/notiz\//)
     }
     const pages = [
       'aktuell/index.html',
       'index.html',
       'knapp/index.html',
-      'notiz/index.html',
+      'notes/notiz/index.html',
       'teil1/index.html',
       'teil3/index.html',
     ]
@@ -239,7 +239,7 @@ describe('the outputs of a page in a publish build', () => {
       process.stdout.write = write
     }
     // review 2026-10-24 (final): the count alone let another page of the same number through
-    assert.deepEqual(await indexed(), ['/', '/aktuell/', '/knapp/', '/notiz/', '/teil1/', '/teil3/'])
+    assert.deepEqual(await indexed(), ['/', '/aktuell/', '/knapp/', '/notes/notiz/', '/teil1/', '/teil3/'])
   })
 
   it('leave a page marked noindex out of the sitemap, and keep it in the feed and the search index', async () => {
@@ -301,7 +301,10 @@ describe('the outputs of a page in a publish build', () => {
       assert.doesNotMatch(text, /href="[^"]*\/(?:alt|teil2|en\/aktuell)\/"/, `${file} links a page nothing may link`)
     }
     assert.match(html['index.html']!, /<li><a href="\/aktuell\/">Aktuell<\/a><\/li>/, 'the home page lists the article')
-    assert.match(html['index.html']!, /<nav><a href="\/notiz\/">Notiz<\/a><a href="\/aktuell\/">Aktuell<\/a><\/nav>/)
+    assert.match(
+      html['index.html']!,
+      /<nav><a href="\/notes\/notiz\/">Notiz<\/a><a href="\/aktuell\/">Aktuell<\/a><\/nav>/,
+    )
     // review 2026-10-24 (final): a tag named a variant by its bundle, the archived page, and a page kept its draft
     // variant; templates that read site.taxonomy, site.collections or variants got ids of pages nothing may link
     const tagged = [...html['index.html']!.matchAll(/<li class="tag"><a href="([^"]*)">/g)].map((m) => m[1])
@@ -309,7 +312,7 @@ describe('the outputs of a page in a publish build', () => {
     assert.doesNotMatch(html['index.html']!, /class="variant"/)
     const series = /<ol>([\s\S]*?)<\/ol>/.exec(html['teil1/index.html']!)?.[1] ?? ''
     assert.deepEqual([...series.matchAll(/href="([^"]*)"/g)].map((m) => m[1]).sort(), ['/teil1/', '/teil3/'])
-    assert.match(html['aktuell/index.html']!, /<p>Siehe Alt und <a href="\/notiz\/">Notiz<\/a>\.<\/p>/)
+    assert.match(html['aktuell/index.html']!, /<p>Siehe Alt und <a href="\/notes\/notiz\/">Notiz<\/a>\.<\/p>/)
     assert.match(html['aktuell/index.html']!, /<link rel="alternate" hreflang="de" href="\/aktuell\/">/)
     assert.doesNotMatch(html['aktuell/index.html']!, /hreflang="en"/)
   })
@@ -500,7 +503,7 @@ describe('the outputs of a page in a publish build', () => {
   })
 
   it('write a page for a note', () => {
-    assert.equal(existsSync(out('notiz/index.html')), true)
+    assert.equal(existsSync(out('notes/notiz/index.html')), true)
   })
 
   // review 2026-10-24: a cover was accepted, but neither shown nor made into an og image

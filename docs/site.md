@@ -24,7 +24,8 @@ theme/                       the site's theme (themes.md)
 A bundle is a folder named by its id in brackets, `[first-steps]`. It holds its page in the site's default language,
 `<id>.md`; the same page in another language in a folder named after the language, `de/<slug>.md`; and the files its
 pages name, pictures and downloads. A file of the bundle that no page names is not published. A file whose name is all
-capitals, such as `README.md` or `NOTES.md`, is no page.
+capitals, such as `README.md` or `NOTES.md`, is no page. An id names one bundle across all roots and languages;
+a second bundle with that id stops the build.
 
 A file `_<name>.md` beside the page, or in a language's folder, is a variant: another page of the same piece, at
 `/<name>/` (`/de/<name>/` in German), with the id `<id>_<name>`. It shares the comments of its bundle's page, needs no
@@ -51,13 +52,13 @@ whole root one (config.md). Without either, a page's template is its root's type
 
 ## Collections
 
-A folder named `@name` in a root holds bundles that belong together. Two or more listed pages of a collection are a
-series: their templates read them as `seriesData`, in the order of their dates. `@errors` holds the error pages, which
-no list, sitemap or search shows: `[404]` for a page that is not there, and `[503]` for a site under maintenance
-(config.md, `maintenance`). An error page's address is hadley's, `/errors/404/` and `/de/errors/404/`, as a server
-finds it by its number (deploy.md); its front matter takes no `urlPath`. A server shows it at whatever address failed,
-so its images and files stay in its bundle, but its HTML names them from its own URL path
-(`/errors/503/loft-960w.webp`), never beside it.
+A folder named `@name` in a root holds bundles that belong together. Two or more listed articles or essays of a
+collection are a series: their templates read them as `seriesData`, in the order of their dates. `@errors` holds
+the error pages, which no list, sitemap or search shows: `[404]` for a page that is not there, and `[503]` for a
+site under maintenance (config.md, `maintenance`). An error page's address is hadley's, `/errors/404/` and
+`/de/errors/404/`, as a server finds it by its number (deploy.md); its front matter takes no `urlPath`. A server
+shows it at whatever address failed, so its images and files stay in its bundle, but its HTML names them from its
+own URL path (`/errors/503/loft-960w.webp`), never beside it.
 
 ## Languages
 

@@ -19,7 +19,7 @@ export function takeTitle(
   const tree = treeOf(parsed)
   const [first, second] = tree?.children ?? []
   if (!tree || first?.type !== 'heading' || first.level !== 1) return { parsed }
-  if (metadata.title)
+  if (metadata.title !== undefined)
     return {
       parsed,
       problems: [

@@ -200,6 +200,8 @@ function checkMetadata(raw: Record<string, unknown>, problems: Fault[], declared
   if (metadata.title === undefined) {
     problems.push({ message: 'has no title (in the front matter or as a first # heading)' })
     metadata.title = ''
+  } else if (typeof metadata.title === 'string' && !metadata.title.trim()) {
+    problems.push({ message: 'the front matter field title must not be empty', field: 'title' })
   }
   return metadata as Metadata
 }

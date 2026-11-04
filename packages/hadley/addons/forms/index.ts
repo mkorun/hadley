@@ -7,7 +7,7 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { parse as limaparse } from '@limaformat/lima'
-import { CONTENT_ROOTS, pageFiles } from '../../lib/bundles.ts'
+import { pageFiles } from '../../lib/bundles.ts'
 import { formsDataDir } from '../../lib/forms-service.ts'
 import { lf, readableByOthers } from '../../lib/platform.ts'
 import { defaultLanguageOf } from '../../lib/site-config.ts'
@@ -24,11 +24,6 @@ const EDITOR_TIMEOUT_MS = 2 * 60 * 60 * 1000 // an editor the owner works in
 const ALTERNATE_SCREEN = '\x1b[?1049h'
 const MAIN_SCREEN = '\x1b[?1049l'
 
-/**
- * The directory an article's comments belong in: its bundle, wherever it lies under content/ (lib/bundles.ts, as the
- * build finds it), and for a language other than the default that language's folder in it; undefined for an id no
- * bundle has, and nothing is created.
- */
 /** Whether the admin token may go to `url`: over https, or to this machine. */
 export const carriesToken = (url: string): boolean => {
   if (!URL.canParse(url)) return false
@@ -36,12 +31,17 @@ export const carriesToken = (url: string): boolean => {
   return protocol === 'https:' || ['localhost', '127.0.0.1', '[::1]'].includes(hostname)
 }
 
+/**
+ * The directory an article's comments belong in: its bundle under content/articles/ or content/essays/
+ * (lib/bundles.ts, as the build finds it), and for another language that language's folder in it; undefined for an
+ * id no article or essay bundle has, and nothing is created.
+ */
 export async function articleDirs(
   siteDir: string,
   defaultLanguage: string,
 ): Promise<(articleId: string, lang: string) => string | undefined> {
   const bundles = new Map<string, string>()
-  for (const root of CONTENT_ROOTS)
+  for (const root of ['articles', 'essays'])
     for (const file of await pageFiles(join(siteDir, 'content'), root, defaultLanguage))
       bundles.set(file.bundleId, file.bundleDir)
   return (articleId, lang) => {

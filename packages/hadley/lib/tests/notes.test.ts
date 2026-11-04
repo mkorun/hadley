@@ -8,6 +8,7 @@ import { build } from '../../index.ts'
 import loadSite from '../load-site.ts'
 import { categoryLabel, notesFor } from '../page-context.ts'
 import { settle } from '../problems.ts'
+import { linksJson } from '../site-data.ts'
 import { renderContent } from '../render-content.ts'
 
 let dir: string
@@ -61,8 +62,9 @@ describe('a note’s front matter', () => {
     ['missing date', page('', '# News\n'), /publishFrom/],
     ['invalid date', page('publishFrom: tomorrow\n', '# News\n'), /publishFrom is not a date/],
     ['missing title', page('publishFrom: 2020-01-01\n'), /title/],
+    ['empty title with a heading', note("title: ''\n"), /title/],
     ['empty title', note("title: ''\n", 'Text.\n'), /title/],
-    ['blank title with invalid subtitle', note("title: '  '\nsubtitle: [bad]\n", 'Text.\n'), /requires a title/],
+    ['blank title with invalid subtitle', note("title: '  '\nsubtitle: [bad]\n", 'Text.\n'), /title must not be empty/],
     ['late title', note('', 'Intro.\n\n# Too late\n'), /title/],
     ['duplicate title', note('title: Twice\n'), /title is given twice/],
     ['http link', note('link: http://example.org\n'), /link must be an https URL/],
@@ -98,7 +100,7 @@ describe('a note’s front matter', () => {
     assert.equal(notes.news!.markup, '<p>Body.</p>')
     assert.equal(notes.front!.markup, '<p>Other body.</p>')
     assert.equal(
-      notesFor(site, 'en', true).find((entry) => entry.urlPath === '/news/')?.link,
+      notesFor(site, 'en', true).find((entry) => entry.urlPath === '/notes/news/')?.link,
       'https://example.org/news',
     )
   })
@@ -125,15 +127,15 @@ describe('noteList', () => {
     const en = notesFor(site, 'en', true)
     assert.deepEqual(
       en.map((entry) => entry.urlPath),
-      ['/latest/', '/news/', '/a/', '/z/'],
+      ['/notes/latest/', '/notes/news/', '/notes/a/', '/notes/z/'],
     )
     assert.deepEqual(
       notesFor(site, 'de', true).map((entry) => entry.urlPath),
-      ['/de/nachricht/'],
+      ['/de/notes/nachricht/'],
     )
-    const a = en.find((entry) => entry.urlPath === '/a/')!
+    const a = en.find((entry) => entry.urlPath === '/notes/a/')!
     assert.deepEqual(a, {
-      urlPath: '/a/',
+      urlPath: '/notes/a/',
       title: 'News',
       subtitle: '',
       description: '',
@@ -162,23 +164,23 @@ describe('noteList', () => {
     const site = await load(false)
     assert.deepEqual(
       notesFor(site, 'en', true).map((entry) => entry.urlPath),
-      ['/published/'],
+      ['/notes/published/'],
     )
     const dev = notesFor(site, 'en', false)
     assert.deepEqual(
       dev.map(({ urlPath, isDraft }) => [urlPath, isDraft]),
       [
-        ['/future/', false],
-        ['/archived/', false],
-        ['/draft/', true],
-        ['/published/', false],
-        ['/seed/', true],
+        ['/notes/future/', false],
+        ['/notes/archived/', false],
+        ['/notes/draft/', true],
+        ['/notes/published/', false],
+        ['/notes/seed/', true],
       ],
     )
     assert.ok(dev[0]!.ageDays < 0)
     assert.deepEqual(
       notesFor(await load(true), 'en', true).map((entry) => entry.urlPath),
-      ['/published/'],
+      ['/notes/published/'],
     )
   })
 
@@ -240,21 +242,24 @@ describe('notes as pages', () => {
       '</head><body><p>{ type }|{ template }|{ urlPath }</p>{@raw html.cover}{@raw html.markup}</body></html>'
     await put('theme/templates/note.chase', template)
     const result = await quietly(() => build(dir, 'publish'))
-    const html = await output('news/index.html')
+    const html = await output('notes/news/index.html')
     assert.match(html, /<title>News<\/title>/)
-    assert.match(html, /href="https:\/\/notes.example\/news\/"/)
-    assert.match(html, /content="https:\/\/notes.example\/news\/pic.png"/)
-    assert.match(html, /note\|note\|\/news\//)
+    assert.match(html, /href="https:\/\/notes.example\/notes\/news\/"/)
+    assert.match(html, /content="https:\/\/notes.example\/notes\/news\/pic.png"/)
+    assert.match(html, /note\|note\|\/notes\/news\//)
     assert.match(html, /href="paper.pdf"/)
     assert.match(html, /src="pic-4w.webp"/)
     assert.match(html, /srcset="pic-4w.webp 4w"/)
-    assert.equal(await output('news/paper.pdf'), 'A test document')
-    assert.match(await output('news/index.html.md'), /\[Paper\]\(https:\/\/notes.example\/news\/paper.pdf\)/)
-    assert.match(await output('about/index.html'), /href="\/news\/"/)
-    assert.match(await output('sitemap.xml'), /https:\/\/notes.example\/news\//)
-    assert.match(await output('llms.txt'), /https:\/\/notes.example\/news\/index.html.md/)
-    assert.doesNotMatch(await output('feed.xml'), /\/news\//)
-    assert.ok(result.searchable.includes('news/index.html'))
+    assert.equal(await output('notes/news/paper.pdf'), 'A test document')
+    assert.match(
+      await output('notes/news/index.html.md'),
+      /\[Paper\]\(https:\/\/notes.example\/notes\/news\/paper.pdf\)/,
+    )
+    assert.match(await output('about/index.html'), /href="\/notes\/news\/"/)
+    assert.match(await output('sitemap.xml'), /https:\/\/notes.example\/notes\/news\//)
+    assert.match(await output('llms.txt'), /https:\/\/notes.example\/notes\/news\/index.html.md/)
+    assert.doesNotMatch(await output('feed.xml'), /\/notes\/news\//)
+    assert.ok(result.searchable.includes('notes/news/index.html'))
   })
 
   it('gives every template the same escaped noteList, including list covers, and excludes notes from article lists', async () => {
@@ -281,14 +286,14 @@ describe('notes as pages', () => {
       '<p class="neighbours">{ newer.title }|{ older.title }</p></body>'
     for (const name of ['home', 'page', 'article', 'note']) await put(`theme/templates/${name}.chase`, template)
     await quietly(() => build(dir, 'publish'))
-    const news = await output('news/index.html')
-    for (const file of ['index.html', 'about/index.html', 'article/index.html', 'other/index.html']) {
+    const news = await output('notes/news/index.html')
+    for (const file of ['index.html', 'about/index.html', 'article/index.html', 'notes/other/index.html']) {
       const html = await output(file)
       assert.equal(/<ul>[\s\S]*?<\/ul>/.exec(html)?.[0], /<ul>[\s\S]*?<\/ul>/.exec(news)?.[0])
       assert.match(html, /&lt;script&gt;title&lt;\/script&gt;/)
       assert.match(html, /&lt;script&gt;tag&lt;\/script&gt;/)
       assert.match(html, /Issue\|published\|true/)
-      assert.match(html, /src="\/news\/pic-4w.webp"/)
+      assert.match(html, /src="\/notes\/news\/pic-4w.webp"/)
       assert.match(html, /class="articles">Article<\/p>/)
       assert.match(html, /class="featured"><\/p>/)
       assert.doesNotMatch(html, /<script>/)
@@ -344,14 +349,14 @@ describe('notes as pages', () => {
     }
     await quietly(() => build(dir, 'publish'))
     for (const id of ['n1', 'n2']) {
-      const html = await output(`${id}/index.html`)
+      const html = await output(`notes/${id}/index.html`)
       const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1])
       assert.equal(new Set(ids).size, ids.length)
       for (const expected of ['same-heading', 'note-1', 'note-1-ref', 'drawing.chart', 'drawing.chart.icon'])
         assert.ok(ids.includes(expected), expected)
       assert.match(html, /href="#drawing.chart.icon"/)
-      assert.match(await output(`${id}/index.html.md`), /chart.svg/)
-      assert.equal(await output(`${id}/chart.svg`), svg)
+      assert.match(await output(`notes/${id}/index.html.md`), /chart.svg/)
+      assert.equal(await output(`notes/${id}/chart.svg`), svg)
     }
     assert.doesNotMatch(await output('index.html'), /same-heading|drawing.chart|note-1/)
   })
@@ -401,8 +406,8 @@ describe('notes as pages', () => {
       '<body>{@raw html.markup}</body>'
     await put('theme/templates/note.chase', template)
     await quietly(() => build(dir, 'publish'))
-    assert.match(await output('code-note/index.html'), /rel="stylesheet"/)
-    assert.match(await output('code-note/index.html'), /class="shiki/)
+    assert.match(await output('notes/code-note/index.html'), /rel="stylesheet"/)
+    assert.match(await output('notes/code-note/index.html'), /class="shiki/)
     assert.doesNotMatch(await output('index.html'), /class="shiki/)
   })
 
@@ -432,10 +437,16 @@ describe('link on every page (reviews 2.1 and 3.1)', () => {
         'https:example.org',
         'https://notes.example/missing.pdf',
         'https://notes.example:444/',
+        'https:///evil.example/triple-slash',
+        'https://\\\\evil.example/backslash',
+        'https://notes.example./same-host-dot',
+        'https://external.example/path with spaces',
+        'https://external.example/path\tand\nnewlines',
+        'https://external.example/path\u0001control',
       ]
       for (const [i, link] of links.entries()) {
         const state = ['published', 'draft', 'seed'][i % 3]!
-        await put(`content/${root}/[bad${i}]/bad${i}.md`, note(`status: ${state}\nlink: ${link}\n`))
+        await put(`content/${root}/[bad${i}]/bad${i}.md`, note(`status: ${state}\nlink: ${JSON.stringify(link)}\n`))
       }
       const site = await load()
       for (const p of Object.values(site.content.en!.pages)) assert.equal(p.metadata.link, undefined)
@@ -448,7 +459,7 @@ describe('link on every page (reviews 2.1 and 3.1)', () => {
         await put(`theme/templates/${name}.chase`, template)
       await quietly(() => build(dir, 'dev'))
       for (let i = 0; i < links.length; i++) {
-        const html = await output(`bad${i}/index.html`, 'dev')
+        const html = await output(`${root === 'notes' ? 'notes/' : ''}bad${i}/index.html`, 'dev')
         assert.doesNotMatch(html, /javascript:|evil.example|http:|mailto:|tel:|internal|missing.pdf/)
         assert.match(html, /href=""/)
       }
@@ -505,8 +516,10 @@ describe('bundle boundaries (reviews 1.1 and 1.2)', () => {
           /evil.md:[\s\S]*has no bundle/,
         )
         await quietly(() => build(dir, 'dev'))
-        assert.deepEqual(await readdir(join(dir, '.hadley/dev/evil')), ['index.html'])
-        const html = await output('evil/index.html', 'dev')
+        assert.deepEqual(await readdir(join(dir, '.hadley/dev', type === 'note' ? 'notes/evil' : 'evil')), [
+          'index.html',
+        ])
+        const html = await output(`${type === 'note' ? 'notes/' : ''}evil/index.html`, 'dev')
         assert.doesNotMatch(html, /href="[^#][^"]*"|src="|PRIVATE/)
       })
     }
@@ -563,4 +576,166 @@ describe('category labels (review 2.2)', () => {
     const own = Object.assign(Object.create(null) as Record<string, string>, { constructor: 'Own label' })
     assert.equal(categoryLabel({ categories: own }, 'constructor'), 'Own label')
   })
+})
+
+describe('notes review round 2', () => {
+  it('puts notes under notes/ by type, preserves other types and overrides, and leaves room for the list page', async () => {
+    await put('content/pages/[notes]/notes.md', page('title: Notes\n'))
+    await put('content/articles/[typed-note]/typed.md', note('type: note\n'))
+    await put('content/articles/[typed-note]/de/notiz.md', note('type: note\n'))
+    await put('content/notes/[typed-page]/plain.md', note('type: page\n'))
+    await put('content/notes/news.md', note())
+    const site = await load(true)
+    assert.equal(site.content.en!.pages.notes!.urlPath, '/notes/')
+    assert.equal(site.content.en!.pages['typed-note']!.urlPath, '/notes/typed/')
+    assert.equal(site.content.de!.pages['typed-note']!.urlPath, '/de/notes/notiz/')
+    assert.equal(site.content.en!.pages['typed-page']!.urlPath, '/plain/')
+    await quietly(() => build(dir, 'publish'))
+    for (const path of [
+      'notes/index.html',
+      'notes/news/index.html',
+      'notes/typed/index.html',
+      'de/notes/notiz/index.html',
+    ])
+      assert.match(await output(path), /<title>/)
+  })
+
+  it('orders notes on the same calendar day by id, regardless of publication time', async () => {
+    await put('content/notes/aaa.md', page('publishFrom: "2020-03-01T08:00:00Z"\ntitle: AAA\n'))
+    await put('content/notes/zzz.md', page('publishFrom: "2020-03-01T20:00:00Z"\ntitle: ZZZ\n'))
+    const site = await load(true)
+    const entries = notesFor(site, 'en', true)
+    assert.deepEqual(
+      entries.map((entry) => entry.title),
+      ['AAA', 'ZZZ'],
+    )
+    assert.equal(entries[0]!.ageDays, entries[1]!.ageDays)
+  })
+
+  it('keeps only articles and essays in a series shared across roots', async () => {
+    await put('content/articles/@tools-of-the-trade/[winkelhaken]/winkelhaken.md', note('', '# Winkelhaken\n'))
+    await put('content/essays/@tools-of-the-trade/[satzschiff]/satzschiff.md', note('', '# Satzschiff\n'))
+    await put('content/notes/@tools-of-the-trade/hijack-note.md', note('', '# Hijacked Note\n'))
+    await put('content/pages/@tools-of-the-trade/[extra]/extra.md', page('title: Extra\n'))
+    const template =
+      '<!doctype html><title>{ meta.title }</title>' +
+      '{#each seriesData as series}<p>{ series.total }</p>' +
+      '{#each series.items as item}<a href="{ item.urlPath }">{ item.title }</a>{/each}{/each}'
+    for (const name of ['article', 'essay', 'note', 'page']) await put(`theme/templates/${name}.chase`, template)
+    for (const mode of ['publish', 'dev'] as const) {
+      await quietly(() => build(dir, mode))
+      for (const slug of ['winkelhaken', 'satzschiff']) {
+        const html = await output(`${slug}/index.html`, mode)
+        assert.match(html, /<p>2<\/p>/)
+        assert.match(html, /Winkelhaken/)
+        assert.match(html, /Satzschiff/)
+        assert.doesNotMatch(html, /Hijacked Note|Extra/)
+      }
+      assert.doesNotMatch(await output('notes/hijack-note/index.html', mode), /<a /)
+    }
+  })
+
+  for (const [first, second] of [
+    ['articles/[only-de]/only-de.md', 'notes/[only-de]/de/hijack.md'],
+    ['articles/[pilcrow]/pilcrow.md', 'notes/[pilcrow]/_v.md'],
+    ['articles/@one/[duplicate]/one.md', 'articles/@two/[duplicate]/de/two.md'],
+    ['articles/[solitary]/solitary.md', 'notes/solitary.md'],
+    ['articles/[part]/_v.md', 'notes/[part_v]/de/hijack.md'],
+  ]) {
+    it(`rejects bundle and page id collisions between ${first} and ${second}`, async () => {
+      await put(`content/${first}`, note())
+      await put(`content/${second}`, note())
+      for (const publish of [false, true]) {
+        await assert.rejects(load(publish), (error: Error) => {
+          assert.ok(error.message.includes(first), error.message)
+          assert.ok(error.message.includes(second), error.message)
+          assert.match(error.message, /id .*already/)
+          return true
+        })
+      }
+    })
+  }
+
+  it('keeps translations and variants within the same bundle', async () => {
+    await put('content/notes/[news]/news.md', note())
+    await put('content/notes/[news]/de/nachricht.md', note())
+    await put('content/notes/[news]/_v.md', note())
+    const site = await load(true)
+    assert.deepEqual(site.translationMappings.news, { en: '/notes/news/', de: '/de/notes/nachricht/' })
+    assert.deepEqual(site.content.en!.pages.news!.variants, { v: 'news_v' })
+  })
+
+  it('normalizes link before rendering and records it once per page alongside external content links', async () => {
+    await put(
+      'content/notes/news.md',
+      note(
+        'link: HTTPS://EXTERNAL.example:443/a/../issue\n',
+        '# News\n\n[Issue](https://external.example/issue)\n\n[Other](https://other.example/)\n',
+      ),
+    )
+    const site = await load(true)
+    assert.equal(site.content.en!.pages.news!.metadata.link, 'https://external.example/issue')
+    assert.equal(notesFor(site, 'en', true)[0]!.link, 'https://external.example/issue')
+    renderContent(site, true)
+    const expected = [
+      { url: 'https://external.example/issue', pages: [{ id: 'news', lang: 'en' }] },
+      { url: 'https://other.example/', pages: [{ id: 'news', lang: 'en' }] },
+    ]
+    assert.deepEqual(JSON.parse(linksJson(site)), expected)
+    await put(
+      'theme/templates/note.chase',
+      '<!doctype html><title>{ meta.title }</title><a href="{ meta.link }">Issue</a>',
+    )
+    await quietly(() => build(dir, 'publish'))
+    assert.match(await output('notes/news/index.html'), /href="https:\/\/external.example\/issue"/)
+    assert.deepEqual(JSON.parse(await readFile(join(dir, '.hadley/links.json'), 'utf8')), expected)
+  })
+
+  it('rejects all language hosts, including trailing dots, even without content in that language', async () => {
+    await put(
+      'config.lima',
+      (await readFile(join(dir, 'config.lima'), 'utf8')).replace(
+        '  de:\n',
+        '  fr:\n    origin: https://fr.notes.example\n  de:\n    origin: https://de.notes.example\n',
+      ),
+    )
+    for (const [id, link] of [
+      ['other-lang', 'https://de.notes.example/other-lang-origin'],
+      ['other-lang-dot', 'https://de.notes.example./other-lang-origin'],
+      ['no-content', 'https://fr.notes.example./no-content'],
+    ])
+      await put(`content/notes/${id}.md`, note(`link: ${link}\n`))
+    await put('content/pages/[about]/de/about.md', page('title: About\nlink: https://notes.example/default-origin\n'))
+    const site = await load()
+    assert.equal(site.content.en!.pages['other-lang']!.metadata.link, undefined)
+    assert.equal(site.content.en!.pages['other-lang-dot']!.metadata.link, undefined)
+    assert.equal(site.content.de!.pages.about!.metadata.link, undefined)
+    assert.equal(site.content.en!.pages['no-content']!.metadata.link, undefined)
+    assert.equal(site.content.fr, undefined)
+    assert.equal(site.problems.filter((problem) => /link must name another site/.test(problem.message)).length, 4)
+    await assert.rejects(
+      quietly(() => build(dir, 'publish')),
+      /link must name another site/,
+    )
+  })
+})
+
+describe('an explicitly empty title', () => {
+  for (const root of ['articles', 'essays', 'notes', 'pages']) {
+    for (const text of ['# Heading\n', 'Body.\n']) {
+      it(`rejects an empty title in ${root} with ${text.trim()}, even with a configured default`, async () => {
+        await put(
+          'config.lima',
+          (await readFile(join(dir, 'config.lima'), 'utf8')).replace(
+            'metadata:\n',
+            'metadata:\n  title:\n    defaultValue: Default title\n',
+          ),
+        )
+        await put(`content/${root}/[empty]/empty.md`, note("title: ''\n", text))
+        const site = await load(true)
+        assert.equal(site.content.en!.pages.empty!.metadata.title, '')
+        assert.throws(() => settle(site.problems, true), /title/)
+      })
+    }
+  }
 })

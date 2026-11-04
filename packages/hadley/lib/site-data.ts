@@ -37,7 +37,9 @@ export function linksJson(site: Site): string {
   const links = new Map<string, { url: string; pages: { id: string; lang: string }[] }>()
   for (const [lang, { pages }] of Object.entries(site.content)) {
     for (const [id, page] of Object.entries(pages)) {
-      for (const url of page.result?.externalLinks ?? []) {
+      const urls = new Set(page.result?.externalLinks ?? [])
+      if (page.metadata.link) urls.add(page.metadata.link)
+      for (const url of urls) {
         if (!links.has(url)) links.set(url, { url, pages: [] })
         links.get(url)!.pages.push({ id, lang })
       }

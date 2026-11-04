@@ -5,6 +5,7 @@
  * would put a page's output directory outside the site's.
  */
 import { basename, dirname, isAbsolute, join, relative } from 'node:path'
+import { bundleIdOf } from './bundles.ts'
 import { existsExactly, isSystemFile } from './platform.ts'
 
 /** A file content names: its path relative to the page's directory, and where it was found. */
@@ -31,7 +32,7 @@ export function contentPath(rel: string): { rel: string } | Refused {
 export function lookupDirs(pageFile: string): string[] {
   const dir = dirname(pageFile)
   const parent = dirname(dir)
-  const isBundle = (path: string) => /^\[[^\]]+\]$/.test(basename(path))
+  const isBundle = (path: string) => bundleIdOf(basename(path)) !== null
   if (isBundle(dir)) return [dir]
   return isBundle(parent) ? [dir, parent] : []
 }

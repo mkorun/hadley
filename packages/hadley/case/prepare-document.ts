@@ -112,6 +112,7 @@ export function prepareDocument(rawDoc: string, options: CaseOptions): PreparedD
 export function completeMetadata(metadata: Record<string, any>, options: CaseOptions): void {
   if (options.defaults) {
     for (const d of Object.keys(options.defaults)) {
+      if (d === 'title' && metadata.title !== undefined) continue
       if (!metadata[d]) {
         metadata[d] = options.defaults[d]
       }

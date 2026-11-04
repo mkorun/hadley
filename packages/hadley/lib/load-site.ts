@@ -7,7 +7,8 @@ import { readFile } from 'node:fs/promises'
 import { basename, join as joinPath } from 'node:path'
 import util from '@mkorun/galley/util'
 import { parseDocument, typographyText } from '../case/index.ts'
-import { CONTENT_ROOTS, pageFiles, type PageFile } from './bundles.ts'
+import { readDestination } from '../case/destination.ts'
+import { bundleIdOf, CONTENT_ROOTS, pageFiles, type PageFile } from './bundles.ts'
 import { KNOWN_TYPES, STATES, readFrontMatter } from './front-matter.ts'
 import type { Problem } from './problems.ts'
 import {
@@ -83,6 +84,15 @@ const loadSite = async (siteDir: string, isPublish = false, localServer = false)
     (site.content[language] ??= { ...languageRecord(config, language, localServer, theme), data })
   languageOf(defaultLanguage)
 
+  // An id belongs to one bundle directory, including its languages and variants. A solitary note owns its file.
+  const ids = new Map<string, { bundle: string; file: string }>()
+  const claimId = (id: string, file: PageFile) => {
+    const bundle = bundleIdOf(basename(file.bundleDir)) === null ? file.file : file.bundleDir
+    const first = ids.get(id)
+    if (first && first.bundle !== bundle)
+      throw new Error(`${file.file}: the id ${id} is ${first.file}'s already (another bundle)`)
+    ids.set(id, { bundle, file: first?.file ?? file.file })
+  }
   for (const root of CONTENT_ROOTS) {
     const files = await pageFiles(joinPath(siteDir, 'content'), root, defaultLanguage)
     for (const { source, dir, problems } of sources) {
@@ -93,8 +103,10 @@ const loadSite = async (siteDir: string, isPublish = false, localServer = false)
       }
     }
     for (const file of files) {
+      claimId(file.bundleId, file)
       const language = languageOf(file.language)
       const { page, problems } = await readPage(file, root, reading, language.origin)
+      claimId(page.id, file)
       if (language.pages[page.id]) {
         throw new Error(`${file.file}: the id ${page.id} is ${language.pages[page.id]!.file}'s already`)
       }
@@ -197,7 +209,9 @@ async function readPage(
     throw new Error(
       `${file.file}: an error page takes no urlPath; its address is ${prefix}/errors/${bundleId}/ (site.md)`,
     )
-  const urlPath = collectionId === 'errors' ? `${prefix}/errors/${bundleId}/` : (front.urlPath ?? `${prefix}/${slug}/`)
+  const notePrefix = type === 'note' ? '/notes' : ''
+  const urlPath =
+    collectionId === 'errors' ? `${prefix}/errors/${bundleId}/` : (front.urlPath ?? `${prefix}${notePrefix}/${slug}/`)
   const urlPathFault = urlPathProblem(urlPath)
   if (urlPathFault) throw new Error(`${file.file}: urlPath ${urlPath} ${urlPathFault}`)
   const status = front.status ?? 'published'
@@ -213,21 +227,32 @@ async function readPage(
   // an undated article is listed first; that may be meant
   if (type === 'note') {
     if (!metadata.publishFrom) problems.push({ message: 'the note requires publishFrom' })
-    if (typeof doc.metadata.title === 'string' && !doc.metadata.title.trim())
-      problems.push({ message: 'the note requires a title' })
   } else if (root !== 'pages' && variant === null && !metadata.publishFrom) {
     problems.push({ message: 'has no publishFrom', hint: true })
   }
   if (metadata.link !== undefined) {
+    const read = readDestination(metadata.link, 'link', urlPath)
     const link = URL.parse(metadata.link)
-    const origin = URL.parse(siteOrigin)
-    if (!origin) throw new Error(`${file.file}: link requires a valid site.origin in config.lima`)
+    const origins = [
+      siteOrigin,
+      config.site.origin,
+      ...Object.values(config.site as Record<string, { origin?: string }>).map((value) => value?.origin),
+    ].filter((origin): origin is string => typeof origin === 'string')
+    const hosts = origins.map((origin) => {
+      const parsed = URL.parse(origin)
+      if (!parsed) throw new Error(`${file.file}: link requires a valid site.origin in config.lima`)
+      return parsed.hostname.replace(/\.$/, '')
+    })
     const message =
-      !/^https:\/\//i.test(metadata.link) || link?.protocol !== 'https:'
-        ? 'the field link must be an https URL'
-        : link.hostname === origin.hostname
+      read.kind !== 'external' ||
+      read.scheme !== 'https:' ||
+      !/^https:\/\/[^/\\]/i.test(metadata.link) ||
+      /[\s\x00-\x1f\x7f]/.test(metadata.link)
+        ? 'the field link must be an https URL without whitespace or control characters'
+        : hosts.includes(link!.hostname.replace(/\.$/, ''))
           ? 'the field link must name another site'
           : undefined
+    if (!message) metadata.link = link!.href
     if (message) {
       delete metadata.link
       const line = fieldLine(source, 'link')

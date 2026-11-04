@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { lookupDirs } from '../site-paths.ts'
 import { pageFiles } from '../bundles.ts'
 
 // The order of the pages decides the order of the sitemap and of pages with the same date: it must not depend on the
@@ -52,5 +53,21 @@ describe('pageFiles', () => {
       files.map((f) => `${f.collectionId ?? '-'}:${f.bundleId}:${f.language}`),
       ['series:a:de', '-:b:de', '-:b:en', '-:b:fr'],
     )
+  })
+})
+
+// Round 2 review: discovery and file lookup must agree on bundle directory names.
+describe('bundle names', () => {
+  it('uses the same bracketed names for discovery and lookup', async () => {
+    for (const name of ['[a]', '[a][b]', '[[a]', '[a]]', '[]']) page('notes', name, 'note.md')
+    const files = await pageFiles(join(dir, 'content'), 'notes', 'en')
+    assert.deepEqual(
+      files.map((file) => file.bundleId),
+      ['a'],
+    )
+    for (const name of ['[a]', '[a][b]', '[[a]', '[a]]', '[]']) {
+      const bundle = join(dir, 'content', 'notes', name)
+      assert.deepEqual(lookupDirs(join(bundle, 'note.md')), name === '[a]' ? [bundle] : [])
+    }
   })
 })

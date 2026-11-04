@@ -33,7 +33,7 @@ const seriesData = (page: Page, language: Language) => {
     const items = ids
       .flatMap((id) => {
         const p = language.listed[id]
-        if (!p) return []
+        if (!p?.articleLike) return []
         return [
           {
             title: p.metadata.title,
@@ -102,14 +102,14 @@ export function notesFor(site: Site, lang: string, isPublish: boolean) {
     .flatMap((page) => {
       // A missing date is already a problem of the note; a dev build cannot order or age it.
       if (page.type !== 'note' || !page.metadata.publishFrom || (isPublish && page.state !== 'published')) return []
-      return [{ page, date: page.metadata.publishFrom }]
+      return [{ page, day: page.metadata.publishFrom.toISOString().slice(0, 10) }]
     })
-    .sort((a, b) => b.date.getTime() - a.date.getTime() || (a.page.id < b.page.id ? -1 : a.page.id > b.page.id ? 1 : 0))
-    .map(({ page, date }) => ({
+    .sort((a, b) => b.day.localeCompare(a.day) || (a.page.id < b.page.id ? -1 : a.page.id > b.page.id ? 1 : 0))
+    .map(({ page, day }) => ({
       ...listEntry(page, locale),
       tags: page.metadata.tags ?? [],
       // Calendar days, independent of time of day and daylight saving, on the build's scheduling day.
-      ageDays: (today - Date.parse(date.toISOString().slice(0, 10))) / 86_400_000,
+      ageDays: (today - Date.parse(day)) / 86_400_000,
       isDraft: page.state === 'draft' || page.state === 'seed',
     }))
 }

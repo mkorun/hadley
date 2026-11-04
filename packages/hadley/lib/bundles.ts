@@ -28,7 +28,8 @@ export const _isSolitaire = (stem: string): boolean =>
   !(/[a-zA-Z]/.test(stem) && stem === stem.toUpperCase()) && !stem.startsWith('_')
 
 const allCapitals = (stem: string) => /[a-zA-Z]/.test(stem) && stem === stem.toUpperCase()
-const bundleIdOf = (name: string): string | null => /^\[(.+)\]$/.exec(name)?.[1] ?? null
+/** The id of a whole bracketed bundle directory name, shared with file lookup. */
+export const bundleIdOf = (name: string): string | null => /^\[([^\[\]]+)\]$/.exec(name)?.[1] ?? null
 
 /**
  * The entries of `dir` but the files an operating system leaves, in the order of their names, by code point: the
