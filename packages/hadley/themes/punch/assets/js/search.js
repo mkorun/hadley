@@ -4,8 +4,36 @@
 // page (its html lang), and the filter on main (data-pagefind-filter) keeps them to it as well.
 const dialog = document.querySelector('dialog.search')
 const button = document.querySelector('.search-open')
-// how many results the list shows
+// how many results the list shows, and how many of the first it looks at to leave out those that do not fit
 const SHOWN = 8
+const CHECKED = 40
+
+// A word Pagefind does not hold it takes for the longest one it holds that the word begins with, often of two or
+// three letters ("Zubringer" finds "zu"). A result stays only if a word it found shares a fair beginning with a word
+// asked for, as a word form ("Lösungen" for "Lösung", "running" for "run") or a part of a compound does.
+const fold = (word) => word.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/ß/g, 'ss')
+const terms = (query) =>
+  query
+    .split(/\s+/)
+    .map((word) => fold(word).replace(/[^\p{L}\p{N}]/gu, ''))
+    .filter(Boolean)
+const fits = (asked, found) => {
+  let shared = 0
+  while (shared < asked.length && asked[shared] === found[shared]) shared++
+  return asked.length < 3 ? shared === asked.length : shared >= 3 && shared >= 0.4 * asked.length
+}
+// result.locations are the places of the words it found, counted in the words of result.content
+const relevant = (result, asked) => {
+  // found in its metadata alone: there is no word to look at
+  if (!result.locations.length) return true
+  const words = result.content.split(/\s+/)
+  return result.locations.some((at) =>
+    (words[at] ?? '')
+      .split(/[^\p{L}\p{N}]+/u)
+      .map(fold)
+      .some((part) => part !== '' && asked.some((word) => fits(word, part))),
+  )
+}
 
 const element = (tag, className, text) => {
   const node = document.createElement(tag)
@@ -119,12 +147,17 @@ if (dialog && button) {
     const found = await (await load()).debouncedSearch(term, { filters: { lang } }, 150)
     // null: a later keystroke asked again
     if (found === null || ask !== asked) return
-    const results = await Promise.all(found.results.slice(0, SHOWN).map((result) => result.data()))
+    const checked = await Promise.all(found.results.slice(0, CHECKED).map((result) => result.data()))
     if (ask !== asked) return
+    const words = terms(term)
+    const fitting = checked.filter((result) => relevant(result, words))
+    const results = fitting.slice(0, SHOWN)
     list.replaceChildren(...results.map(entry))
     input.setAttribute('aria-expanded', String(results.length > 0))
+    // past those it looked at, it cannot tell how many more fit
+    const count = `${fitting.length}${found.results.length > CHECKED ? '+' : ''}`
     status.textContent = (results.length ? dialog.dataset.results : dialog.dataset.none)
-      .replace('{count}', String(found.results.length))
+      .replace('{count}', count)
       .replace('{term}', term)
     select(results.length ? 0 : -1)
   }
