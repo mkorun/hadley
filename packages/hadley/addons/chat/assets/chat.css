@@ -335,6 +335,10 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
   white-space: nowrap;
 }
 
+.hc-rewrite-state:empty {
+  display: none;
+}
+
 .hc-rewrite-state {
   display: inline-flex;
   align-items: center;
@@ -383,6 +387,20 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
 .hadley-rewrite :focus-visible {
   outline: 2px solid var(--he-accent-focus);
   outline-offset: 2px;
+}
+
+/* below Save and Cancel: the way on a line of its own, then the instruction with its send button */
+@media (max-width: 480px) {
+  .hadley-rewrite {
+    flex-basis: 100%;
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .hadley-rewrite select {
+    flex: 1 1 100%;
+  }
 }
 
 #hadley-chat .hc-details-switch {
