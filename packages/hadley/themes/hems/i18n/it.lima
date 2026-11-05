@@ -21,7 +21,7 @@ article:
   seriesPart:     Parte
   seriesOf:       di
   aiAssisted:     Scritto con l’aiuto dell’IA.
-  pager:          Da leggere ancora
+  pager:          Altro da leggere
   older:          Precedente
   newer:          Successivo
 
@@ -39,8 +39,8 @@ footer:
   builtWith: Realizzato con
 
 image:
-  aiGenerated:    Generato con IA
-  aiGeneratedAlt: (generato con IA)
+  aiGenerated:    Generata con l’IA
+  aiGeneratedAlt: (generata con l’IA)
   coverLabel:     Immagine di copertina
 
 imprint:
@@ -51,7 +51,7 @@ imprint:
   responsible: Responsabile dei contenuti
 
 feed:
-  subscribe: "Iscriviti a questo indirizzo nel tuo lettore di feed:"
+  subscribe: "Per abbonarti, aggiungi questo indirizzo al tuo lettore di feed:"
   articles:  Nel feed
 
 comments:
@@ -62,15 +62,15 @@ comments:
   fieldName:          Nome
   fieldEmail:         E-mail (facoltativa)
   fieldText:          Commento
-  notifyLabel:        Avvisami per e-mail quando il mio commento viene pubblicato.
-  privacy:            Il tuo indirizzo e-mail non viene pubblicato; serve solo per risponderti.
+  notifyLabel:        Avvisami per e-mail quando il mio commento sarà pubblicato.
+  privacy:            Il tuo indirizzo e-mail non sarà pubblicato: serve solo per risponderti.
   submitButton:       Invia
   cancelButton:       Annulla
-  waiting:            Un momento …
-  success:            Grazie! Il tuo commento apparirà dopo essere stato letto.
+  waiting:            Un momento…
+  success:            Grazie! Il tuo commento comparirà appena l’avremo letto.
   errorEmailRequired: Indica il tuo indirizzo e-mail, così possiamo avvisarti.
-  error422:           Il modulo è scaduto. Invialo di nuovo, per favore.
-  error429:           Troppi commenti in una volta. Attendi qualche minuto.
+  error422:           Il modulo è scaduto: invialo di nuovo, per favore.
+  error429:           Troppi commenti in poco tempo. Riprova tra qualche minuto.
   error503:           I commenti non sono disponibili al momento. Riprova più tardi.
   errorNetwork:       Non è stato possibile inviare il commento. Controlla la connessione.
 

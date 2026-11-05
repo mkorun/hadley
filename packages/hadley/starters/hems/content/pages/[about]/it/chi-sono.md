@@ -10,9 +10,9 @@ sempre al [tavolino alla finestra]($table-by-the-window).
 
 ## Perché Feather Cat
 
-Il nome viene da una lettera che non era mai stata destinata a me: un vezzeggiativo, *Feather Kitty*, scritto a matita
-sul margine di un libro che ho trovato in una libreria dell'usato della Rive Gauche. Mi è piaciuto subito, e ho lasciato
-che il gattino diventasse gatto: ancora più leggero, e più ostinato, ed è così che vorrei questo blog.
+Il nome l'ho preso in prestito da parole che non erano destinate a me: un vezzeggiativo, *Feather Kitty*, scritto a
+matita sul margine di un libro che ho trovato in una libreria dell'usato della Rive Gauche. Mi è piaciuto subito, e ho
+lasciato che il gattino diventasse gatto: ancora più leggero, e più ostinato, ed è così che vorrei questo blog.
 
 ## Questo sito
 
