@@ -7,7 +7,7 @@ noindex: true   # Contenuto di esempio: cancella questa riga quando la pagina sa
 ---
 # Il compositoio
 
-**Prima parte di una piccola serie sugli strumenti della composizione a mano, e sul perché danno ancora forma al modo in cui facciamo le pagine.**
+**Prima parte di una piccola serie sugli strumenti della composizione a mano, e sul perché influenzano ancora il modo in cui facciamo le pagine.**
 
 Prima che una pagina andasse in stampa, qualcuno la componeva a mano, lettera per lettera. Il compositore stava in
 piedi davanti a una cassa inclinata, piena di piccoli scomparti, un carattere in ognuno, e teneva nella mano sinistra
@@ -37,6 +37,6 @@ le faceva scivolare su una tavoletta piatta. Di quella tavoletta parla la second
 
 ## Che cosa è rimasto
 
-I compositoi oggi stanno nei musei, o sui banchi dei mercatini delle pulci del Marais. Ma le loro parole sono rimaste
-con noi: *giustezza*, *interlinea*, *cassa alta* e *cassa bassa*, dalle due metà della cassa. Ogni pagina di questo
-sito è ancora composta su una giustezza, anche se nessuno tiene più in mano il compositoio.
+I compositoi oggi stanno nei musei, o sui banchi dei mercatini delle pulci del Marais. Ma le loro parole sono
+sopravvissute: *giustezza*, *interlinea*, *cassa alta* e *cassa bassa*, dalle due metà della cassa. Ogni pagina di
+questo sito è ancora composta su una giustezza, anche se nessuno tiene più in mano il compositoio.

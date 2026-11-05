@@ -63,10 +63,10 @@ vuoto, e i lettori impararono a leggerlo.
 ## Nascosto, poi di ritorno
 
 A lungo il pilcrow è sopravvissuto soprattutto nella correzione di bozze, come segno che vuol dire «qui comincia un
-nuovo capoverso». Poi i programmi di videoscrittura gli hanno dato una seconda vita, come il pulsante che mostra ciò
-che di solito resta nascosto: ogni segno di paragrafo del documento, in un grigio chiaro.
+nuovo capoverso». Poi i programmi di videoscrittura gli hanno dato una seconda vita, come il pulsante che mostra ciò che
+di solito resta nascosto: ogni segno di paragrafo del documento, in grigio chiaro.
 
-Sul web ha trovato un terzo mestiere. Un titolo è un luogo verso cui si può voler indirizzare qualcuno, e il ¶ che gli
-sta accanto è la maniglia. Siede sul margine, come duemila anni fa, e segna l'inizio di qualcosa.
+Sul web ha trovato un terzo mestiere. Un titolo è un posto in cui si può voler mandare qualcuno, e il ¶ che gli sta
+accanto è la maniglia. Sta sul margine, come duemila anni fa, e segna l'inizio di qualcosa.
 
 [^1]: Keith Houston racconta tutta la storia, e quella di molti altri segni, in *Shady Characters: The Secret Life of Punctuation, Symbols, and Other Typographical Marks* (W. W. Norton, 2013).

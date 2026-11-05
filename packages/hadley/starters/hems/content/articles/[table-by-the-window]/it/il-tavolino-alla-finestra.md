@@ -9,18 +9,18 @@ noindex: true   # Contenuto di esempio: cancella questa riga quando la pagina sa
 
 **Un tavolino, una tazza e un taccuino: tutto quello che serve per scrivere, e qualcosa in più.**
 
-Ogni mattina prendo lo stesso tavolino, quello vicino alla finestra, all'angolo della mia strada. Traballa. Il caffè è
-mediocre. Non lo cambierei con nessuna scrivania della città.
+Ogni mattina prendo lo stesso tavolino, quello vicino alla finestra, nel caffè all'angolo della mia strada. Traballa. Il
+caffè è mediocre. Non lo cambierei con nessuna scrivania della città.
 
 <m data-style=ink>![Un tavolino da caffè vicino a una finestra, una tazza e un taccuino aperto](table.png "Il tavolino, a china. Di solito la tazza è più vuota.")</m>
 
 ## Il rumore che aiuta
 
 Un caffè non è mai silenzioso, ed è proprio questo il punto. Il tintinnio dei piattini, la radio dietro il bancone e i
-mezzi discorsi al tavolo accanto fanno un rumore che non chiede niente. Una stanza silenziosa ti ascolta; un caffè ti
-lascia stare.
+frammenti di conversazione al tavolo accanto fanno un rumore che non chiede niente. Una stanza silenziosa ti ascolta; un
+caffè ti lascia in pace.
 
-Gli psicologi hanno un nome per questo: un livello *moderato* di rumore sembra favorire certi tipi di lavoro creativo,
+Gli psicologi lo hanno anche studiato: un livello *moderato* di rumore sembra favorire certi tipi di lavoro creativo,
 mentre il silenzio e il frastuono no.[^1] A me lo studio non serviva. Mi serviva il tavolino.
 
 ## La finestra

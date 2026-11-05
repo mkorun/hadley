@@ -8,4 +8,4 @@ noindex: true   # Contenuto di esempio: cancella questa riga quando la pagina sa
 ---
 <m data-size=25% data-style=cameo>![Noa Varela](portrait.jpg)</m>
 
-Fotografa e grafica a Lisbona. Fotografo la luce sui muri, e ne scrivo un poco.
+Fotografa e grafica a Lisbona. Inseguo la luce sui muri, e ogni tanto ne scrivo.

@@ -55,4 +55,4 @@ theme:
   colorToggle: true
 ```
 
-Il resto è lavoro di mano, oggi come allora: una riga dopo l'altra.
+Il resto si fa a mano, oggi come allora: una riga dopo l'altra.
