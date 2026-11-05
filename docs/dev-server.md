@@ -84,8 +84,10 @@ page keeps the key in the browser's storage for that origin, which scheme, host 
 every port of localhost), and goes on to the site's home; the key stands after `#`, which no request carries. The panel
 sends it with each request, and the panel of a browser without one says how to get it. The key is the site's, kept in a
 file only its user can read, beside the channel's rendezvous, so a browser opens the link once and keeps the chat across
-restarts of the dev server. Where the output is no terminal, the dev server prints the file instead of the key. Programs
-of the same user can read that file, as they can everything of that user's.
+restarts of the dev server. Where the output is no terminal, the dev server prints the file instead of the key. The
+unlock page keeps a key only once the server took it, so no other page can replace it with a wrong one, and no frame may
+hold it. Programs of the same user can read that file, as they can everything of that user's, the browser's history
+among it, which keeps the link.
 
 An open block's toolbar has, after Save (Ctrl+S) and Cancel (Esc), a way to rewrite it (Clearer, Shorter, More formal,
 More casual, Only fix errors, or Only instructions), a field for an instruction, which adds to the way and is all of

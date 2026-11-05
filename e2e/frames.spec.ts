@@ -103,7 +103,8 @@ test('a frame follows its block when the page above it grows, and leaves with ed
   await expect
     .poll(async () => {
       const { blockBox, frames } = await frameOf()
-      return frames.some((f) => Math.abs(f.top + 8 - (blockBox?.y ?? 0)) < 1)
+      // off the block by --he-frame-gap, 10px
+      return frames.some((f) => Math.abs(f.top + 10 - (blockBox?.y ?? 0)) < 1)
     })
     .toBe(true)
   expect((await frameOf()).blockBox?.y).toBeGreaterThan((before.blockBox?.y ?? 0) + 100)
@@ -129,4 +130,17 @@ test('with reduced motion nothing that opens moves; without it, it rises into pl
     const name = await panel.evaluate((node) => node.ownerDocument.defaultView!.getComputedStyle(node).animationName)
     expect(names as readonly string[]).toContain(name)
   }
+})
+
+test('turning edit mode on moves nothing on the page', async ({ page, dev }) => {
+  await page.goto(dev.origin + '/panel/')
+  const places = () =>
+    page
+      .locator('h1, [data-hadley-id]')
+      .evaluateAll((all) => all.map((node) => Math.round(node.getBoundingClientRect().top)))
+  const before = await places()
+  await page.getByRole('button', { name: 'Toggle edit mode', exact: true }).click()
+  // the badge has come, on the title's frame
+  await expect(page.locator('.hadley-front-matter-badge')).toBeVisible()
+  expect(await places()).toEqual(before)
 })

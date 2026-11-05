@@ -87,6 +87,7 @@ export async function devServer(root: string) {
     token: chat.token!,
     async close() {
       chat.close()
+      chatKey = undefined
       await closeServer(server)
     },
   }
@@ -109,7 +110,12 @@ export async function post(
   })
 }
 
-export async function events(origin: string, path: string, headers: Record<string, string> = keyed()) {
+export async function events(
+  origin: string,
+  path: string,
+  // a stream that names its key in its address sends no other
+  headers: Record<string, string> = path.includes('key=') ? {} : keyed(),
+) {
   const inbox = new Inbox<{ event: string; data: unknown }>()
   const secure = new URL(origin).protocol === 'https:'
   const request = (secure ? https : http).get(origin + path, {

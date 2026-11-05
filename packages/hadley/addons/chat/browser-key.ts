@@ -8,6 +8,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { lstatSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { readableByOthers } from '../../lib/platform.ts'
 
 const KEY = /^[0-9a-f]{64}$/
 
@@ -26,7 +27,8 @@ export function browserKey(dir: string, root: string): BrowserKey {
   try {
     const stat = lstatSync(file)
     const own = process.getuid === undefined || stat.uid === process.getuid()
-    if (stat.isFile() && own && (stat.mode & 0o077) === 0) {
+    // Windows keeps no mode bits; there the user's own directory keeps the file private (lib/platform.ts)
+    if (stat.isFile() && own && !readableByOthers(stat.mode)) {
       const key = readFileSync(file, 'utf8').trim()
       if (KEY.test(key)) return { key, file }
     }

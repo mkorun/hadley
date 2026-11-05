@@ -27,12 +27,19 @@ import {
 } from './protocol.ts'
 
 // the page of the link with the key (browser-key.ts): the key is kept by the panel's origin, chat.js reads it there
+// (review 2026-11-05): it keeps a key only once the server took it, so that no other page can replace the right one
+// with a wrong one, and it runs in no frame
 const UNLOCK_PAGE = `<!doctype html><meta charset="utf-8"><title>hadley</title><script>
-try {
-  const key = location.hash.slice(1)
-  if (/^[0-9a-f]{64}$/.test(key)) localStorage.setItem('hadley-chat-key', key)
-} catch {}
-location.replace('/')
+const key = location.hash.slice(1)
+const go = () => location.replace('/')
+if (window.top !== window || !/^[0-9a-f]{64}$/.test(key)) go()
+else
+  fetch('/__hadley/chat/key', { cache: 'no-store', headers: { 'X-Hadley-Key': key } })
+    .then((response) => {
+      if (response.status === 204) localStorage.setItem('hadley-chat-key', key)
+    })
+    .catch(() => {})
+    .finally(go)
 </script>`
 
 type Entry = (
@@ -118,7 +125,13 @@ export function chatPlugin(options: {
     // The link hadley dev prints: this page keeps the key from its fragment, which no request carries, in this
     // origin's storage, and goes on to the site's home, always the same place. It needs no key, and holds none.
     if (path === '/__hadley/chat/unlock' && req.method === 'GET') {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' })
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Content-Security-Policy': "frame-ancestors 'none'",
+        'X-Frame-Options': 'DENY',
+        'Referrer-Policy': 'no-referrer',
+      })
       res.end(UNLOCK_PAGE)
       return
     }

@@ -920,9 +920,14 @@ async function attachHeadListeners() {
     badge.dataset.hadleyFrontMatter = ''
     badge.addEventListener('click', () => {
       if (!isEditMode() || activeBlockId || mutationLocked) return
-      void handleEditClick(heads.frontMatter.id, badge)
+      // the badge sits over the page: the field opens in it, above the title
+      void handleEditClick(heads.frontMatter.id, badge, { place: (wrapper) => title.before(wrapper) })
     })
-    title.before(badge)
+    // beside the frames' layer, placed with it, not before the title: the page does not move when edit mode turns on;
+    // not in that layer, which is hidden from assistive technology
+    frontMatterBadge = badge
+    document.body.append(badge)
+    queueFrames()
   }
 }
 
@@ -940,6 +945,8 @@ frameLayer.id = 'hadley-frames'
 frameLayer.setAttribute('aria-hidden', 'true')
 const frames = new Map()
 let framesQueued = false
+// the front matter's badge (attachHeadListeners), placed with the frames
+let frontMatterBadge = null
 let framesMovingUntil = 0
 
 function placeFrames() {
@@ -949,6 +956,7 @@ function placeFrames() {
     return
   }
   frameLayer.hidden = false
+  const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--he-frame-gap')) || 10
   const seen = new Set()
   for (const el of document.querySelectorAll(FRAMED)) {
     seen.add(el)
@@ -963,12 +971,12 @@ function placeFrames() {
     const r = el.getBoundingClientRect()
     frame.hidden = r.width === 0 && r.height === 0
     if (frame.hidden) continue
-    // 8px off the block on every side, as far as the tint of a hovered block reaches (editor.css)
+    // off the block on every side by --he-frame-gap, as far as the tint of a hovered block reaches (editor.css)
     Object.assign(frame.style, {
-      top: `${r.top + window.scrollY - 8}px`,
-      left: `${r.left + window.scrollX - 8}px`,
-      width: `${r.width + 16}px`,
-      height: `${r.height + 16}px`,
+      top: `${r.top + window.scrollY - gap}px`,
+      left: `${r.left + window.scrollX - gap}px`,
+      width: `${r.width + 2 * gap}px`,
+      height: `${r.height + 2 * gap}px`,
     })
     frame.classList.toggle('is-hover', el.matches(':hover'))
     frame.classList.toggle('is-active', el.classList.contains('hadley-block-active'))
@@ -978,6 +986,16 @@ function placeFrames() {
     frame.remove()
     frames.delete(el)
     frameObserver.unobserve(el)
+  }
+  // the front matter's badge sits on the title's frame, a tab on its top edge, so that it takes no room on the page
+  if (frontMatterBadge && frontMatterBadge.isConnected) {
+    const title = document.querySelector('[data-hadley-head="title"]')
+    const frame = title && frames.get(title)
+    frontMatterBadge.hidden = !frame || frame.hidden
+    if (frame && !frame.hidden) {
+      frontMatterBadge.style.top = `${parseFloat(frame.style.top) - frontMatterBadge.offsetHeight / 2}px`
+      frontMatterBadge.style.left = `${parseFloat(frame.style.left) + 12}px`
+    }
   }
   // while a block moves (the move animations), every frame, for a second at most
   if (performance.now() < framesMovingUntil) queueFrames()
@@ -1028,7 +1046,7 @@ if (document.readyState === 'loading') {
 
 // ─── Edit: load the block text and open the editor ────────────────────────────
 
-async function handleEditClick(blockId, blockEl, { below = false } = {}) {
+async function handleEditClick(blockId, blockEl, { below = false, place } = {}) {
   if (activeBlockId) return
   closeMenu()
 
@@ -1057,7 +1075,7 @@ async function handleEditClick(blockId, blockEl, { below = false } = {}) {
     // a new block below is an edit of the block above: its text, a blank line, and what is written in the empty field;
     // the server checks it as any edit (hash, Markanto, nothing else changed)
     if (below) openEditor(blockId, blockEl, '', { after: text })
-    else openEditor(blockId, blockEl, text)
+    else openEditor(blockId, blockEl, text, { place })
   } catch (error) {
     // openEditor sets activeBlockId first; without this reset no block could be edited any more.
     closeEditor()
@@ -1067,7 +1085,7 @@ async function handleEditClick(blockId, blockEl, { below = false } = {}) {
 
 // ─── Open the editor ─────────────────────────────────────────────────────────
 
-function openEditor(blockId, blockEl, text, { after = null } = {}) {
+function openEditor(blockId, blockEl, text, { after = null, place } = {}) {
   activeBlockId = blockId
   activeAfter = after
   document.body.classList.add('hadley-editing')
@@ -1099,7 +1117,9 @@ function openEditor(blockId, blockEl, text, { after = null } = {}) {
   editorToolbar.append(saveBtn, cancelBtn)
   const frontMatter = blockEl.dataset.hadleyFrontMatter !== undefined
   wrapper.append(frontMatter ? limaTable(textarea) : textarea, editorToolbar)
-  blockEl.insertAdjacentElement('afterend', wrapper)
+  // after the block, or where the caller puts it (the front matter's badge)
+  if (place) place(wrapper)
+  else blockEl.insertAdjacentElement('afterend', wrapper)
   if (!frontMatter) void bundleFiles(blockId, textarea, editorToolbar)
 
   activeWrapper = wrapper

@@ -84,6 +84,9 @@ it(
         const link = await fetch(`${dev.origin}/__hadley/chat/unlock`, { redirect: 'manual' })
         assert.equal(link.status, 200)
         assert.equal(link.headers.get('set-cookie'), null)
+        // no frame may hold it, and it sends no Referer
+        assert.equal(link.headers.get('content-security-policy'), "frame-ancestors 'none'")
+        assert.equal(link.headers.get('referrer-policy'), 'no-referrer')
         const page = await link.text()
         assert.ok(page.includes("localStorage.setItem('hadley-chat-key'"))
         assert.ok(!page.includes(key.key))

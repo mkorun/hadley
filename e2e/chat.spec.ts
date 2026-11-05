@@ -395,6 +395,13 @@ test('a browser without the key gets no chat, and the link gives it the key', as
     await page.goto(dev.origin + '/panel/')
     await page.getByRole('button', { name: 'Chat', exact: true }).click()
     await expect(page.locator('#hadley-chat .hc-error')).toBeEmpty()
+    // a link with another key, from any page, replaces nothing: the unlock page keeps only a key the server took
+    await page.goto(`${dev.origin}/__hadley/chat/unlock#${'f'.repeat(64)}`)
+    await expect.poll(() => page.url()).toBe(`${dev.origin}/`)
+    await page.goto(dev.origin + '/panel/')
+    await page.getByRole('button', { name: 'Chat', exact: true }).click()
+    // the panel still holds the right key: its event stream answers, no session is connected in this test
+    await expect(page.locator('#hadley-chat .hc-status')).toHaveText('No session connected')
   } finally {
     await context.close()
   }
