@@ -16,11 +16,22 @@ export interface BlockMapEntry {
   end: number // exclusive: the position after the closing \n
   fileHashAtRender: string
   isParagraph?: boolean
+  // a page's title, subtitle or front matter: edited as a block, never moved, merged or deleted
+  fixed?: boolean
 }
 
 // The server's map: blockId → source file and offsets. Every build fills it anew (registerPageBlocks drops a file's
 // old entries).
 export const blockIdMap = new Map<string, BlockMapEntry>()
+
+/** What a page's head shows, by its URL path: the block that edits its title or subtitle, and the text it shows. */
+export interface PageHeads {
+  filePath: string
+  // from: whether the text gives it (its line of Markdown) or the front matter
+  title?: { id: string; text: string; from: 'text' | 'front matter' }
+  subtitle?: { id: string; text: string; from: 'text' | 'front matter' }
+}
+export const pageHeads = new Map<string, PageHeads>()
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -268,6 +279,7 @@ export async function handleDelete(req: IncomingMessage, res: ServerResponse): P
 
   const entry = blockIdMap.get(blockId)
   if (!entry) return send(res, 404, { error: t(lang, 'blockNotFound') })
+  if (entry.fixed) return send(res, 400, { error: t(lang, 'blockFixed') })
 
   const source = await readSource(entry.filePath)
   if (source === 'unreadable') return send(res, 500, { error: t(lang, 'couldNotReadFile') })
@@ -313,10 +325,11 @@ export async function handleMove(req: IncomingMessage, res: ServerResponse): Pro
 
   const entry = blockIdMap.get(blockId)
   if (!entry) return send(res, 404, { error: t(lang, 'blockNotFound') })
+  if (entry.fixed) return send(res, 400, { error: t(lang, 'blockFixed') })
 
-  // All blocks of the same file, by position
+  // All blocks of the same file, by position; a page's head is no neighbour
   const fileEntries = [...blockIdMap.entries()]
-    .filter(([, e]) => e.filePath === entry.filePath)
+    .filter(([, e]) => e.filePath === entry.filePath && !e.fixed)
     .sort(([, a], [, b]) => a.start - b.start)
 
   const idx = fileEntries.findIndex(([id]) => id === blockId)
@@ -382,10 +395,12 @@ export async function handleMerge(req: IncomingMessage, res: ServerResponse): Pr
 
   const entry = blockIdMap.get(blockId)
   if (!entry) return send(res, 404, { error: t(lang, 'blockNotFound') })
+  if (entry.fixed) return send(res, 400, { error: t(lang, 'blockFixed') })
   if (!entry.isParagraph) return send(res, 400, { error: t(lang, 'mergeOnlyForTextBlocks') })
 
+  // a page's head is no neighbour
   const fileEntries = [...blockIdMap.entries()]
-    .filter(([, e]) => e.filePath === entry.filePath)
+    .filter(([, e]) => e.filePath === entry.filePath && !e.fixed)
     .sort(([, a], [, b]) => a.start - b.start)
 
   const idx = fileEntries.findIndex(([id]) => id === blockId)
@@ -458,6 +473,16 @@ export function blockEditorPlugin(): Plugin {
           handler = serveAsset(res, 'editor.js', 'application/javascript; charset=utf-8', lang)
         } else if (method === 'GET' && url === '/__hadley/editor.css') {
           handler = serveAsset(res, 'editor.css', 'text/css; charset=utf-8', lang)
+        } else if (method === 'GET' && url.split('?')[0] === '/__hadley/heads') {
+          // what the page's head shows, which the editor makes editable where the theme shows it
+          const path = new URL(url, 'http://localhost').searchParams.get('path') ?? ''
+          const heads = pageHeads.get(path)
+          handler = Promise.resolve(
+            send(res, 200, {
+              ...(heads?.title ? { title: heads.title } : {}),
+              ...(heads?.subtitle ? { subtitle: heads.subtitle } : {}),
+            }),
+          )
         } else if (method === 'GET' && url.startsWith('/__hadley/block/')) {
           handler = handleGet(req, res)
         } else if (method === 'POST' && url.split('?')[0] === '/__hadley/patch') {

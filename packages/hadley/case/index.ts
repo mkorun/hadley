@@ -22,13 +22,25 @@ export interface ParsedDocument {
   parsed: ParseResult
   baseOffset: number
   blocks: BlockToken[]
+  // where the title and subtitle the text gives stand, and the front matter's text: the editor edits them as blocks
+  heads: { title?: BlockToken; subtitle?: BlockToken; frontMatter?: BlockToken }
   parseErrors?: ParseErrorInfo[]
 }
 
 /** Reads the front matter and parses the content with the Markanto reference parser; render() turns it into HTML. */
 export function parseDocument(rawDoc: string, options: CaseOptions): ParsedDocument {
-  const { md, metadata, baseOffset, frontMatterErrors } = prepareDocument(rawDoc, options)
-  const { parsed, title, subtitle, problems } = takeTitle(parseMarkanto(md, PARSE_OPTIONS), metadata)
+  const { md, metadata, baseOffset, frontMatterErrors, frontMatterRange } = prepareDocument(rawDoc, options)
+  const whole = parseMarkanto(md, PARSE_OPTIONS)
+  const { parsed, title, subtitle, problems } = takeTitle(whole, metadata)
+  // the blocks takeTitle took out of the text are its first two, in the order they stand
+  const taken = title === undefined ? [] : editorBlocks(whole, baseOffset, md)
+  const heads: ParsedDocument['heads'] = {
+    ...(title !== undefined && taken[0] ? { title: { ...taken[0], type: 'title' } } : {}),
+    ...(subtitle !== undefined && taken[1] ? { subtitle: { ...taken[1], type: 'subtitle' } } : {}),
+    ...(frontMatterRange && frontMatterRange.end > frontMatterRange.start
+      ? { frontMatter: { type: 'front-matter', ...frontMatterRange } }
+      : {}),
+  }
   if (title !== undefined) metadata.title = title
   if (subtitle !== undefined) metadata.subtitle = subtitle
   completeMetadata(metadata, options)
@@ -57,6 +69,7 @@ export function parseDocument(rawDoc: string, options: CaseOptions): ParsedDocum
     parsed,
     baseOffset,
     blocks: editorBlocks(parsed, baseOffset, md),
+    heads,
     ...(parseErrors.length ? { parseErrors } : {}),
   }
 }

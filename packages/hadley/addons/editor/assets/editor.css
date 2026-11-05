@@ -81,7 +81,8 @@ body.hadley-edit-mode #hadley-edit-toggle {
 /* ─── Block affordance in edit mode ────────────────────────────────────────── */
 
 /* Transparent outline always present — only the colour transitions (no flash) */
-[data-hadley-id] {
+[data-hadley-id],
+[data-hadley-head] {
   outline: 2px dashed transparent;
   outline-offset: 8px;
   transition:
@@ -90,14 +91,17 @@ body.hadley-edit-mode #hadley-edit-toggle {
     box-shadow 0.25s ease;
 }
 
-body.hadley-edit-mode [data-hadley-id] {
+body.hadley-edit-mode [data-hadley-id],
+body.hadley-edit-mode [data-hadley-head] {
   outline-color: var(--he-block-idle);
   position: relative;
   cursor: default;
 }
 
 body.hadley-edit-mode [data-hadley-id]:hover,
-body.hadley-edit-mode [data-hadley-id].hadley-block-active {
+body.hadley-edit-mode [data-hadley-id].hadley-block-active,
+body.hadley-edit-mode [data-hadley-head]:hover,
+body.hadley-edit-mode [data-hadley-head].hadley-block-active {
   outline-color: var(--he-block-hover);
   background-color: var(--he-block-bg);
   box-shadow: 0 0 0 8px var(--he-block-bg);

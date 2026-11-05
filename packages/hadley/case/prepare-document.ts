@@ -18,6 +18,8 @@ export interface PreparedDocument {
   /** Why the front matter is not what it says: Lima rejected it (it is then empty), or it gives a field twice; a
    * published page fails on it. */
   frontMatterErrors?: ParseErrorInfo[]
+  /** Where the text between the two lines of --- stands in the file, its last line end included. */
+  frontMatterRange?: { start: number; end: number }
 }
 
 export function prepareDocument(rawDoc: string, options: CaseOptions): PreparedDocument {
@@ -30,6 +32,7 @@ export function prepareDocument(rawDoc: string, options: CaseOptions): PreparedD
    */
   let frontMeta: Record<string, any> = {}
   let frontMatterError: ParseErrorInfo | undefined
+  let frontMatterRange: PreparedDocument['frontMatterRange']
   if (md.startsWith('<!---')) {
     // the form of an HTML comment is gone: the page says so rather than showing its front matter as text
     frontMatterError = { message: 'front matter: it stands between two lines of ---, not in <!--- … --->', start: bom }
@@ -39,6 +42,7 @@ export function prepareDocument(rawDoc: string, options: CaseOptions): PreparedD
     if (!frontMatter) frontMatterError = { message: 'front matter: it has no closing line of ---', start: bom }
     if (frontMatter) {
       const [, opening = '', inner = '', lineEnd = ''] = frontMatter
+      frontMatterRange = { start: bom + opening.length, end: bom + opening.length + inner.length }
       // the line end after the closing line stays the body's, as it always was
       md = md.slice(frontMatter[0].length - lineEnd.length)
       const text = inner.trim()
@@ -105,7 +109,13 @@ export function prepareDocument(rawDoc: string, options: CaseOptions): PreparedD
    * directly (JS string indices in the whole file).
    */
   const baseOffset = rawDoc.length - md.length
-  return { md, metadata, baseOffset, ...(errors.length > 0 ? { frontMatterErrors: errors } : {}) }
+  return {
+    md,
+    metadata,
+    baseOffset,
+    ...(errors.length > 0 ? { frontMatterErrors: errors } : {}),
+    ...(frontMatterRange ? { frontMatterRange } : {}),
+  }
 }
 
 /** The defaults of the metadata schema, once the title is known. */

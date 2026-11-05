@@ -365,7 +365,10 @@ export async function startDevServer({
     try {
       const built = await build(siteDir, outputMode, {
         ...(editor
-          ? { blockEditorHook: (blocks, filePath, rawDoc) => editor.registerPageBlocks(blocks, rawDoc, filePath) }
+          ? {
+              blockEditorHook: (blocks, filePath, rawDoc, page) =>
+                editor.registerPageBlocks(blocks, rawDoc, filePath, page),
+            }
           : {}),
         deferSearch: true,
       })

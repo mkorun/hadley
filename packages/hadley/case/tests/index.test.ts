@@ -1,6 +1,6 @@
 import { before, describe, it, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { extract } from '../index.ts'
+import { extract, parseDocument } from '../index.ts'
 import { highlighting } from './built.ts'
 
 before(() => highlighting('nord'))
@@ -91,6 +91,23 @@ describe('title extraction', () => {
       assert.deepEqual(result.metadata, { title: 'Titel', subtitle: 'Mein Untertitel' })
       assert.equal(result.html, '<p>Body.</p>')
     }
+  })
+
+  // 2026-11-05: the editor edits a page's title, subtitle and front matter where the theme shows them
+  it('names where the title and subtitle it took and the front matter stand in the file', () => {
+    const raw = '---\ndescription: D\n---\n# Titel\n__Untertitel__\n\nText.\n'
+    const { heads, blocks } = parseDocument(raw, {})
+    const text = (range?: { start: number; end: number }) => (range ? raw.slice(range.start, range.end - 1) : undefined)
+    assert.equal(text(heads.title), '# Titel')
+    assert.equal(text(heads.subtitle), '__Untertitel__')
+    assert.equal(text(heads.frontMatter), 'description: D')
+    assert.deepEqual(
+      blocks.map((block) => text(block)),
+      ['Text.'],
+    )
+    const given = parseDocument('---\ntitle: T\n---\n# Not a title\n', {}).heads
+    assert.equal(given.title, undefined)
+    assert.equal(parseDocument('Text.\n', {}).heads.frontMatter, undefined)
   })
 
   it('takes no subtitle from a line that is not one bold span, or after a heading that supplies no title', () => {

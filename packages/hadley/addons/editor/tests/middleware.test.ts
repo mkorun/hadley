@@ -11,6 +11,7 @@ import {
   handleGet,
   blankLinesOnce,
   handlePatch,
+  pageHeads,
   handleDelete,
   handleMove,
   handleMerge,
@@ -1153,5 +1154,70 @@ describe('registerPageBlocks', () => {
 
     registerPageBlocks(blocks, rawDoc, '/fake/a.md')
     assert.equal(blockIdMap.size, firstSize) // no duplicates
+  })
+})
+
+// 2026-11-05: a page's title and subtitle are edited where the theme shows them, from their line or the front matter
+describe('the head of a page', () => {
+  const post = (url: string, body: unknown) =>
+    mockReq('POST', url, JSON.stringify(body), { 'content-type': 'application/json' })
+  const register = (content: string) => {
+    const doc = parseDocument(content, {})
+    registerPageBlocks(doc.blocks, content, tmpFile, {
+      urlPath: '/a/',
+      heads: doc.heads,
+      ...(doc.metadata.title !== undefined ? { title: doc.metadata.title } : {}),
+      ...(doc.metadata.subtitle !== undefined ? { subtitle: doc.metadata.subtitle } : {}),
+    })
+    return pageHeads.get('/a/')!
+  }
+
+  it('edits the title and subtitle the text gives as their lines, and never moves, merges or deletes them', async () => {
+    const content = '---\ndescription: D\n---\n# Titel\n__Untertitel__\n\nEins.\n\nZwei.\n'
+    await writeFile(tmpFile, content, 'utf-8')
+    const heads = register(content)
+    assert.equal(heads.title?.text, 'Titel')
+    assert.equal(heads.title?.from, 'text')
+    assert.equal(heads.subtitle?.from, 'text')
+    const getRes = mockRes()
+    await handleGet(mockReq('GET', `/__hadley/block/${heads.subtitle!.id}`), getRes)
+    assert.equal(JSON.parse(getRes.body).text, '__Untertitel__')
+    for (const [handler, url, body] of [
+      [handleDelete, '/__hadley/delete', { blockId: heads.title!.id }],
+      [handleMove, '/__hadley/move', { blockId: heads.title!.id, direction: 'down' }],
+      [handleMerge, '/__hadley/merge', { blockId: heads.subtitle!.id, direction: 'down' }],
+    ] as const) {
+      const res = mockRes()
+      await handler(post(url, body), res)
+      assert.equal(res.statusCode, 400)
+    }
+    // the first block of the text has no block above it to move past: the subtitle is no neighbour
+    const [first] = [...blockIdMap.entries()].filter(([, e]) => e.filePath === tmpFile && !e.fixed)
+    const up = mockRes()
+    await handleMove(post('/__hadley/move', { blockId: first![0], direction: 'up' }), up)
+    assert.equal(up.statusCode, 400)
+    const patch = mockRes()
+    await handlePatch(post('/__hadley/patch', { blockId: heads.title!.id, newText: '# Ein neuer Titel' }), patch)
+    assert.equal(patch.statusCode, 200)
+    assert.equal(await readFile(tmpFile, 'utf8'), content.replace('# Titel', '# Ein neuer Titel'))
+  })
+
+  it('edits a title the front matter gives as the front matter, and refuses one Lima does not read', async () => {
+    const content = '---\ntitle: T\nsubtitle: S\n---\nText.\n'
+    await writeFile(tmpFile, content, 'utf-8')
+    const heads = register(content)
+    assert.equal(heads.title?.from, 'front matter')
+    assert.equal(heads.title?.id, heads.subtitle?.id)
+    const getRes = mockRes()
+    await handleGet(mockReq('GET', `/__hadley/block/${heads.title!.id}`), getRes)
+    assert.equal(JSON.parse(getRes.body).text, 'title: T\nsubtitle: S')
+    const broken = mockRes()
+    await handlePatch(post('/__hadley/patch', { blockId: heads.title!.id, newText: 'title: "T' }), broken)
+    assert.equal(broken.statusCode, 422)
+    assert.equal(await readFile(tmpFile, 'utf8'), content)
+    const patch = mockRes()
+    await handlePatch(post('/__hadley/patch', { blockId: heads.title!.id, newText: 'title: Neu\nsubtitle: S' }), patch)
+    assert.equal(patch.statusCode, 200)
+    assert.equal(await readFile(tmpFile, 'utf8'), '---\ntitle: Neu\nsubtitle: S\n---\nText.\n')
   })
 })

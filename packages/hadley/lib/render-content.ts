@@ -4,7 +4,7 @@
  */
 import util from '@mkorun/galley/util'
 import type { SyncTemplate } from '@mkorun/galley'
-import { render, type BlockToken, type Heading } from '../case/index.ts'
+import { render, type BlockToken, type Heading, type ParsedDocument } from '../case/index.ts'
 import type { Problem } from './problems.ts'
 import type { Page, Site } from './site.ts'
 
@@ -13,6 +13,8 @@ export type BlockEditorHook = (
   blocks: BlockToken[],
   filePath: string,
   rawDoc: string,
+  // the page's address, where its title, subtitle and front matter stand, and the title and subtitle as it shows them
+  page: { urlPath: string; heads: ParsedDocument['heads']; title?: string; subtitle?: string },
 ) => (start: number) => string | undefined
 
 /**
@@ -67,7 +69,14 @@ export const renderContent = (
   for (const { pages } of Object.values(site.content)) {
     for (const page of Object.values(pages)) {
       // a page of another repository is edited there, not here (docs/sources.md)
-      const getBlockId = page.fromSource ? undefined : blockEditorHook?.(page.doc.blocks, page.file, page.source)
+      const getBlockId = page.fromSource
+        ? undefined
+        : blockEditorHook?.(page.doc.blocks, page.file, page.source, {
+            urlPath: page.urlPath,
+            heads: page.doc.heads,
+            ...(typeof page.metadata.title === 'string' ? { title: page.metadata.title } : {}),
+            ...(typeof page.metadata.subtitle === 'string' ? { subtitle: page.metadata.subtitle } : {}),
+          })
       const t = site.locales[page.language] ?? {}
       const heading = headingTemplate
         ? ({ level, id, html }: Heading) =>
