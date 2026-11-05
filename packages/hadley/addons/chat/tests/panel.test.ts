@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { it } from 'node:test'
-import { inlineParts, renderReply, replyParts, START_COMMAND, TEXT } from '../assets/chat.js'
+import { inlineParts, renderReply, replyParts, selectionOf, START_COMMAND, TEXT } from '../assets/chat.js'
 
 it('has the same nonempty client texts in both languages', () => {
   assert.deepEqual(Object.keys(TEXT.en).sort(), Object.keys(TEXT.de).sort())
@@ -67,4 +67,12 @@ it('renders text through textContent and gives only checked links safe new tabs'
   assert.equal(link.rel, 'noopener noreferrer')
   assert.equal(root.children[1].tag, 'pre')
   assert.equal(root.children[1].children[0].textContent, '<b>')
+})
+
+// 2026-11-05: Ctrl+Z selects the whole text it restored, and the next action then rewrote it as a selection
+it('rewrites a selection, and the whole block where nothing or all of it is selected', () => {
+  const field = (selectionStart: number, selectionEnd: number) => ({ selectionStart, selectionEnd, value: 'A block.' })
+  assert.deepEqual(selectionOf(field(2, 7)), { start: 2, end: 7 })
+  assert.equal(selectionOf(field(3, 3)), undefined)
+  assert.equal(selectionOf(field(0, 8)), undefined)
 })

@@ -255,8 +255,7 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
   outline-offset: 2px;
 }
 
-.hadley-rewrite,
-.hadley-rewrite-menu {
+.hadley-rewrite {
   font:
     0.8125rem/1.5 ui-sans-serif,
     system-ui,
@@ -275,8 +274,7 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
 }
 
 .hadley-rewrite button,
-.hadley-rewrite input,
-.hadley-rewrite-menu button {
+.hadley-rewrite input {
   font: inherit;
   color: inherit;
   background: var(--he-bg-deep);
@@ -285,8 +283,7 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
   padding: 0.25rem 0.5rem;
 }
 
-.hadley-rewrite button:disabled,
-.hadley-rewrite-menu button:disabled {
+.hadley-rewrite button:disabled {
   opacity: 0.6;
 }
 
@@ -305,28 +302,12 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
   gap: 0.25rem;
 }
 
-.hc-rewrite-state {
+.hc-rewrite-state,
+.hc-rewrite-scope {
   color: var(--he-muted);
 }
 
-.hadley-rewrite-menu {
-  position: fixed;
-  z-index: 10002;
-  display: flex;
-  flex-direction: column;
-  padding: 0.25rem;
-  border: 1px solid var(--he-border);
-  border-radius: 4px;
-  box-shadow: 0 4px 12px var(--he-shadow);
-}
-
-.hadley-rewrite-menu button {
-  text-align: left;
-  cursor: pointer;
-}
-
-.hadley-rewrite :focus-visible,
-.hadley-rewrite-menu :focus-visible {
+.hadley-rewrite :focus-visible {
   outline: 2px solid var(--he-accent-focus);
   outline-offset: 2px;
 }

@@ -12,3 +12,9 @@ interface ReplyNode {
   append(node: ReplyNode): void
 }
 export function renderReply(parent: ReplyNode, source: string): void
+
+export function selectionOf(field: {
+  selectionStart: number
+  selectionEnd: number
+  value: string
+}): { start: number; end: number } | undefined

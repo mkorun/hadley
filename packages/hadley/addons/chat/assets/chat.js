@@ -5,6 +5,8 @@
 export const TEXT = {
   en: {
     rewrite: 'Rewrite',
+    scopeBlock: 'Whole block',
+    scopeSelection: 'Selection only',
     clearer: 'Clearer',
     shorter: 'Shorter',
     formal: 'More formal',
@@ -61,6 +63,8 @@ export const TEXT = {
   },
   de: {
     rewrite: 'Umschreiben',
+    scopeBlock: 'Ganzer Block',
+    scopeSelection: 'Nur die Markierung',
     clearer: 'Klarer',
     shorter: 'Kürzer',
     formal: 'Formeller',
@@ -187,6 +191,15 @@ export function renderReply(parent, source) {
   }
 }
 
+/**
+ * What an action rewrites in the editing field: its selection, or the whole block (undefined) where nothing or all of
+ * it is selected, as after Ctrl+Z, which selects what it restored.
+ */
+export function selectionOf(field) {
+  const { selectionStart: start, selectionEnd: end, value } = field
+  return start === end || (start === 0 && end === value.length) ? undefined : { start, end }
+}
+
 /** Check SSE JSON once at the boundary; never infer a missing event field. */
 function checkEntry(event, data, open, at = Date.now()) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('chat event')
@@ -216,7 +229,6 @@ function startPanel() {
   let instruction = ''
   let editor = null
   let rewriteRow = null
-  let selectionMenu = null
   const directions = ['clearer', 'shorter', 'formal', 'casual', 'fix', 'custom']
   const deliveries = new Map()
   const localActions = new Map()
@@ -545,13 +557,10 @@ function startPanel() {
     } else setOpen(true, false)
     localActions.delete(card.data.to)
   }
-  async function rewrite(target, row, chosen, selection) {
+  async function rewrite(target, row, chosen) {
     if (!connected || row.pending || editor !== target) return
-    let own = row.custom.value
-    if (chosen === 'custom' && selection) {
-      own = prompt(t.instruction, instruction)
-      if (own === null) return
-    }
+    const selection = selectionOf(target.textarea)
+    const own = row.custom.value
     if (chosen === 'custom' && (!own.trim() || own.length > 500)) {
       row.state.textContent = t.instructionInvalid
       return
@@ -610,17 +619,9 @@ function startPanel() {
       updateSend()
     }
   }
-  function closeSelectionMenu() {
-    selectionMenu?.remove()
-    selectionMenu = null
-  }
-  document.addEventListener('pointerdown', (event) => {
-    if (!selectionMenu?.contains(event.target)) closeSelectionMenu()
-  })
   document.addEventListener('hadley:editor-close', () => {
     editor = null
     rewriteRow = null
-    closeSelectionMenu()
   })
   document.addEventListener('hadley:editor-open', (event) => {
     editor = event.detail
@@ -661,55 +662,18 @@ function startPanel() {
         void rewrite(target, row, 'custom')
       }
     })
-    node.append(choices, custom, state)
+    // what the next action rewrites: the selection, or the whole block
+    const scope = element('span', undefined, 'hc-rewrite-scope')
+    const showScope = () => {
+      scope.textContent = selectionOf(target.textarea) ? t.scopeSelection : t.scopeBlock
+    }
+    for (const type of ['select', 'keyup', 'mouseup', 'input', 'focus'])
+      target.textarea.addEventListener(type, showScope)
+    showScope()
+    node.append(choices, scope, custom, state)
     target.wrapper.append(node)
     rewriteRow = row
     updateSend()
-    target.textarea.addEventListener('pointerdown', (event) => {
-      // Keep the existing selection when the secondary click lands outside its painted text.
-      if (event.button === 2 && !event.shiftKey && target.textarea.selectionStart !== target.textarea.selectionEnd)
-        event.preventDefault()
-    })
-    target.textarea.addEventListener('contextmenu', (event) => {
-      closeSelectionMenu()
-      const { selectionStart: start, selectionEnd: end } = target.textarea
-      if (event.shiftKey || start === end) return
-      event.preventDefault()
-      event.stopPropagation()
-      const menu = element('div', undefined, 'hadley-rewrite-menu')
-      menu.setAttribute('role', 'menu')
-      menu.setAttribute('aria-label', t.rewrite)
-      for (const value of directions) {
-        const control = button(t[value], () => {
-          closeSelectionMenu()
-          void rewrite(target, row, value, { start, end })
-        })
-        control.setAttribute('role', 'menuitem')
-        control.disabled = !connected || row.pending
-        menu.append(control)
-      }
-      document.body.append(menu)
-      menu.style.left = `${Math.max(0, Math.min(event.clientX, innerWidth - menu.offsetWidth))}px`
-      menu.style.top = `${Math.max(0, Math.min(event.clientY, innerHeight - menu.offsetHeight))}px`
-      selectionMenu = menu
-      menu.querySelector('button').focus()
-      menu.addEventListener('keydown', (key) => {
-        if (key.key === 'Escape') {
-          key.preventDefault()
-          key.stopPropagation()
-          closeSelectionMenu()
-          target.textarea.focus()
-        }
-        if (key.key === 'ArrowDown' || key.key === 'ArrowUp') {
-          key.preventDefault()
-          const controls = [...menu.querySelectorAll('button')]
-          controls[
-            (controls.indexOf(document.activeElement) + (key.key === 'ArrowDown' ? 1 : controls.length - 1)) %
-              controls.length
-          ].focus()
-        }
-      })
-    })
   })
   const counter = setInterval(() => {
     for (const request of messages.values()) updateState(request)

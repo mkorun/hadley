@@ -25,6 +25,8 @@ for (const lang of ['en', 'de']) {
           shorter: 'Shorter',
           clearer: 'Clearer',
           formal: 'More formal',
+          block: 'Whole block',
+          selected: 'Selection only',
           own: 'Own…',
           instruction: 'Own instruction (at most 500 characters)',
           cancel: 'Cancel',
@@ -44,6 +46,8 @@ for (const lang of ['en', 'de']) {
           shorter: 'Kürzer',
           clearer: 'Klarer',
           formal: 'Formeller',
+          block: 'Ganzer Block',
+          selected: 'Nur die Markierung',
           own: 'Eigene…',
           instruction: 'Eigene Anweisung (höchstens 500 Zeichen)',
           cancel: 'Abbrechen',
@@ -130,13 +134,14 @@ for (const lang of ['en', 'de']) {
     await expect(timeline.locator('pre').last()).toBeVisible()
     await expect(timeline.locator('pre').last()).toContainText('suggestion')
     await page.getByRole('button', { name: 'Chat', exact: true }).click()
+    await expect(row.locator('.hc-rewrite-scope')).toHaveText(t.block)
     await select(page, 0, 5)
-    await field.click({ button: 'right' })
-    const menu = page.getByRole('menu', { name: t.rewrite, exact: true })
-    await expect(menu).toBeVisible()
+    await field.press('Shift+ArrowRight')
+    await field.press('Shift+ArrowLeft')
+    await expect(row.locator('.hc-rewrite-scope')).toHaveText(t.selected)
     if (info.repeatEachIndex === 0)
       await page.screenshot({ path: resolve(screenshots, `selection-${lang}-${info.project.name}.png`) })
-    await menu.getByRole('menuitem', { name: t.shorter, exact: true }).click()
+    await row.getByRole('button', { name: t.shorter, exact: true }).click()
     const selection = (await channel.inbox.next((entry) => entry.event === 'message')).data as typeof action
     expect(selection.action).toBe('rewrite-selection')
     expect(selection.selection).toEqual({ start: 0, end: 5 })
@@ -203,8 +208,7 @@ for (const lang of ['en', 'de']) {
     await expect(field).toHaveValue('Changed while waiting.')
     await page.getByRole('button', { name: 'Chat', exact: true }).click()
     await select(page, 0, 7)
-    await field.click({ button: 'right' })
-    await page.getByRole('menuitem', { name: t.formal, exact: true }).click()
+    await row.getByRole('button', { name: t.formal, exact: true }).click()
     const selected = (await channel.inbox.next((entry) => entry.event === 'message')).data as { id: string }
     await field.fill('Selection changed.')
     expect(
@@ -244,7 +248,7 @@ for (const lang of ['en', 'de']) {
     await expect(field).toHaveValue(lang === 'en' ? original : 'Erste Wörter des angehängten Blocks.')
   })
 
-  test(`${lang}: preserves native context menus, supports custom instructions and blocked storage`, async ({
+  test(`${lang}: keeps the browser's context menu, supports custom instructions and blocked storage`, async ({
     page,
     dev,
   }) => {
@@ -264,13 +268,8 @@ for (const lang of ['en', 'de']) {
       new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))`),
     ).toBe(true)
     await select(page, 0, 5)
-    expect(
-      await page.evaluate<boolean>(`document.querySelector('.hadley-textarea').dispatchEvent(
-      new MouseEvent('contextmenu', { bubbles: true, cancelable: true, shiftKey: true }))`),
-    ).toBe(true)
-    await expect(page.locator('.hadley-rewrite-menu')).toHaveCount(0)
-    await field.click({ button: 'right', modifiers: ['Shift'] })
-    await expect(page.locator('.hadley-rewrite-menu')).toHaveCount(0)
+    await field.click({ button: 'right' })
+    await expect(page.getByRole('menu')).toHaveCount(0)
     const row = page.locator('.hadley-rewrite')
     await row.getByRole('button', { name: t.own, exact: true }).click()
     const custom = row.getByRole('textbox', { name: t.instruction, exact: true })
@@ -287,9 +286,8 @@ for (const lang of ['en', 'de']) {
     await channel.send({ event: 'suggestion', data: { id: 'suggest1', to: action.id, text: 'Replacement.' } })
     await expect(field).toHaveValue('Replacement.')
     await select(page, 0, 5)
-    await field.click({ button: 'right' })
-    page.once('dialog', (dialog) => dialog.accept('A warmer phrase.'))
-    await page.getByRole('menuitem', { name: t.own, exact: true }).click()
+    await custom.fill('A warmer phrase.')
+    await custom.press('Enter')
     const selected = (await channel.inbox.next((entry) => entry.event === 'message')).data as {
       id: string
       instruction: string
