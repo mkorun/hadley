@@ -648,6 +648,8 @@ function startPanel() {
           custom.focus()
         }
       })
+      // the editing field keeps the focus, and with it the selection the browser paints
+      control.addEventListener('mousedown', (event) => event.preventDefault())
       row.controls.push(control)
       choices.append(control)
     }

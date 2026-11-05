@@ -142,6 +142,14 @@ for (const lang of ['en', 'de']) {
     if (info.repeatEachIndex === 0)
       await page.screenshot({ path: resolve(screenshots, `selection-${lang}-${info.project.name}.png`) })
     await row.getByRole('button', { name: t.shorter, exact: true }).click()
+    // 2026-11-05: the click took the focus, and the browser no longer painted the selection
+    await expect(field).toBeFocused()
+    expect(
+      await field.evaluate((node: { selectionStart: number; selectionEnd: number }) => [
+        node.selectionStart,
+        node.selectionEnd,
+      ]),
+    ).toEqual([0, 5])
     const selection = (await channel.inbox.next((entry) => entry.event === 'message')).data as typeof action
     expect(selection.action).toBe('rewrite-selection')
     expect(selection.selection).toEqual({ start: 0, end: 5 })
@@ -153,6 +161,13 @@ for (const lang of ['en', 'de']) {
       (await channel.send({ event: 'suggestion', data: { id: 'suggest2', to: selection.id, text: 'Brief' } })).status,
     ).toBe(200)
     await expect(field).toHaveValue('Brief' + selection.draft.slice(5) + '!')
+    // what came back is selected, so that it shows
+    expect(
+      await field.evaluate((node: { selectionStart: number; selectionEnd: number }) => [
+        node.selectionStart,
+        node.selectionEnd,
+      ]),
+    ).toEqual([0, 5])
     await expect(row.getByRole('button', { name: t.clearer, exact: true })).toBeEnabled()
     await field.press('Control+z')
     await expect(field).toHaveValue(selection.draft + '!')

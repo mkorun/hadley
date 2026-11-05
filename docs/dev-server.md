@@ -72,10 +72,10 @@ in that directory and nowhere else for that message.
 An open block has a button for each way to rewrite it: Clearer, Shorter, More formal, More casual and Only fix errors
 ask Claude at once for a new version of the block's text, or of the text selected in the editing field, which the row
 names (Whole block, Selection only); Own… asks for an instruction first, which Enter sends. Claude answers with a
-proposal, not a change: it takes the place of the block's text or of the selection in the editing field, Ctrl+Z takes it
-back, and only saving writes it to the file, as any edit. If the text has changed while Claude was answering, or the
-block was closed, the proposal waits in the panel instead, to insert, copy or discard. Each request shows how long it
-has been waiting, and each answer how long it took.
+proposal, not a change: it takes the place of the block's text or of the selection, selected, in the editing field,
+Ctrl+Z takes it back, and only saving writes it to the file, as any edit. If the text has changed while Claude was
+answering, or the block was closed, the proposal waits in the panel instead, to insert, copy or discard. Each request
+shows how long it has been waiting, and each answer how long it took.
 
 hadley starts no agent. Claude Code starts `hadley channel` itself, from an `.mcp.json` in the directory it starts in:
 

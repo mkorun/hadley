@@ -934,6 +934,8 @@ function openEditor(blockId, blockEl, text) {
           textarea.setSelectionRange(start, end)
           // insertText participates in the browser's native undo history; assigning value does not.
           const inserted = document.execCommand('insertText', false, replacement)
+          // what came in stays selected, so that it shows, and the next action rewrites it again
+          if (inserted) textarea.setSelectionRange(start, start + replacement.length)
           resizeTextarea(textarea)
           return inserted
         },
