@@ -164,6 +164,9 @@ const IMAGE_TYPES: Record<string, string> = {
   webp: 'image/webp',
 }
 const extension = (name: string) => name.slice(name.lastIndexOf('.') + 1).toLowerCase()
+// its own keys only: `constructor` is no image (review 2026-11-05)
+const imageType = (name: string): string | undefined =>
+  Object.hasOwn(IMAGE_TYPES, extension(name)) ? IMAGE_TYPES[extension(name)] : undefined
 
 /**
  * The files beside a page's Markdown, by their path in its bundle: plain files only (no link, no Markdown, nothing
@@ -199,14 +202,14 @@ export async function serveBundleFile(res: ServerResponse, url: string, lang: La
   if (!entry) return send(res, 404, { error: t(lang, 'blockNotFound') })
   const names = await bundleFileNames(entry.filePath)
   if (rest.length === 0)
-    return send(res, 200, { files: names.map((name) => ({ name, image: extension(name) in IMAGE_TYPES })) })
+    return send(res, 200, { files: names.map((name) => ({ name, image: imageType(name) !== undefined })) })
   let name: string
   try {
     name = decodeURIComponent(rest.join('/'))
   } catch {
     return send(res, 400, { error: t(lang, 'assetNotFound') })
   }
-  const type = IMAGE_TYPES[extension(name)]
+  const type = imageType(name)
   if (!type || !names.includes(name)) return send(res, 404, { error: `${t(lang, 'assetNotFound')}: ${name}` })
   try {
     const content = await readFile(join(dirname(entry.filePath), ...name.split('/')))
@@ -293,7 +296,7 @@ export async function handlePatch(req: IncomingMessage, res: ServerResponse): Pr
   }
 
   if (!parsed || typeof parsed !== 'object') return send(res, 400, { error: t(lang, 'invalidRequestBody') })
-  const { blockId, newText } = parsed as Record<string, unknown>
+  const { blockId, newText, below } = parsed as Record<string, unknown>
 
   // Check the required fields before reading the map (spec 5.5)
   if (typeof blockId !== 'string') return send(res, 400, { error: t(lang, 'blockIdMissing') })
@@ -301,6 +304,10 @@ export async function handlePatch(req: IncomingMessage, res: ServerResponse): Pr
 
   const entry = blockIdMap.get(blockId)
   if (!entry) return send(res, 404, { error: t(lang, 'blockNotFound') })
+  // a new block below one is written after it: the block's own text stays as it is, byte for byte (review 2026-11-05)
+  if (below !== undefined && below !== true) return send(res, 400, { error: t(lang, 'invalidRequestBody') })
+  if (below && entry.fixed) return send(res, 400, { error: t(lang, 'blockFixed') })
+  if (below && !newText.trim()) return send(res, 400, { error: t(lang, 'newTextMissing') })
 
   const source = await readSource(entry.filePath)
   if (source === 'unreadable') return send(res, 500, { error: t(lang, 'couldNotReadFile') })
@@ -321,7 +328,11 @@ export async function handlePatch(req: IncomingMessage, res: ServerResponse): Pr
   if (text.includes('\r')) return send(res, 422, { error: t(lang, 'loneCarriageReturn') })
   // the front matter is Lima, whose block scalars keep every blank line they hold (review 2026-11-05): only its end
   // is trimmed; Markdown gets one blank line between its parts
-  const normalizedText = entry.fixed && !entry.head ? text.replace(/\n+$/, '') : blankLinesOnce(text)
+  const normalizedText = below
+    ? `${content.slice(entry.start, entry.end).replace(/\n+$/, '')}\n\n${blankLinesOnce(text)}`
+    : entry.fixed && !entry.head
+      ? text.replace(/\n+$/, '')
+      : blankLinesOnce(text)
   const patched = content.slice(0, entry.start) + normalizedText + '\n' + content.slice(entry.end)
 
   // Parse validation: the whole patched document is checked, not the block alone (spec 5.5, ADR-4). parseDocument()

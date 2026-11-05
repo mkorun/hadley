@@ -258,6 +258,17 @@ function startPanel() {
   const lang = document.documentElement.dataset.hadleyLang === 'de' ? 'de' : 'en'
   const t = TEXT[lang]
   const storageKey = 'hadley-chat'
+  // The site's key to the chat's routes (browser-key.ts), which the link hadley dev printed left in this origin's
+  // storage (plugin.ts, its unlock page): scheme, host and port bound it, unlike a cookie, which every port of
+  // localhost would get.
+  const KEY_STORE = 'hadley-chat-key'
+  let chatKey = null
+  try {
+    chatKey = localStorage.getItem(KEY_STORE)
+  } catch {
+    // without storage the browser holds no key, and the panel says how to get one
+  }
+  const keyed = () => (chatKey ? { 'X-Hadley-Key': chatKey } : {})
   let replaying = false
   let rewritesSending = 0
   let detailsShown = false
@@ -484,7 +495,7 @@ function startPanel() {
   async function post(path, body) {
     return fetch(`${path}?lang=${lang}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...keyed() },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(10_000),
     })
@@ -1000,7 +1011,8 @@ function startPanel() {
   // the chat's routes answer the browser that holds the site's key (browser-key.ts): without it, the panel says how
   let stream
   function listen() {
-    stream = new EventSource(`/__hadley/chat/events?lang=${lang}`)
+    // an event stream sends no header of its own: the key goes in its address, which only this server sees
+    stream = new EventSource(`/__hadley/chat/events?lang=${lang}&key=${encodeURIComponent(chatKey ?? '')}`)
     stream.addEventListener('history', (event) => {
       try {
         const entries = JSON.parse(event.data)
@@ -1052,8 +1064,17 @@ function startPanel() {
     error.textContent = t.locked
     dot.dataset.state = 'offline'
   }
-  fetch('/__hadley/chat/key', { cache: 'no-store' })
-    .then((response) => (response.status === 401 ? lock() : listen()))
+  fetch('/__hadley/chat/key', { cache: 'no-store', headers: keyed() })
+    .then((response) => {
+      if (response.status !== 401) return listen()
+      // a key that is no longer the site's is forgotten
+      try {
+        localStorage.removeItem(KEY_STORE)
+      } catch {
+        // nothing kept
+      }
+      lock()
+    })
     .catch(() => listen())
   window.addEventListener('pagehide', () => {
     stream?.close()

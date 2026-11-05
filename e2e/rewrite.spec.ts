@@ -298,14 +298,16 @@ for (const lang of ['en', 'de']) {
       dev,
     }) => {
       const channel = await dev.channel()
-      await page.addInitScript(() => {
-        Storage.prototype.getItem = () => {
+      // storage blocked, but for the chat's key, which a browser without storage could not keep at all
+      await page.addInitScript((key) => {
+        Storage.prototype.getItem = (name) => {
+          if (name === 'hadley-chat-key') return key
           throw new Error('storage blocked')
         }
         Storage.prototype.setItem = () => {
           throw new Error('storage blocked')
         }
-      })
+      }, dev.key().key)
       const field = await open(page, dev.origin)
       await select(page, 0, 0)
       expect(

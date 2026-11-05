@@ -6,7 +6,7 @@ import type { Plugin } from 'vite'
 import { blockIdMap, readBody } from '../editor/plugin.ts'
 import { lf, slashed } from '../../lib/platform.ts'
 import { certificateFingerprint, createRendezvous, rendezvousDirectory } from './rendezvous.ts'
-import { browserKey, cookieValue, isKey } from './browser-key.ts'
+import { browserKey, isKey } from './browser-key.ts'
 import {
   agent,
   chatInput,
@@ -25,6 +25,15 @@ import {
   type Reply,
   type Permission,
 } from './protocol.ts'
+
+// the page of the link with the key (browser-key.ts): the key is kept by the panel's origin, chat.js reads it there
+const UNLOCK_PAGE = `<!doctype html><meta charset="utf-8"><title>hadley</title><script>
+try {
+  const key = location.hash.slice(1)
+  if (/^[0-9a-f]{64}$/.test(key)) localStorage.setItem('hadley-chat-key', key)
+} catch {}
+location.replace('/')
+</script>`
 
 type Entry = (
   | { event: 'message'; data: Message }
@@ -65,7 +74,6 @@ export function chatPlugin(options: {
   const dir = rendezvousDirectory()
   // the browser's key to the chat's own routes (browser-key.ts)
   const browser = browserKey(dir, root)
-  const secure = options.origin.startsWith('https:')
   let rendezvous: ReturnType<typeof createRendezvous> | undefined
   let channel: ServerResponse | undefined
   // the name the channel's client gave itself (MCP initialize), shown in the panel
@@ -107,10 +115,23 @@ export function chatPlugin(options: {
       res.end(source)
       return
     }
-    // the browser's routes, the chat's events, messages and verdicts, answer the browser that holds the key
+    // The link hadley dev prints: this page keeps the key from its fragment, which no request carries, in this
+    // origin's storage, and goes on to the site's home, always the same place. It needs no key, and holds none.
+    if (path === '/__hadley/chat/unlock' && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' })
+      res.end(UNLOCK_PAGE)
+      return
+    }
+    // the browser's routes, the chat's events, messages and verdicts, answer the browser that holds the key: in a
+    // header, or, for the event stream, which can send none, in its address
+    const presented =
+      req.headers['x-hadley-key'] ??
+      (path === '/__hadley/chat/events'
+        ? (new URL(req.url ?? '/', 'http://localhost').searchParams.get('key') ?? undefined)
+        : undefined)
     if (
       (path === '/__hadley/chat' || path.startsWith('/__hadley/chat/')) &&
-      !isKey(cookieValue(req.headers.cookie, browser.cookie), browser.key)
+      !isKey(typeof presented === 'string' ? presented : undefined, browser.key)
     )
       return send(res, 401, { error: 'chat: open the link with the key that hadley dev printed', locked: true })
     // the panel asks first whether this browser holds the key, and says how to get it if not
@@ -240,20 +261,6 @@ export function chatPlugin(options: {
     name: 'hadley-chat',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        // the link with the key: its first visit keeps the key as a cookie and leaves the address without it
-        if (req.method === 'GET' && (req.url ?? '').includes('hadley-key=')) {
-          const url = new URL(req.url ?? '/', options.origin)
-          if (isKey(url.searchParams.get('hadley-key') ?? undefined, browser.key)) {
-            url.searchParams.delete('hadley-key')
-            res.writeHead(303, {
-              'Set-Cookie': `${browser.cookie}=${browser.key}; Path=/; HttpOnly; SameSite=Strict${secure ? '; Secure' : ''}`,
-              Location: url.pathname + url.search,
-              'Cache-Control': 'no-store',
-            })
-            res.end()
-            return
-          }
-        }
         const path = (req.url ?? '').split('?')[0]
         if (
           path !== '/__hadley/chat.js' &&
@@ -277,10 +284,8 @@ export function chatPlugin(options: {
       return rendezvous?.record.token
     },
     // the link hadley dev prints in a terminal, and the file that holds the key
-    link: `${options.origin}/?hadley-key=${browser.key}`,
+    link: `${options.origin}/__hadley/chat/unlock#${browser.key}`,
     keyFile: browser.file,
-    // the Cookie header of a browser that holds the key, for tests in this process
-    cookie: `${browser.cookie}=${browser.key}`,
     start() {
       rendezvous = createRendezvous(
         {

@@ -78,12 +78,14 @@ command below to copy. Each message names `root`, the absolute directory the dev
 `root`. Claude works in that directory and nowhere else for that message.
 
 The chat answers only a browser that holds the site's key. A page's origin, which a browser cannot fake, a program on
-the same machine can: without the key it could read the conversation, send messages and allow what Claude asks to do.
-In a terminal, `hadley dev` prints a link with the key (`Chat: open http://localhost:8000/?hadley-key=…`); its first
-visit keeps the key in the browser as a cookie and leaves the address without it, and the panel of a browser without
-one says so. The key is the site's, kept in a file only its user can read, beside the channel's rendezvous, so a
-browser opens the link once and keeps the chat across restarts of the dev server. Where the output is no terminal,
-the dev server prints the file instead of the key.
+the same machine can: without the key it could read the conversation, send messages and allow what the agent asks to do.
+In a terminal, `hadley dev` prints a link with the key (`Chat: open http://localhost:8000/__hadley/chat/unlock#…`). Its
+page keeps the key in the browser's storage for that origin, which scheme, host and port bound (a cookie would go to
+every port of localhost), and goes on to the site's home; the key stands after `#`, which no request carries. The panel
+sends it with each request, and the panel of a browser without one says how to get it. The key is the site's, kept in a
+file only its user can read, beside the channel's rendezvous, so a browser opens the link once and keeps the chat across
+restarts of the dev server. Where the output is no terminal, the dev server prints the file instead of the key. Programs
+of the same user can read that file, as they can everything of that user's.
 
 An open block's toolbar has, after Save (Ctrl+S) and Cancel (Esc), a way to rewrite it (Clearer, Shorter, More formal,
 More casual, Only fix errors, or Only instructions), a field for an instruction, which adds to the way and is all of

@@ -172,12 +172,17 @@ export const test = base.extend<{ dev: Awaited<ReturnType<typeof startSite>> }>(
       await dev.close()
     }
   },
-  // the browser holds the key, as after the link hadley dev prints; a test without it makes its own context
+  // the browser holds the key, as after the link hadley dev prints (chat.js keeps it in the origin's storage); a test
+  // without it makes its own context
   page: async ({ page, dev }, use) => {
-    const key = dev.key()
-    await page
-      .context()
-      .addCookies([{ name: key.cookie, value: key.key, url: dev.origin, httpOnly: true, sameSite: 'Strict' }])
+    const { key } = dev.key()
+    await page.addInitScript((value) => {
+      try {
+        globalThis.localStorage.setItem('hadley-chat-key', value)
+      } catch {
+        // a page without storage, such as about:blank
+      }
+    }, key)
     await use(page)
   },
 })

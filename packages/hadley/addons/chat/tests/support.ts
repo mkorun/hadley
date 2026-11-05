@@ -8,7 +8,10 @@ import http, { type IncomingMessage, type ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import type { ViteDevServer } from 'vite'
 import { refusal } from '../../../lib/dev-guard.ts'
+import { resolve } from 'node:path'
 import { chatPlugin } from '../plugin.ts'
+import { browserKey } from '../browser-key.ts'
+import { rendezvousDirectory } from '../rendezvous.ts'
 import { sseParser } from '../protocol.ts'
 
 export class Inbox<T> {
@@ -63,7 +66,7 @@ export async function devServer(root: string) {
   const port = (server.address() as AddressInfo).port
   origin = `http://localhost:${port}`
   chat = chatPlugin({ root, site: 'https://site.example', port, origin })
-  browserCookie = chat.cookie
+  chatKey = browserKey(rendezvousDirectory(), resolve(root)).key
   const configure = chat.plugin.configureServer
   assert.equal(typeof configure, 'function')
   if (typeof configure !== 'function') throw new Error('expected a configureServer hook')
@@ -89,9 +92,9 @@ export async function devServer(root: string) {
   }
 }
 
-// the Cookie of a browser that holds the chat's key (browser-key.ts), as devServer's chat made it
-let browserCookie: string | undefined
-const keyed = (): Record<string, string> => (browserCookie ? { Cookie: browserCookie } : {})
+// the header of a browser that holds the chat's key (browser-key.ts), as devServer's chat keeps it
+let chatKey: string | undefined
+const keyed = (): Record<string, string> => (chatKey ? { 'X-Hadley-Key': chatKey } : {})
 
 export async function post(
   origin: string,

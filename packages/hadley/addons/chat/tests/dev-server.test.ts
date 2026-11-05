@@ -79,11 +79,15 @@ it(
         // the chat's routes answer only a browser that holds the site's key
         const key = browserKey(paths[paths.length - 1], dev.root)
         assert.equal((await post(dev.origin, '/__hadley/chat', { text: 'hello', page: '/' })).status, 401)
-        const link = await fetch(`${dev.origin}/?hadley-key=${key.key}`, { redirect: 'manual' })
-        assert.equal(link.status, 303)
-        assert.equal(link.headers.get('location'), '/')
-        assert.equal(link.headers.get('set-cookie'), `${key.cookie}=${key.key}; Path=/; HttpOnly; SameSite=Strict`)
-        const keyed = { Origin: dev.origin, Cookie: `${key.cookie}=${key.key}` }
+        // the link's page holds no key (it is in the fragment, which no request carries) and sets no cookie,
+        // which every port of localhost would get
+        const link = await fetch(`${dev.origin}/__hadley/chat/unlock`, { redirect: 'manual' })
+        assert.equal(link.status, 200)
+        assert.equal(link.headers.get('set-cookie'), null)
+        const page = await link.text()
+        assert.ok(page.includes("localStorage.setItem('hadley-chat-key'"))
+        assert.ok(!page.includes(key.key))
+        const keyed = { Origin: dev.origin, 'X-Hadley-Key': key.key }
         assert.equal((await post(dev.origin, '/__hadley/chat', { text: 'hello', page: '/' }, keyed)).status, 503)
         const info = parseRendezvous(JSON.parse(readFileSync(record, 'utf8')))
         assert.equal(info.origin, dev.origin)
@@ -148,7 +152,7 @@ it(
       assert.equal(record.origin, dev.origin)
       assert.equal(record.fingerprint, certificateFingerprint(certificate.cert))
       const key = browserKey(paths[paths.length - 1], dev.root)
-      browser = await events(dev.origin, '/__hadley/chat/events', { Cookie: `${key.cookie}=${key.key}` })
+      browser = await events(dev.origin, `/__hadley/chat/events?key=${key.key}`)
       channel = channelProcess(dev.root)
       await browser.inbox.next((entry) => entry.event === 'status' && (entry.data as { connected: boolean }).connected)
       channel.rpc('tools/call', 1, { _meta: { progressToken: 1 }, name: 'reply', arguments: { text: 'HTTPS reply' } })

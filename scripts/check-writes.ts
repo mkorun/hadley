@@ -28,7 +28,8 @@ export const CHECKED = [
 export const WRITERS: Record<string, string> = {
   'packages/hadley/addons/chat/traffic.ts': 'the optional private HADLEY_CHAT_LOG traffic log',
   'packages/hadley/addons/chat/rendezvous.ts': 'private runtime directories and per-port chat rendezvous files',
-  'packages/hadley/addons/chat/browser-key.ts': "a site's chat key, a private file beside the rendezvous files",
+  'packages/hadley/addons/chat/browser-key.ts':
+    "a site's chat key, a private file beside the rendezvous files, replacing one that is not",
   'packages/hadley/index.ts': 'the site files the plan claims, meta.json, links.json and the caches in .hadley/',
   'packages/hadley/lib/build-files.ts': "the files of a page's bundle it copies, claimed as they are copied",
   'packages/hadley/lib/images.ts':

@@ -361,7 +361,7 @@ export async function startDevServer({
     devLog(
       process.stdout.isTTY
         ? `Chat: open ${chat.link} once in each browser`
-        : `Chat: the link to open once in each browser is ${origin}/?hadley-key=<the key in ${chat.keyFile}>`,
+        : `Chat: the link to open once in each browser is ${origin}/__hadley/chat/unlock#<the key in ${chat.keyFile}>`,
     )
   if (wsl === 'nat')
     devWarn('WSL runs in NAT mode: other devices reach none of its addresses; see docs/dev-server.md (mirrored mode)')

@@ -1323,3 +1323,40 @@ describe('the files of a bundle', () => {
     }
   })
 })
+
+describe('a new block below another', () => {
+  const post = (body: unknown) =>
+    mockReq('POST', '/__hadley/patch', JSON.stringify(body), { 'content-type': 'application/json' })
+
+  it('is written after the block, which stays as it was, byte for byte (review 2026-11-05)', async () => {
+    const content = '- one\n\n\n- two\n\nNext.\n'
+    await writeFile(tmpFile, content, 'utf-8')
+    const doc = parseDocument(content, {})
+    registerPageBlocks(doc.blocks, content, tmpFile)
+    const [list] = [...blockIdMap.entries()].filter(([, e]) => e.filePath === tmpFile)
+    const res = mockRes()
+    await handlePatch(post({ blockId: list![0], newText: 'Inserted after list.\n\n\n', below: true }), res)
+    assert.equal(res.statusCode, 200)
+    assert.equal(await readFile(tmpFile, 'utf8'), '- one\n\n\n- two\n\nInserted after list.\n\nNext.\n')
+    for (const body of [
+      { blockId: list![0], newText: '  ', below: true },
+      { blockId: list![0], newText: 'x', below: 'yes' },
+    ]) {
+      const refused = mockRes()
+      await handlePatch(post(body), refused)
+      assert.equal(refused.statusCode, 400)
+    }
+  })
+
+  it('takes no file as an image for a name Object knows (review 2026-11-05)', async () => {
+    await writeFile(tmpFile, 'Text.\n', 'utf-8')
+    await writeFile(join(tmpDir, 'plain.constructor'), 'x')
+    blockIdMap.set('files-block', { filePath: tmpFile, start: 0, end: 5, fileHashAtRender: '' })
+    const list = mockRes()
+    await serveBundleFile(list, '/__hadley/files/files-block', 'en')
+    assert.deepEqual(JSON.parse(list.body).files, [{ name: 'plain.constructor', image: false }])
+    const file = mockRes()
+    await serveBundleFile(file, '/__hadley/files/files-block/plain.constructor', 'en')
+    assert.equal(file.statusCode, 404)
+  })
+})

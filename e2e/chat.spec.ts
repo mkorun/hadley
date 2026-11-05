@@ -172,7 +172,7 @@ test('shows verdict conflicts, keeps drafts after server errors, and follows cha
   expect(
     (
       await page.request.post(dev.origin + '/__hadley/chat/verdict', {
-        headers: { Origin: dev.origin },
+        headers: { Origin: dev.origin, 'X-Hadley-Key': dev.key().key },
         data: { request_id: 'abcde', allow: true },
       })
     ).status(),
@@ -343,9 +343,9 @@ test('HTTP: real dev serves the assets and relays block context, replies and ver
   expect(await german.text()).toContain('lang="de"')
   const block = /data-hadley-id="([^"]+)"[^>]*>First words/.exec(html)?.[1]
   expect(block).toBeTruthy()
-  // a request with the site's key, as the browser sends it after the link (browser-key.ts)
+  // a request with the site's key, as the panel sends it after the link (browser-key.ts)
   const key = dev.key()
-  const headers = { Origin: dev.origin, Cookie: `${key.cookie}=${key.key}` }
+  const headers = { Origin: dev.origin, 'X-Hadley-Key': key.key }
   const send = () =>
     request.post(dev.origin + '/__hadley/chat', { headers, data: { text: 'Explain', page: '/panel/', block } })
   expect((await send()).status()).toBe(503)
@@ -389,8 +389,10 @@ test('a browser without the key gets no chat, and the link gives it the key', as
       data: { text: 'hello', page: '/panel/' },
     })
     expect(refused.status()).toBe(401)
-    await page.goto(`${dev.origin}/panel/?hadley-key=${dev.key().key}`)
-    expect(new URL(page.url()).search).toBe('')
+    // the link: its page keeps the key and goes on to the site's home, with nothing of the key left in the address
+    await page.goto(`${dev.origin}/__hadley/chat/unlock#${dev.key().key}`)
+    await expect.poll(() => page.url()).toBe(`${dev.origin}/`)
+    await page.goto(dev.origin + '/panel/')
     await page.getByRole('button', { name: 'Chat', exact: true }).click()
     await expect(page.locator('#hadley-chat .hc-error')).toBeEmpty()
   } finally {

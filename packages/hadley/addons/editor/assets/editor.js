@@ -1344,7 +1344,8 @@ async function saveEditor(blockId, saveBtn) {
     closeEditor()
     return
   }
-  const newText = activeAfter !== null ? `${activeAfter}\n\n${written}` : written
+  // a new block goes to the server alone, which writes it after the block (plugin.ts, handlePatch: below)
+  const below = activeAfter !== null
 
   saveBtn.disabled = true
   try {
@@ -1359,7 +1360,7 @@ async function saveEditor(blockId, saveBtn) {
     const res = await fetch(withLang('/__hadley/patch'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ blockId, newText }),
+      body: JSON.stringify({ blockId, newText: written, ...(below ? { below: true } : {}) }),
     })
 
     if (res.ok) {
