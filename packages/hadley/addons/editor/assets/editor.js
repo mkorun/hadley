@@ -257,6 +257,8 @@ const _ic = {
   delete:
     '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5M7 7v3.5M9 7v3.5"/></svg>',
   add: '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"/></svg>',
+  // the front matter: keys, their colons and values, as Lima writes them
+  data: '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4h3M2.5 8h3M2.5 12h3M10 4h3.5M10 8h2M10 12h3.5"/><circle cx="7.75" cy="4" r=".5" fill="currentColor"/><circle cx="7.75" cy="8" r=".5" fill="currentColor"/><circle cx="7.75" cy="12" r=".5" fill="currentColor"/></svg>',
   file: '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2.5h5l3 3v8H4zM9 2.5v3h3"/></svg>',
   pencil:
     '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 2.5l3 3L6 13H3v-3zM9 4l3 3"/></svg>',
@@ -915,8 +917,10 @@ async function attachHeadListeners() {
     const badge = document.createElement('button')
     badge.type = 'button'
     badge.className = 'hadley-front-matter-badge'
-    badge.innerHTML = _ic.pencil
-    badge.append(T.frontMatter)
+    badge.innerHTML = _ic.data
+    badge.append(Object.assign(document.createElement('span'), { textContent: T.frontMatter }))
+    badge.setAttribute('aria-label', T.frontMatter)
+    badge.title = T.frontMatter
     badge.dataset.hadleyFrontMatter = ''
     badge.addEventListener('click', () => {
       if (!isEditMode() || activeBlockId || mutationLocked) return
@@ -987,14 +991,27 @@ function placeFrames() {
     frames.delete(el)
     frameObserver.unobserve(el)
   }
-  // the front matter's badge sits on the title's frame, a tab on its top edge, so that it takes no room on the page
+  // the front matter's badge sits right above the title's frame, flush with its right edge, so that it takes no room
+  // on the page and keeps clear of what a theme puts left above a title
   if (frontMatterBadge && frontMatterBadge.isConnected) {
     const title = document.querySelector('[data-hadley-head="title"]')
     const frame = title && frames.get(title)
     frontMatterBadge.hidden = !frame || frame.hidden
     if (frame && !frame.hidden) {
-      frontMatterBadge.style.top = `${parseFloat(frame.style.top) - frontMatterBadge.offsetHeight / 2}px`
-      frontMatterBadge.style.left = `${parseFloat(frame.style.left) + 12}px`
+      const right = parseFloat(frame.style.left) + parseFloat(frame.style.width)
+      // over a narrow title, the symbol alone (keys and values), so that it keeps clear of what stands left above it
+      frontMatterBadge.classList.toggle('is-compact', parseFloat(frame.style.width) < 480)
+      // in the middle of the line right above the title, where a theme has one (a date, a category), else just above
+      // the frame
+      const above = title.previousElementSibling?.getBoundingClientRect()
+      const titleTop = title.getBoundingClientRect().top
+      const height = frontMatterBadge.offsetHeight
+      const inLine = above && above.height > 0 && above.height < 80 && titleTop - above.bottom >= 0
+      frontMatterBadge.style.top =
+        inLine && titleTop - above.bottom < 48
+          ? `${above.top + window.scrollY + (above.height - height) / 2}px`
+          : `${parseFloat(frame.style.top) - height - 4}px`
+      frontMatterBadge.style.left = `${right - frontMatterBadge.offsetWidth}px`
     }
   }
   // while a block moves (the move animations), every frame, for a second at most

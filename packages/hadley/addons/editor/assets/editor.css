@@ -765,7 +765,7 @@ body.hadley-editing .hadley-trigger {
   display: none;
 }
 
-/* a tab on the top edge of the title's frame, placed with the frames (editor.js): it takes no room on the page */
+/* right above the title's frame, flush with its right edge, placed with the frames (editor.js): no room taken */
 body.hadley-edit-mode .hadley-front-matter-badge {
   position: absolute;
   z-index: 1;
@@ -796,6 +796,14 @@ body.hadley-edit-mode .hadley-front-matter-badge {
 body.hadley-edit-mode .hadley-front-matter-badge:hover,
 body.hadley-edit-mode .hadley-front-matter-badge.hadley-block-active {
   background: var(--he-block-bg);
+}
+
+body.hadley-edit-mode .hadley-front-matter-badge.is-compact {
+  padding: 0.3125rem;
+}
+
+.hadley-front-matter-badge.is-compact span {
+  display: none;
 }
 
 .hadley-front-matter-badge:focus-visible {
