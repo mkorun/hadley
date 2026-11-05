@@ -1,6 +1,6 @@
 # hadley
 
-> `0.1.0` is the first release. The [changelog](CHANGELOG.md) names what it leaves open.
+> `0.2.0` is the latest release. The [changelog](CHANGELOG.md) names what it leaves open.
 
 A static site generator small enough to be understood as a whole. Content is written in
 [Markanto](https://markanto.org), metadata in [Lima](https://limaformat.dev), templates in

@@ -4,7 +4,10 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.0] — 2026-11-05
+
+The second release: notes, drawings and og images that fit every site, a search index for each language, and the first
+review by a native speaker.
 
 ### Added
 

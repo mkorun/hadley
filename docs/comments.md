@@ -41,7 +41,7 @@ server on amd64, in an empty directory:
 ```bash
 (
   set -e
-  version=0.1.0
+  version=0.2.0
   file=hadley-forms-$version-linux-amd64.tar.gz
   base=https://github.com/mkorun/hadley/releases/download/v$version
   curl -fL --remote-name-all "$base/$file" "$base/SHA256SUMS"
