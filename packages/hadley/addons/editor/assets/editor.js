@@ -54,6 +54,9 @@ const T = {
     moveUpLabel: 'Block nach oben verschieben',
     moveDownLabel: 'Block nach unten verschieben',
     deleteLabel: 'Block löschen',
+    addBelowLabel: 'Neuer Block darunter',
+    filesLabel: 'Dateien im Bundle',
+    insertFile: (name) => `${name} einfügen`,
     fileChangedReload: 'Die Datei wurde extern geändert.\nSeite wird neu geladen.',
     mergeError: (status, msg) => `Fehler beim Zusammenziehen (${status}):\n${msg}`,
     moveError: (status, msg) => `Fehler beim Verschieben (${status}):\n${msg}`,
@@ -91,6 +94,9 @@ const T = {
     moveUpLabel: 'Move block up',
     moveDownLabel: 'Move block down',
     deleteLabel: 'Delete block',
+    addBelowLabel: 'New block below',
+    filesLabel: 'Files in the bundle',
+    insertFile: (name) => `Insert ${name}`,
     fileChangedReload: 'The file was changed externally.\nReloading page.',
     mergeError: (status, msg) => `Error merging (${status}):\n${msg}`,
     moveError: (status, msg) => `Error moving (${status}):\n${msg}`,
@@ -128,6 +134,8 @@ function withLang(url) {
 let activeBlockId = null // blockId of the open edit session
 let activeWrapper = null // .hadley-editor DOM element
 let activeTextarea = null // <textarea> of the open session
+// a new block below: the text of the block it follows, saved with it (openEditor's `after`), or null
+let activeAfter = null
 let menuBlockEl = null // block whose menu is open
 let menuTriggerEl = null // trigger button of the open menu
 let menuLeaveTimer = null // debounce for closing the menu automatically
@@ -248,6 +256,8 @@ const _ic = {
     '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13h10M8 3v6.5M5 6.5l3 3 3-3"/></svg>',
   delete:
     '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5M7 7v3.5M9 7v3.5"/></svg>',
+  add: '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"/></svg>',
+  file: '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2.5h5l3 3v8H4zM9 2.5v3h3"/></svg>',
   pencil:
     '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 2.5l3 3L6 13H3v-3zM9 4l3 3"/></svg>',
 }
@@ -268,6 +278,7 @@ function _mkBtn(cls, icon, label) {
   return b
 }
 
+const menuAddBtn = _mkBtn('hadley-menu-add', _ic.add, T.addBelowLabel)
 const menuMergeTopBtn = _mkBtn('hadley-menu-merge', _ic.merge_top, T.mergeUpLabel)
 const menuMergeBotBtn = _mkBtn('hadley-menu-merge', _ic.merge_bot, T.mergeDownLabel)
 const menuUpBtn = _mkBtn('hadley-menu-move', _ic.up, T.moveUpLabel)
@@ -280,9 +291,20 @@ function _mkSep() {
   return s
 }
 
+const menuAddSep = _mkSep()
 const menuMergeSep = _mkSep()
 const menuMoveSep = _mkSep()
-blockMenu.append(menuMergeTopBtn, menuMergeBotBtn, menuMergeSep, menuUpBtn, menuDownBtn, menuMoveSep, menuDeleteBtn)
+blockMenu.append(
+  menuAddBtn,
+  menuAddSep,
+  menuMergeTopBtn,
+  menuMergeBotBtn,
+  menuMergeSep,
+  menuUpBtn,
+  menuDownBtn,
+  menuMoveSep,
+  menuDeleteBtn,
+)
 document.body.appendChild(blockMenu)
 
 function openMenu(blockEl, triggerEl) {
@@ -424,6 +446,10 @@ menuDownBtn.addEventListener('click', () => {
 })
 menuDeleteBtn.addEventListener('click', () => {
   if (menuBlockEl) void handleDeleteClick(menuBlockEl)
+})
+menuAddBtn.addEventListener('click', () => {
+  const blockId = menuBlockEl?.dataset.hadleyId
+  if (menuBlockEl && blockId) void handleEditClick(blockId, menuBlockEl, { below: true })
 })
 
 async function animateBlockSwap(blockEl, direction) {
@@ -1002,7 +1028,7 @@ if (document.readyState === 'loading') {
 
 // ─── Edit: load the block text and open the editor ────────────────────────────
 
-async function handleEditClick(blockId, blockEl) {
+async function handleEditClick(blockId, blockEl, { below = false } = {}) {
   if (activeBlockId) return
   closeMenu()
 
@@ -1028,7 +1054,10 @@ async function handleEditClick(blockId, blockEl) {
   }
 
   try {
-    openEditor(blockId, blockEl, text)
+    // a new block below is an edit of the block above: its text, a blank line, and what is written in the empty field;
+    // the server checks it as any edit (hash, Markanto, nothing else changed)
+    if (below) openEditor(blockId, blockEl, '', { after: text })
+    else openEditor(blockId, blockEl, text)
   } catch (error) {
     // openEditor sets activeBlockId first; without this reset no block could be edited any more.
     closeEditor()
@@ -1038,8 +1067,9 @@ async function handleEditClick(blockId, blockEl) {
 
 // ─── Open the editor ─────────────────────────────────────────────────────────
 
-function openEditor(blockId, blockEl, text) {
+function openEditor(blockId, blockEl, text, { after = null } = {}) {
   activeBlockId = blockId
+  activeAfter = after
   document.body.classList.add('hadley-editing')
 
   const wrapper = document.createElement('div')
@@ -1070,6 +1100,7 @@ function openEditor(blockId, blockEl, text) {
   const frontMatter = blockEl.dataset.hadleyFrontMatter !== undefined
   wrapper.append(frontMatter ? limaTable(textarea) : textarea, editorToolbar)
   blockEl.insertAdjacentElement('afterend', wrapper)
+  if (!frontMatter) void bundleFiles(blockId, textarea, editorToolbar)
 
   activeWrapper = wrapper
   activeTextarea = textarea
@@ -1104,6 +1135,63 @@ function openEditor(blockId, blockEl, text) {
       },
     }),
   )
+}
+
+// ─── The files of the bundle ────────────────────────────────────────────────────
+//
+// Under the field, the files that lie beside the page's Markdown (the dev server lists them, plugin.ts): a click puts
+// one in at the caret, an image as `![](name)` with the caret in its alt text, any other file as a link. The text stays
+// text: what it says is saved as any edit.
+
+async function bundleFiles(blockId, textarea, toolbar) {
+  let files
+  try {
+    const res = await fetch(withLang(`/__hadley/files/${blockId}`))
+    if (!res.ok) return
+    files = (await res.json()).files
+  } catch {
+    return
+  }
+  if (!Array.isArray(files) || files.length === 0 || activeTextarea !== textarea) return
+  const strip = document.createElement('div')
+  strip.className = 'hadley-files'
+  strip.setAttribute('role', 'group')
+  strip.setAttribute('aria-label', T.filesLabel)
+  for (const file of files) {
+    if (typeof file?.name !== 'string') continue
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.className = 'hadley-file'
+    button.title = T.insertFile(file.name)
+    button.setAttribute('aria-label', T.insertFile(file.name))
+    if (file.image) {
+      const img = document.createElement('img')
+      img.src = `/__hadley/files/${blockId}/${encodeURIComponent(file.name)}`
+      img.alt = ''
+      img.loading = 'lazy'
+      img.decoding = 'async'
+      button.append(img)
+    } else {
+      button.insertAdjacentHTML('afterbegin', _ic.file)
+    }
+    const name = document.createElement('span')
+    name.textContent = file.name
+    button.append(name)
+    // the field keeps the focus and its caret
+    button.addEventListener('mousedown', (e) => e.preventDefault())
+    button.addEventListener('click', () => {
+      const start = textarea.selectionStart
+      const link = file.image ? `![](${file.name})` : `[${file.name}](${file.name})`
+      textarea.focus()
+      document.execCommand('insertText', false, link)
+      // an image waits for its alt text, a link is done
+      const caret = file.image ? start + 2 : start + link.length
+      textarea.setSelectionRange(caret, caret)
+      resizeTextarea(textarea)
+    })
+    strip.append(button)
+  }
+  toolbar.before(strip)
 }
 
 // ─── The front matter as a table ────────────────────────────────────────────────
@@ -1224,6 +1312,7 @@ function closeEditor() {
   activeWrapper = null
   activeTextarea = null
   activeBlockId = null
+  activeAfter = null
   document.body.classList.remove('hadley-editing')
 }
 
@@ -1248,8 +1337,14 @@ function buildParseErrorMessage(data) {
 }
 
 async function saveEditor(blockId, saveBtn) {
-  const newText = activeTextarea?.value
-  if (newText === undefined) return
+  const written = activeTextarea?.value
+  if (written === undefined) return
+  // an empty new block is no edit
+  if (activeAfter !== null && !written.trim()) {
+    closeEditor()
+    return
+  }
+  const newText = activeAfter !== null ? `${activeAfter}\n\n${written}` : written
 
   saveBtn.disabled = true
   try {

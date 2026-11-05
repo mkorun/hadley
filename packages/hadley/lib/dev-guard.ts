@@ -2,7 +2,8 @@
  * What the dev server answers at all (docs/dev-server.md), checked before anything else sees a request, the block
  * editor and the comments proxy among them: a path that names nothing above the output directory, a Host it serves,
  * a write of the editor (`POST /__hadley/…`) only from this machine and from the page's own origin, and a read of a
- * block's source (`GET /__hadley/block/…`) only from this machine and never for another origin; both under the dev
+ * block's source or of its bundle's files (`GET /__hadley/block/…`, `/__hadley/files/…`) only from this machine and
+ * never for another origin; both under the dev
  * server's own host, so not through a tunnel, which arrives from this machine. Vite's `/__open-in-editor` is refused:
  * any page a browser shows could call it.
  */
@@ -75,7 +76,10 @@ export function refusal(
       return { status: 403, reason: 'an editor write from another machine or origin' }
   }
   // a browser sends no Origin with a GET of its own origin, but one, and Sec-Fetch-Site, with a request of another
-  if (request.method !== 'POST' && (path.startsWith('/__hadley/block/') || path === '/__hadley/chat/events')) {
+  if (
+    request.method !== 'POST' &&
+    (path.startsWith('/__hadley/block/') || path.startsWith('/__hadley/files/') || path === '/__hadley/chat/events')
+  ) {
     const origin = request.headers.origin
     const site = request.headers['sec-fetch-site']
     if (

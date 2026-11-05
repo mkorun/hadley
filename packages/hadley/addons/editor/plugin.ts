@@ -1,6 +1,6 @@
 import type { Plugin } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { readFile, writeFile } from 'node:fs/promises'
+import { readdir, readFile, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -149,6 +149,76 @@ async function serveAsset(res: ServerResponse, filename: string, contentType: st
     res.end(content)
   } catch {
     send(res, 404, { error: `${t(lang, 'assetNotFound')}: ${filename}` })
+  }
+}
+
+// ─── The files of a page's bundle, which the editor offers to put in (editor.js, bundleFiles) ─────────────────────
+
+const IMAGE_TYPES: Record<string, string> = {
+  avif: 'image/avif',
+  gif: 'image/gif',
+  jpeg: 'image/jpeg',
+  jpg: 'image/jpeg',
+  png: 'image/png',
+  svg: 'image/svg+xml',
+  webp: 'image/webp',
+}
+const extension = (name: string) => name.slice(name.lastIndexOf('.') + 1).toLowerCase()
+
+/**
+ * The files beside a page's Markdown, by their path in its bundle: plain files only (no link, no Markdown, nothing
+ * hidden or private, no other bundle's folder), at most two folders deep and 200 of them.
+ */
+export async function bundleFileNames(filePath: string): Promise<string[]> {
+  const names: string[] = []
+  const walk = async (dir: string, prefix: string, depth: number): Promise<void> => {
+    let entries
+    try {
+      entries = await readdir(dir, { withFileTypes: true })
+    } catch {
+      return
+    }
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (names.length >= 200) return
+      const name = entry.name
+      if (name.startsWith('.') || name.startsWith('_')) continue
+      if (entry.isDirectory()) {
+        // a folder in brackets is a bundle of its own
+        if (depth < 2 && !name.startsWith('[')) await walk(join(dir, name), `${prefix}${name}/`, depth + 1)
+      } else if (entry.isFile() && extension(name) !== 'md') names.push(prefix + name)
+    }
+  }
+  await walk(dirname(filePath), '', 0)
+  return names
+}
+
+/** The list of a block's bundle files, or one of its images, which a name may only take from that list. */
+export async function serveBundleFile(res: ServerResponse, url: string, lang: Lang): Promise<void> {
+  const [blockId = '', ...rest] = url.slice('/__hadley/files/'.length).split('?')[0]!.split('/')
+  const entry = blockIdMap.get(blockId)
+  if (!entry) return send(res, 404, { error: t(lang, 'blockNotFound') })
+  const names = await bundleFileNames(entry.filePath)
+  if (rest.length === 0)
+    return send(res, 200, { files: names.map((name) => ({ name, image: extension(name) in IMAGE_TYPES })) })
+  let name: string
+  try {
+    name = decodeURIComponent(rest.join('/'))
+  } catch {
+    return send(res, 400, { error: t(lang, 'assetNotFound') })
+  }
+  const type = IMAGE_TYPES[extension(name)]
+  if (!type || !names.includes(name)) return send(res, 404, { error: `${t(lang, 'assetNotFound')}: ${name}` })
+  try {
+    const content = await readFile(join(dirname(entry.filePath), ...name.split('/')))
+    res.statusCode = 200
+    res.setHeader('Content-Type', type)
+    res.setHeader('Cache-Control', 'no-store')
+    // an SVG shown as an image runs no script; opened on its own, this keeps it from running any
+    res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox")
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    res.end(content)
+  } catch {
+    send(res, 404, { error: `${t(lang, 'assetNotFound')}: ${name}` })
   }
 }
 
@@ -520,6 +590,8 @@ export function blockEditorPlugin(): Plugin {
           handler = serveAsset(res, 'editor.js', 'application/javascript; charset=utf-8', lang)
         } else if (method === 'GET' && url === '/__hadley/editor.css') {
           handler = serveAsset(res, 'editor.css', 'text/css; charset=utf-8', lang)
+        } else if (method === 'GET' && url.startsWith('/__hadley/files/')) {
+          handler = serveBundleFile(res, url, lang)
         } else if (method === 'GET' && LIMA_MODULE.test(url)) {
           handler = serveLima(res, LIMA_MODULE.exec(url)?.[1] ?? '', lang)
         } else if (method === 'GET' && url.split('?')[0] === '/__hadley/heads') {

@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createHash } from 'node:crypto'
@@ -17,6 +17,8 @@ import {
   handleMerge,
   oneAtATime,
   readBody,
+  bundleFileNames,
+  serveBundleFile,
 } from '../plugin.ts'
 import { registerPageBlocks } from '../renderer.ts'
 import { parseDocument, type BlockToken } from '../../../case/index.ts'
@@ -1274,5 +1276,50 @@ describe('the head of a page', () => {
     await handlePatch(post('/__hadley/patch', { blockId: heads.title!.id, newText: 'title: Neu\nsubtitle: S' }), patch)
     assert.equal(patch.statusCode, 200)
     assert.equal(await readFile(tmpFile, 'utf8'), '---\ntitle: Neu\nsubtitle: S\n---\nText.\n')
+  })
+})
+
+describe('the files of a bundle', () => {
+  it('lists plain files beside the page, but no Markdown, nothing hidden or private, no other bundle and no link', async () => {
+    await writeFile(tmpFile, 'Text.\n', 'utf-8')
+    for (const name of ['photo.jpg', 'paper.pdf', '_private.txt', '.hidden.png', 'other.md'])
+      await writeFile(join(tmpDir, name), 'x')
+    await mkdir(join(tmpDir, 'images', 'deep', 'deeper'), { recursive: true })
+    await writeFile(join(tmpDir, 'images', 'a.png'), 'x')
+    await writeFile(join(tmpDir, 'images', 'deep', 'b.png'), 'x')
+    await writeFile(join(tmpDir, 'images', 'deep', 'deeper', 'c.png'), 'x')
+    await mkdir(join(tmpDir, '[sub]'))
+    await writeFile(join(tmpDir, '[sub]', 'own.jpg'), 'x')
+    await symlink(tmpFile, join(tmpDir, 'link.jpg'))
+    assert.deepEqual(await bundleFileNames(tmpFile), ['images/a.png', 'images/deep/b.png', 'paper.pdf', 'photo.jpg'])
+  })
+
+  it('serves an image the list holds, and nothing else', async () => {
+    await writeFile(tmpFile, 'Text.\n', 'utf-8')
+    await writeFile(join(tmpDir, 'photo.jpg'), 'jpeg')
+    await writeFile(join(tmpDir, 'paper.pdf'), 'pdf')
+    blockIdMap.set('files-block', { filePath: tmpFile, start: 0, end: 5, fileHashAtRender: '' })
+    const list = mockRes()
+    await serveBundleFile(list, '/__hadley/files/files-block', 'en')
+    assert.equal(list.statusCode, 200)
+    assert.deepEqual(JSON.parse(list.body).files, [
+      { name: 'paper.pdf', image: false },
+      { name: 'photo.jpg', image: true },
+    ])
+    const image = mockRes()
+    await serveBundleFile(image, '/__hadley/files/files-block/photo.jpg', 'en')
+    assert.equal(image.statusCode, 200)
+    for (const url of [
+      '/__hadley/files/files-block/paper.pdf',
+      '/__hadley/files/files-block/test.md',
+      '/__hadley/files/files-block/..%2Ftest.md',
+      '/__hadley/files/files-block/%2E%2E/photo.jpg',
+      '/__hadley/files/files-block/%E0%A4%A',
+      '/__hadley/files/unknown/photo.jpg',
+    ]) {
+      const res = mockRes()
+      await serveBundleFile(res, url, 'en')
+      assert.notEqual(res.statusCode, 200, url)
+    }
   })
 })
