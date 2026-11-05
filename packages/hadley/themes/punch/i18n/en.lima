@@ -39,7 +39,7 @@ status:
 image:
   aiGenerated:    AI-generated
   aiGeneratedAlt: (AI-generated)
-  coverLabel:     Cover image
+  aiCover:        AI-generated cover image
 
 imprint:
   address:     Address

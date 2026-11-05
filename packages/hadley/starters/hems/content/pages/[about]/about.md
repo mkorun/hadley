@@ -10,7 +10,7 @@ I am Odile Lemoine. I write about type, tools and the slow parts of the web, mos
 
 ## Why Feather Cat
 
-The name is borrowed from a letter that was never meant for me: a nickname, *Feather Kitty*, written in pencil in the
+The name is borrowed from a note that was never meant for me: a nickname, *Feather Kitty*, written in pencil in the
 margin of a borrowed book from a second-hand shop on the Left Bank. I liked it at once, and let the kitten grow into a
 cat: lighter still, and more stubborn, which is what I would like this blog to be.
 

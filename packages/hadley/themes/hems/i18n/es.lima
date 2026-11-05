@@ -38,7 +38,7 @@ status:
 image:
   aiGenerated:    Generado por IA
   aiGeneratedAlt: (generado por IA)
-  coverLabel:     Imagen de portada
+  aiCover:        Imagen de portada generada por IA
 
 imprint:
   address:     Dirección

@@ -10,7 +10,7 @@ casi siempre en [la mesa junto a la ventana]($table-by-the-window).
 
 ## Por qué Feather Cat
 
-El nombre viene de una carta que nunca fue para mí: un apodo, *Feather Kitty*, escrito a lápiz en el margen de un libro
+El nombre viene de una nota que nunca fue para mí: un apodo, *Feather Kitty*, escrito a lápiz en el margen de un libro
 que encontré en una librería de viejo de la orilla izquierda del Sena. Me gustó enseguida, y dejé que el gatito creciera
 hasta ser gato: más ligero todavía, y más testarudo, que es lo que querría para este blog.
 

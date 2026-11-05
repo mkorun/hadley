@@ -10,7 +10,7 @@ le plus souvent à [la table près de la fenêtre]($table-by-the-window).
 
 ## Pourquoi Feather Cat
 
-Le nom vient d'une lettre qui ne m'était pas destinée : un surnom en anglais, *Feather Kitty*, écrit au crayon dans la
+Le nom vient d'une annotation qui ne m'était pas destinée : un surnom en anglais, *Feather Kitty*, écrit au crayon dans la
 marge d'un livre trouvé chez un bouquiniste des quais, rive gauche. Il m'a plu tout de suite, et j'ai laissé le chaton
 devenir chat : plus léger encore, et plus têtu, c'est ce que je souhaite à ce blog.
 

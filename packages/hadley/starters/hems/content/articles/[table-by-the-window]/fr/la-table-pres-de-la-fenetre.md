@@ -20,7 +20,7 @@ Un café n'est jamais silencieux, et c'est tout l'intérêt. Le tintement des so
 les bribes de conversation à la table voisine font un bruit qui ne demande rien. Une pièce silencieuse vous écoute ; un
 café vous laisse à vous-même.
 
-Les psychologues ont un nom pour cela : un niveau de bruit *modéré* semble aider certaines formes de travail créatif, ce
+Les psychologues l'ont même étudié : un niveau de bruit *modéré* semble aider certaines formes de travail créatif, ce
 que ne font ni le silence ni le vacarme.[^1] Je n'avais pas besoin de l'étude. J'avais besoin de la table.
 
 ## La fenêtre

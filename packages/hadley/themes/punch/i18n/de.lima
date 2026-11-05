@@ -38,7 +38,7 @@ status:
 image:
   aiGenerated:    KI-generiert
   aiGeneratedAlt: (KI-generiert)
-  coverLabel:     Titelbild
+  aiCover:        KI-generiertes Titelbild
 
 imprint:
   address:     Anschrift

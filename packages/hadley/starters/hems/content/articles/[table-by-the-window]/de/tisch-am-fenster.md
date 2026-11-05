@@ -20,7 +20,7 @@ Ein Café ist nie still, und genau darum geht es. Das Klappern der Untertassen, 
 halben Gespräche am Nebentisch ergeben ein Geräusch, das nichts verlangt. Ein stiller Raum hört dir zu; ein Café lässt
 dich sein.
 
-Psychologen haben dafür einen Namen: Ein *mittleres* Geräuschniveau scheint manchen Arten kreativer Arbeit zu helfen,
+Psychologen haben das sogar untersucht: Ein *mittleres* Geräuschniveau scheint manchen Arten kreativer Arbeit zu helfen,
 Stille und Lärm dagegen nicht.[^1] Ich brauchte die Studie nicht. Ich brauchte den Tisch.
 
 ## Das Fenster

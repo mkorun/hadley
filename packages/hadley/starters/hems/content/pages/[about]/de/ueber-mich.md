@@ -10,7 +10,7 @@ meistens an [dem Tisch am Fenster]($table-by-the-window).
 
 ## Warum Feather Cat
 
-Der Name stammt aus einem Brief, der nie für mich bestimmt war: ein Kosename, *Feather Kitty*, mit Bleistift an den Rand
+Der Name stammt aus einer Notiz, die nie für mich bestimmt war: ein Kosename, *Feather Kitty*, mit Bleistift an den Rand
 eines Buches geschrieben, das ich in einem Antiquariat am linken Seineufer gefunden habe. Er gefiel mir sofort, und ich
 habe das Kätzchen zur Katze heranwachsen lassen: noch leichter und noch eigensinniger, so wie ich mir dieses Blog
 wünsche.

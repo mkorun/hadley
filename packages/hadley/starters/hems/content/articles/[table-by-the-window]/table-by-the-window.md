@@ -19,7 +19,7 @@ average. I would not trade it for any desk in the city.
 A café is never quiet, and that is the point. The clatter of saucers, the radio behind the counter and the half
 conversations at the next table make a noise that asks for nothing. A silent room listens to you; a café lets you be.
 
-Psychologists have a name for this: a *moderate* level of noise seems to help some kinds of creative work, while
+Psychologists have even studied it: a *moderate* level of noise seems to help some kinds of creative work, while
 silence and loud noise do not.[^1] I did not need the study. I needed the table.
 
 ## The window
