@@ -114,6 +114,19 @@
   flex: none;
 }
 
+/* the language switch shows in edit mode only, small, between edit mode and the chat */
+#hadley-lang-toggle {
+  display: none;
+  font-size: 0.6875rem;
+  letter-spacing: 0.05em;
+  padding-inline: 0.6rem;
+  color: var(--he-muted);
+}
+
+body.hadley-edit-mode #hadley-lang-toggle {
+  display: inline-flex;
+}
+
 #hadley-edit-toggle[aria-pressed='true'] {
   color: var(--he-on-accent);
   background: var(--he-accent);
@@ -233,7 +246,7 @@ body.hadley-edit-mode [data-hadley-head-editable].hadley-block-active {
   color: var(--he-muted);
 }
 
-.hadley-editor-comment:lang(de)::before {
+[data-hadley-lang='de'] .hadley-editor-comment::before {
   content: var(--he-comment-label, '⊘ Kommentar · nicht im Output');
 }
 

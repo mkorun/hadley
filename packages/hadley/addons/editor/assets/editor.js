@@ -14,15 +14,37 @@
  */
 
 // ─── i18n ────────────────────────────────────────────────────────────────────
-// The language comes from the page itself, `document.documentElement.lang` (theme templates set
-// <html lang="{ meta.lang }">). Server-side error messages (plugin.ts) have their own mirrored
-// table (i18n.ts); withLang() appends the same language as a query parameter.
+// The editor is the author's tool, not part of the page: it speaks the first of the browser's languages it knows
+// (navigator.languages), else English, whatever the page's own language; the language switch in the control at the
+// bottom right overrides it for the site, kept in localStorage. Server-side error messages (plugin.ts) have their own
+// mirrored table (i18n.ts); withLang() appends the same language as a query parameter. The chat (addons/chat) reads it
+// from the root element's data-hadley-lang.
 
-const LANG = document.documentElement.lang === 'de' ? 'de' : 'en'
+const LANGS = ['de', 'en']
+const LANG_KEY = 'hadley-lang'
+
+function chooseLang() {
+  try {
+    const chosen = localStorage.getItem(LANG_KEY)
+    if (LANGS.includes(chosen)) return chosen
+  } catch {
+    // without storage the browser's languages decide
+  }
+  for (const tag of navigator.languages ?? [navigator.language]) {
+    const base = String(tag).toLowerCase().split('-')[0]
+    if (LANGS.includes(base)) return base
+  }
+  return 'en'
+}
+
+const LANG = chooseLang()
+document.documentElement.dataset.hadleyLang = LANG
 
 const T = {
   de: {
     editLabel: 'Bearbeiten',
+    langSwitch: 'Editor auf Englisch',
+    langSwitchBusy: 'Erst den offenen Block speichern oder abbrechen',
     editToggleAriaLabel: 'Edit-Modus umschalten',
     blockActionsLabel: 'Block-Aktionen',
     reloading: 'Wird neu geladen…',
@@ -57,6 +79,8 @@ const T = {
   },
   en: {
     editLabel: 'Edit',
+    langSwitch: 'Editor in German',
+    langSwitchBusy: 'Save or cancel the open block first',
     editToggleAriaLabel: 'Toggle edit mode',
     blockActionsLabel: 'Block actions',
     reloading: 'Reloading…',
@@ -163,6 +187,26 @@ if (devOverlay) devBar.appendChild(devOverlay)
 const pill = document.createElement('div')
 pill.className = 'hadley-pill'
 pill.appendChild(toggleBtn)
+// the other language, one click away; the page reloads in it, so an open block must be saved or cancelled first
+const langBtn = document.createElement('button')
+langBtn.type = 'button'
+langBtn.id = 'hadley-lang-toggle'
+langBtn.textContent = LANG === 'de' ? 'EN' : 'DE'
+langBtn.setAttribute('aria-label', T.langSwitch)
+langBtn.title = T.langSwitch
+langBtn.addEventListener('click', () => {
+  if (activeBlockId) {
+    langBtn.title = T.langSwitchBusy
+    return
+  }
+  try {
+    localStorage.setItem(LANG_KEY, LANG === 'de' ? 'en' : 'de')
+  } catch {
+    return
+  }
+  location.reload()
+})
+pill.appendChild(langBtn)
 devBar.appendChild(pill)
 document.body.appendChild(devBar)
 

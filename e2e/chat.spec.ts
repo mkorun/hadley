@@ -253,6 +253,9 @@ test('uses both page languages and the editor colours, at desktop and 390px with
       for (const width of [1280, 390]) {
         await page.setViewportSize({ width, height: 900 })
         await page.goto(dev.origin + (lang === 'de' ? '/de/panel/' : '/panel/'))
+        // the editor's language, as its switch keeps it (editor.js, i18n)
+        await page.evaluate((chosen) => globalThis.localStorage.setItem('hadley-lang', chosen), lang)
+        await page.reload()
         const toggle = page.getByRole('button', { name: 'Chat', exact: true })
         if ((await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click()
         const panel = page.locator('#hadley-chat')

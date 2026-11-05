@@ -250,7 +250,8 @@ function checkEntry(event, data, open, at = Date.now()) {
 }
 
 function startPanel() {
-  const lang = document.documentElement.lang === 'de' ? 'de' : 'en'
+  // the editor's language (editor.js, i18n): the browser's, or the one chosen in its control
+  const lang = document.documentElement.dataset.hadleyLang === 'de' ? 'de' : 'en'
   const t = TEXT[lang]
   const storageKey = 'hadley-chat'
   let replaying = false

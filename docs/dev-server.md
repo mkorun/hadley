@@ -48,8 +48,10 @@ moves, merges and deletes blocks. A right click on the page's title or subtitle,
 moved, merged or deleted. In edit mode a badge above the title opens the page's front matter, which Lima must read when
 it is saved; its lines are striped, its keys and comments marked where Lima finds them, and a line Lima refuses is
 marked as it is typed, with Lima's message below. Each change is saved to the page's Markdown file, and the page
-reloads; a file that changed since the page was built is not edited, the page reloads first. The editor speaks German on
-a German page and English on any other. `hadley deploy` serves no editor.
+reloads; a file that changed since the page was built is not edited, the page reloads first. The editor is the author's
+tool, not part of the page: it speaks the first of the browser's languages it knows (German, English), else English, and
+the language button in its control at the bottom right switches to the other for the site. `hadley deploy` serves no
+editor.
 
 ## Chat
 
