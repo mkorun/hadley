@@ -1,9 +1,9 @@
 /**
  * The browser's key to the chat (docs/dev-server.md, "Chat"). The chat's routes answer a browser that holds it, and
- * nothing else on this machine: a page's Origin, which a browser cannot fake, a local program can. `hadley dev` prints a
- * link with the key; its first visit sets a cookie, HttpOnly and SameSite=Strict, which the routes then ask for. The key
- * is the site's, kept in the private runtime directory beside the channel's rendezvous, so that the cookie stays good
- * across restarts of the dev server.
+ * nothing else on this machine: a page's Origin, which a browser cannot fake, a local program can. `hadley dev`
+ * prints a link with the key; its first visit sets a cookie, HttpOnly and SameSite=Strict, which the routes then ask
+ * for. The key is the site's, kept in the private runtime directory beside the channel's rendezvous, so that the
+ * cookie stays good across restarts of the dev server.
  */
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
