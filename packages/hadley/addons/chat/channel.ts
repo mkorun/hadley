@@ -1,4 +1,4 @@
-import { watch, type FSWatcher } from 'node:fs'
+import { realpathSync, watch, type FSWatcher } from 'node:fs'
 import http, { type ClientRequest, type IncomingMessage } from 'node:http'
 import https from 'node:https'
 import { createInterface } from 'node:readline'
@@ -181,7 +181,9 @@ export async function runChannel(
     const records = readRendezvous(dir, reportOnce)
     if (!watcher) {
       try {
-        const current = watchDirectory(dir, scan)
+        // by its long, real name: a short 8.3 name (C:\Users\RUNNER~1) makes libuv's watcher under Node on Windows
+        // abort the process when the system reports a change under the long one (fs-event.c, line 72)
+        const current = watchDirectory(realpathSync.native(dir), scan)
         watcher = current
         current.on('error', (error) => {
           reportOnce('watch', error)
