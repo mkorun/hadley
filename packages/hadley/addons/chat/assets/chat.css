@@ -46,7 +46,7 @@
   flex-shrink: 1;
 }
 
-/* !important: a later rule of the same weight that sets display (.hc-attachment: flex) would show it again */
+/* !important: a later rule of the same weight that sets display would show it again */
 #hadley-chat[hidden],
 #hadley-chat [hidden] {
   display: none !important;
@@ -113,8 +113,7 @@
 }
 
 #hadley-chat :focus-visible,
-#hadley-chat-toggle:focus-visible,
-.hadley-menu-chat:focus-visible {
+#hadley-chat-toggle:focus-visible {
   outline: 2px solid var(--he-accent-focus);
   outline-offset: 2px;
 }
@@ -220,26 +219,6 @@
   max-height: 25dvh;
 }
 
-#hadley-chat .hc-attachment {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-#hadley-chat .hc-attachment span {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-#hadley-chat .hc-attachment button {
-  font-size: 0.75rem;
-  max-width: 50%;
-}
-
 #hadley-chat .hc-error {
   color: var(--he-text);
   border-left: 2px solid var(--he-danger);
@@ -248,13 +227,6 @@
 
 #hadley-chat .hc-error:empty {
   display: none;
-}
-
-#hadley-block-menu .hadley-menu-chat {
-  width: auto;
-  padding-inline: 0.5rem;
-  color: var(--he-text);
-  white-space: nowrap;
 }
 
 @media (max-width: 480px) {
@@ -311,11 +283,6 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
   border: 1px solid var(--he-border);
   border-radius: 4px;
   padding: 0.25rem 0.5rem;
-}
-
-.hadley-rewrite button[aria-pressed='true'] {
-  border-color: var(--he-accent-focus);
-  background: var(--he-bg-hover);
 }
 
 .hadley-rewrite button:disabled,

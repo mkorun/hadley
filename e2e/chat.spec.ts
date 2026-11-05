@@ -62,7 +62,7 @@ test('opens, closes, preserves the draft and stays usable without a session or s
   await expect(toggle).toBeFocused()
 })
 
-test('attaches from the keyboard block menu, sends context, renders replies safely, answers distinct cards and reloads', async ({
+test('keeps a draft over a rebuild, sends the page and root, renders replies safely, answers distinct cards and reloads', async ({
   page,
   dev,
 }) => {
@@ -70,36 +70,28 @@ test('attaches from the keyboard block menu, sends context, renders replies safe
   await page.goto(dev.origin + '/panel/')
   const panel = page.getByRole('region', { name: 'Chat with Claude' })
   const input = page.getByRole('textbox', { name: 'Message to Claude' })
-  await page.getByRole('button', { name: 'Toggle edit mode' }).click()
-  const block = page.locator('[data-hadley-id]').filter({ hasText: 'First words' }).first()
-  const trigger = block.getByRole('button', { name: 'Block actions' })
-  await trigger.focus()
-  await trigger.press('ArrowDown')
-  await page.getByRole('menuitem', { name: 'Ask Claude' }).click()
+  await page.getByRole('button', { name: 'Chat', exact: true }).click()
   await expect(input).toBeFocused()
-  await expect(panel.locator('.hc-attachment')).toContainText('First words of the attached block.')
   await input.fill('Explain this')
   await input.press('Shift+Enter')
   await input.press('x')
   await expect(input).toHaveValue('Explain this\nx')
+  const block = page.locator('[data-hadley-id]').filter({ hasText: 'First words' }).first()
   const oldId = await block.getAttribute('data-hadley-id')
   await dev.rebuild(async () => {
     await writeFile(dev.source, (await readFile(dev.source, 'utf8')) + '\nAnother block after an editor change.\n')
   })
   await expect.poll(() => block.getAttribute('data-hadley-id')).not.toBe(oldId)
-  await expect(panel.locator('.hc-attachment')).toBeVisible()
   await expect(input).toHaveValue('Explain this\nx')
   await input.press('Enter')
   const received = await channel.inbox.next((entry) => entry.event === 'message')
-  const message = received.data as { id: string; file: string; lines: string; root: string; block: string }
-  expect(message.file).toBe('content/articles/[panel]/panel.md')
-  expect(message.lines).toBe('5-5')
+  const message = received.data as { id: string; root: string; url: string; block?: string }
   expect(message.root).toBe(dev.site)
-  expect(message.block).toBeTruthy()
+  expect(new URL(message.url).pathname).toBe('/panel/')
+  // the panel attaches no block: only an action from an open block names one
+  expect(message.block).toBeUndefined()
   await expect(panel.locator('.hc-message')).toHaveText('Explain this\nx')
   await expect(input).toHaveValue('')
-  // sent: the block is no longer attached, and its row with the remove button is gone
-  await expect(panel.locator('.hc-attachment')).toBeHidden()
   expect(
     (
       await channel.send({
@@ -307,9 +299,8 @@ test('includes assets after the editor only when chat is enabled', async ({ page
   await expect(
     page.locator('script[src="/__hadley/chat.js"], link[href="/__hadley/chat.css"], #hadley-chat'),
   ).toHaveCount(0)
-  await page.getByRole('button', { name: 'Toggle edit mode' }).click()
-  await page.locator('[data-hadley-id]').first().getByRole('button', { name: 'Block actions' }).press('ArrowDown')
-  await expect(page.getByRole('menuitem', { name: 'Ask Claude' })).toHaveCount(0)
+  await page.locator('[data-hadley-id]').first().click({ button: 'right' })
+  await expect(page.locator('.hadley-rewrite')).toHaveCount(0)
 })
 
 test('HTTP: real dev serves the assets and relays block context, replies and verdicts through rendezvous', async ({

@@ -62,23 +62,20 @@ dev:
 ```
 
 `chat: true` without `editor: true` stops `hadley dev`. The panel opens from the button at the bottom right of each
-page, and from "Ask Claude" in a block's menu, which attaches the block: the message then names the page, its source
-file and the block's lines, as the dev server built them. Claude's answers and its requests to use a tool appear in
-the panel; Allow and Deny answer a request as the terminal would. Escape or the chat button closes the panel. Its
-open state, unsent draft and attached block survive a page reload in this tab; what was said stays while the dev
-server runs. After a rebuild, an attached block is restored only if its text still identifies it uniquely on the
-same page; otherwise, attach it again or remove it. Without a connected session, the panel offers the start
-command below to copy.
+page; a message names the page it was sent from. Claude's answers and its requests to use a tool appear in the panel;
+Allow and Deny answer a request as the terminal would. Escape or the chat button closes the panel. Its open state and
+unsent draft survive a page reload in this tab; what was said stays while the dev server runs. Without a connected
+session, the panel offers the start command below to copy.
 Each message names `root`, the absolute directory the dev server serves; `file` is relative to `root`. Claude works
 in that directory and nowhere else for that message.
 
-In an open block, **Rewrite** asks Claude for a new version of the block's text, in one of a few directions (Clearer,
-Shorter, More formal, More casual, Only fix errors) or one you type; with text selected, a right click offers the same
-for the selection, and Shift with the right click keeps the browser's own menu. Claude answers with a proposal, not a
-change: it takes the place of the block's text or of the selection in the editing field, Ctrl+Z takes it back, and
-only saving writes it to the file, as any edit. If the text has changed while Claude was answering, or the block was
-closed, the proposal waits in the panel instead, to insert, copy or discard. Each request shows how long it has been
-waiting, and each answer how long it took.
+An open block has a button for each way to rewrite it: Clearer, Shorter, More formal, More casual and Only fix errors
+ask Claude at once for a new version of the block's text; Own… asks for an instruction first, which Enter sends. With
+text selected, a right click offers the same for the selection, and Shift with the right click keeps the browser's own
+menu. Claude answers with a proposal, not a change: it takes the place of the block's text or of the selection in the
+editing field, Ctrl+Z takes it back, and only saving writes it to the file, as any edit. If the text has changed while
+Claude was answering, or the block was closed, the proposal waits in the panel instead, to insert, copy or discard. Each
+request shows how long it has been waiting, and each answer how long it took.
 
 hadley starts no agent. Claude Code starts `hadley channel` itself, from an `.mcp.json` in the directory it starts in:
 

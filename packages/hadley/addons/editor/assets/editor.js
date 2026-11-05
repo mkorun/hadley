@@ -32,7 +32,6 @@ const T = {
     moveUpLabel: 'Block nach oben verschieben',
     moveDownLabel: 'Block nach unten verschieben',
     deleteLabel: 'Block löschen',
-    askClaude: 'Claude fragen',
     fileChangedReload: 'Die Datei wurde extern geändert.\nSeite wird neu geladen.',
     mergeError: (status, msg) => `Fehler beim Zusammenziehen (${status}):\n${msg}`,
     moveError: (status, msg) => `Fehler beim Verschieben (${status}):\n${msg}`,
@@ -67,7 +66,6 @@ const T = {
     moveUpLabel: 'Move block up',
     moveDownLabel: 'Move block down',
     deleteLabel: 'Delete block',
-    askClaude: 'Ask Claude',
     fileChangedReload: 'The file was changed externally.\nReloading page.',
     mergeError: (status, msg) => `Error merging (${status}):\n${msg}`,
     moveError: (status, msg) => `Error moving (${status}):\n${msg}`,
@@ -221,24 +219,6 @@ function _mkSep() {
 const menuMergeSep = _mkSep()
 const menuMoveSep = _mkSep()
 blockMenu.append(menuMergeTopBtn, menuMergeBotBtn, menuMergeSep, menuUpBtn, menuDownBtn, menuMoveSep, menuDeleteBtn)
-if (document.querySelector('script[src="/__hadley/chat.js"]')) {
-  const ask = _mkBtn('hadley-menu-chat', '', T.askClaude)
-  ask.textContent = T.askClaude
-  ask.addEventListener('click', () => {
-    if (!menuBlockEl) return
-    const copy = menuBlockEl.cloneNode(true)
-    copy.querySelectorAll('.hadley-trigger').forEach((trigger) => trigger.remove())
-    const detail = {
-      block: menuBlockEl.dataset.hadleyId,
-      text: copy.textContent.replace(/\s+/g, ' ').trim(),
-    }
-    closeMenu()
-    // Contract with chat/assets/chat.js: the chat script's presence enables "Ask Claude". On document, hadley:chat
-    // carries detail: { block, text }, the block ID and its full text collapsed to one line. Neither exports a global.
-    document.dispatchEvent(new CustomEvent('hadley:chat', { detail }))
-  })
-  blockMenu.append(_mkSep(), ask)
-}
 document.body.appendChild(blockMenu)
 
 function openMenu(blockEl, triggerEl) {

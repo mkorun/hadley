@@ -77,13 +77,12 @@ for (const lang of ['en', 'de']) {
     const field = await open(page, dev.origin)
     const draft = await field.inputValue()
     const row = page.locator('.hadley-rewrite')
-    await expect(row.getByRole('button', { name: t.clearer, exact: true })).toHaveAttribute('aria-pressed', 'true')
     await field.fill(draft + ' Unsaved.')
     if (info.repeatEachIndex === 0) {
       await mkdir(screenshots, { recursive: true })
       await page.screenshot({ path: resolve(screenshots, `row-${lang}-${info.project.name}.png`) })
     }
-    await row.getByRole('button', { name: t.rewrite, exact: true }).click()
+    await row.getByRole('button', { name: t.clearer, exact: true }).click()
     const action = (await channel.inbox.next((entry) => entry.event === 'message')).data as {
       id: string
       action: string
@@ -149,7 +148,7 @@ for (const lang of ['en', 'de']) {
       (await channel.send({ event: 'suggestion', data: { id: 'suggest2', to: selection.id, text: 'Brief' } })).status,
     ).toBe(200)
     await expect(field).toHaveValue('Brief' + selection.draft.slice(5) + '!')
-    await expect(row.getByRole('button', { name: t.rewrite, exact: true })).toBeEnabled()
+    await expect(row.getByRole('button', { name: t.clearer, exact: true })).toBeEnabled()
     await field.press('Control+z')
     await expect(field).toHaveValue(selection.draft + '!')
     expect(await readFile(dev.source, 'utf8')).toBe(source)
@@ -167,7 +166,7 @@ for (const lang of ['en', 'de']) {
       .filter({ hasText: lang === 'en' ? 'First words' : 'Erste Wörter' })
       .first()
       .click({ button: 'right' })
-    await expect(row.getByRole('button', { name: t.shorter, exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(row.getByRole('button', { name: t.shorter, exact: true })).toBeEnabled()
   })
 
   test(`${lang}: keeps changed and closed blocks as fallback cards, inserts at current selection and undoes`, async ({
@@ -178,7 +177,7 @@ for (const lang of ['en', 'de']) {
     const field = await open(page, dev.origin)
     const row = page.locator('.hadley-rewrite')
     const panel = page.locator('#hadley-chat')
-    await row.getByRole('button', { name: t.rewrite, exact: true }).click()
+    await row.getByRole('button', { name: t.clearer, exact: true }).click()
     const action = (await channel.inbox.next((entry) => entry.event === 'message')).data as { id: string }
     await field.fill('Changed while waiting.')
     expect(
@@ -214,7 +213,7 @@ for (const lang of ['en', 'de']) {
     await expect(field).toHaveValue('Selection changed.')
     await panel.locator('.hc-proposal').last().getByRole('button', { name: t.discard, exact: true }).click()
     await page.getByRole('button', { name: 'Chat', exact: true }).click()
-    await row.getByRole('button', { name: t.rewrite, exact: true }).click()
+    await row.getByRole('button', { name: t.clearer, exact: true }).click()
     const closed = (await channel.inbox.next((entry) => entry.event === 'message')).data as { id: string }
     await page.locator('.hadley-editor').getByRole('button', { name: t.cancel, exact: true }).click()
     expect(
@@ -277,7 +276,7 @@ for (const lang of ['en', 'de']) {
     const custom = row.getByRole('textbox', { name: t.instruction, exact: true })
     await expect(custom).toHaveAttribute('maxlength', '500')
     await custom.fill('Keep the tone.')
-    await row.getByRole('button', { name: t.rewrite, exact: true }).click()
+    await custom.press('Enter')
     const action = (await channel.inbox.next((entry) => entry.event === 'message')).data as {
       id: string
       instruction: string
@@ -320,7 +319,7 @@ for (const lang of ['en', 'de']) {
       await route.fulfill({ response })
     })
     try {
-      await row.getByRole('button', { name: t.rewrite, exact: true }).click()
+      await row.getByRole('button', { name: t.clearer, exact: true }).click()
       const action = (await channel.inbox.next((entry) => entry.event === 'message')).data as { id: string }
       await channel.send({ event: 'delivered', data: { id: action.id } })
       await channel.send({ request_id: 'abcde', tool: 'mcp__hadley__suggest', description: 'Propose', preview: '' })
@@ -329,11 +328,11 @@ for (const lang of ['en', 'de']) {
       await expect(page.locator('.hc-proposal')).toHaveCount(1)
       release()
       await expect(field).toHaveValue('Fast proposal.')
-      await expect(row.getByRole('button', { name: t.rewrite, exact: true })).toBeEnabled()
+      await expect(row.getByRole('button', { name: t.clearer, exact: true })).toBeEnabled()
       await field.press('Control+z')
       await expect(field).toHaveValue(draft)
       await page.unroute('**/__hadley/chat?*')
-      await row.getByRole('button', { name: t.rewrite, exact: true }).click()
+      await row.getByRole('button', { name: t.clearer, exact: true }).click()
       const closed = (await channel.inbox.next((entry) => entry.event === 'message')).data as { id: string }
       await page.locator('.hadley-editor').getByRole('button', { name: t.cancel, exact: true }).click()
       await page

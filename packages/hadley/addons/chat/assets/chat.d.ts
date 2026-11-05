@@ -12,9 +12,3 @@ interface ReplyNode {
   append(node: ReplyNode): void
 }
 export function renderReply(parent: ReplyNode, source: string): void
-
-export function restoreBlock(
-  attachment: { block: string; text: string; page: string },
-  page: string,
-  blocks: { id: string; text: string }[],
-): string | undefined

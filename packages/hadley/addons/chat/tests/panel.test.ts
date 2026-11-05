@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { it } from 'node:test'
-import { inlineParts, renderReply, replyParts, restoreBlock, START_COMMAND, TEXT } from '../assets/chat.js'
+import { inlineParts, renderReply, replyParts, START_COMMAND, TEXT } from '../assets/chat.js'
 
 it('has the same nonempty client texts in both languages', () => {
   assert.deepEqual(Object.keys(TEXT.en).sort(), Object.keys(TEXT.de).sort())
@@ -67,19 +67,4 @@ it('renders text through textContent and gives only checked links safe new tabs'
   assert.equal(link.rel, 'noopener noreferrer')
   assert.equal(root.children[1].tag, 'pre')
   assert.equal(root.children[1].children[0].textContent, '<b>')
-})
-
-it('restores a per-build block ID only on the same page with an existing ID or one exact text match', () => {
-  const attached = { block: 'old', text: 'The whole block', page: '/page/' }
-  assert.equal(restoreBlock(attached, '/page/', [{ id: 'old', text: attached.text }]), 'old')
-  assert.equal(restoreBlock(attached, '/page/', [{ id: 'new', text: attached.text }]), 'new')
-  assert.equal(restoreBlock(attached, '/other/', [{ id: 'old', text: attached.text }]), undefined)
-  assert.equal(restoreBlock(attached, '/page/', [{ id: 'new', text: 'The whole block changed' }]), undefined)
-  assert.equal(
-    restoreBlock(attached, '/page/', [
-      { id: 'new', text: attached.text },
-      { id: 'also', text: attached.text },
-    ]),
-    undefined,
-  )
 })

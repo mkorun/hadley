@@ -43,8 +43,6 @@ export const TEXT = {
     send: 'Send',
     sending: 'Sending…',
     hint: 'Enter sends · Shift+Enter adds a line',
-    remove: 'Remove attached block',
-    reattach: 'This block changed or cannot be identified after the reload. Attach it again or remove it.',
     you: 'You',
     claude: 'Claude',
     permission: 'Tool permission',
@@ -101,9 +99,6 @@ export const TEXT = {
     send: 'Senden',
     sending: 'Wird gesendet…',
     hint: 'Enter sendet · Umschalt+Enter fügt eine Zeile ein',
-    remove: 'Angehängten Block entfernen',
-    reattach:
-      'Dieser Block wurde geändert oder ist nach dem Neuladen nicht eindeutig. Bitte erneut anhängen oder entfernen.',
     you: 'Du',
     claude: 'Claude',
     permission: 'Werkzeugfreigabe',
@@ -192,14 +187,6 @@ export function renderReply(parent, source) {
   }
 }
 
-/** IDs are per-build: retain an existing ID, or require one exact text match on the original page. */
-export function restoreBlock(attachment, page, blocks) {
-  if (attachment.page !== page) return undefined
-  if (blocks.some((block) => block.id === attachment.block)) return attachment.block
-  const matches = blocks.filter((block) => block.text === attachment.text)
-  return matches.length === 1 ? matches[0].id : undefined
-}
-
 /** Check SSE JSON once at the boundary; never infer a missing event field. */
 function checkEntry(event, data, open, at = Date.now()) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('chat event')
@@ -226,7 +213,6 @@ function startPanel() {
   let replaying = false
   let rewritesSending = 0
   let detailsShown = false
-  let direction = 'clearer'
   let instruction = ''
   let editor = null
   let rewriteRow = null
@@ -236,8 +222,6 @@ function startPanel() {
   const localActions = new Map()
   const suggestions = new Map()
   let opened = false
-  let attachment = null
-  let attachmentStale = false
   let connected = false
   let sending = false
   let sequence = 0
@@ -298,19 +282,6 @@ function startPanel() {
   list.setAttribute('aria-live', 'polite')
   list.setAttribute('aria-relevant', 'additions text')
   const form = element('form')
-  const attached = element('div', undefined, 'hc-attachment')
-  const excerpt = element('span')
-  attached.append(
-    excerpt,
-    button(t.remove, () => {
-      attachment = null
-      if (attachmentStale) error.textContent = ''
-      attachmentStale = false
-      updateSend()
-      updateAttachment()
-      save()
-    }),
-  )
   const label = element('label', t.input)
   label.htmlFor = 'hadley-chat-input'
   const input = element('textarea')
@@ -323,7 +294,7 @@ function startPanel() {
   error.setAttribute('role', 'alert')
   const send = element('button', t.send)
   send.type = 'submit'
-  form.append(attached, label, input, hint, error, send)
+  form.append(label, input, hint, error, send)
   panel.append(header, detailsLabel, status, offline, list, form)
   // Sharing the editor's bar keeps all its fixed controls clear of the chat button.
   const devBar = document.querySelector('#hadley-dev-bar')
@@ -340,10 +311,7 @@ function startPanel() {
   }
   function save() {
     try {
-      sessionStorage.setItem(
-        storageKey,
-        JSON.stringify({ opened, draft: input.value, attachment, detailsShown, direction, instruction }),
-      )
+      sessionStorage.setItem(storageKey, JSON.stringify({ opened, draft: input.value, detailsShown, instruction }))
     } catch {
       // Storage can be disabled or full; the current page still works.
     }
@@ -355,14 +323,10 @@ function startPanel() {
     save()
     if (focus) (value ? input : toggle).focus()
   }
-  function updateAttachment() {
-    attached.hidden = attachment === null
-    excerpt.textContent = attachment?.text.slice(0, 100) ?? ''
-  }
   function updateSend() {
-    send.disabled = !connected || sending || attachmentStale || !input.value.trim()
+    send.disabled = !connected || sending || !input.value.trim()
     send.textContent = sending ? t.sending : t.send
-    if (rewriteRow) rewriteRow.send.disabled = !connected || rewriteRow.pending
+    if (rewriteRow) for (const control of rewriteRow.controls) control.disabled = !connected || rewriteRow.pending
     for (const card of permissions) {
       for (const control of card.controls) control.disabled = !connected || card.pending
     }
@@ -592,7 +556,6 @@ function startPanel() {
       row.state.textContent = t.instructionInvalid
       return
     }
-    direction = chosen
     instruction = own
     row.custom.value = own
     save()
@@ -672,25 +635,35 @@ function startPanel() {
     custom.setAttribute('aria-label', t.instruction)
     custom.placeholder = t.instruction
     const choices = element('div', undefined, 'hc-directions')
-    const row = { node, state, custom, pending: false }
-    const choose = (value) => {
-      direction = value
-      custom.hidden = value !== 'custom'
-      choices.querySelectorAll('button').forEach((control, index) => {
-        control.setAttribute('aria-pressed', String(directions[index] === value))
+    choices.setAttribute('role', 'group')
+    choices.setAttribute('aria-label', t.rewrite)
+    const row = { node, state, custom, pending: false, controls: [] }
+    // one click rewrites the block in its direction; Own… asks for the instruction first, and Enter in it sends
+    for (const value of directions) {
+      const control = button(t[value], () => {
+        if (value !== 'custom' || (!custom.hidden && custom.value.trim())) void rewrite(target, row, value)
+        else {
+          custom.hidden = false
+          custom.focus()
+        }
       })
-      save()
+      row.controls.push(control)
+      choices.append(control)
     }
-    for (const value of directions) choices.append(button(t[value], () => choose(value)))
+    custom.hidden = true
     custom.addEventListener('input', () => {
       instruction = custom.value
-      choose('custom')
+      save()
     })
-    row.send = button(t.rewrite, () => void rewrite(target, row, direction))
-    node.append(row.send, choices, custom, state)
+    custom.addEventListener('keydown', (key) => {
+      if (key.key === 'Enter' && !key.isComposing) {
+        key.preventDefault()
+        void rewrite(target, row, 'custom')
+      }
+    })
+    node.append(choices, custom, state)
     target.wrapper.append(node)
     rewriteRow = row
-    choose(direction)
     updateSend()
     target.textarea.addEventListener('pointerdown', (event) => {
       // Keep the existing selection when the secondary click lands outside its painted text.
@@ -709,7 +682,6 @@ function startPanel() {
       for (const value of directions) {
         const control = button(t[value], () => {
           closeSelectionMenu()
-          choose(value)
           void rewrite(target, row, value, { start, end })
         })
         control.setAttribute('role', 'menuitem')
@@ -787,7 +759,6 @@ function startPanel() {
     if (send.disabled) return
     const started = Date.now()
     const text = input.value
-    const block = attachment
     sending = true
     error.textContent = ''
     // Reserve its place before a fast channel can send a reply or a permission over SSE.
@@ -796,11 +767,7 @@ function startPanel() {
     list.append(pending)
     updateSend()
     try {
-      const response = await post('/__hadley/chat', {
-        text,
-        page: location.pathname,
-        ...(block ? { block: block.block } : {}),
-      })
+      const response = await post('/__hadley/chat', { text, page: location.pathname })
       if (!response.ok) {
         if (response.status === 503) {
           setConnected(false)
@@ -813,8 +780,6 @@ function startPanel() {
       if (!data || typeof data.id !== 'string') throw new Error('message id')
       addMessage({ id: data.id, text }, pending, started)
       if (input.value === text) input.value = ''
-      if (attachment === block) attachment = null
-      updateAttachment()
       save()
     } catch {
       error.textContent = t.failed
@@ -844,50 +809,19 @@ function startPanel() {
       setOpen(false)
     }
   })
-  document.addEventListener('hadley:chat', (event) => {
-    const detail = event.detail
-    if (!detail || typeof detail.block !== 'string' || typeof detail.text !== 'string') return
-    attachment = { block: detail.block, text: detail.text, page: location.pathname }
-    if (attachmentStale) error.textContent = ''
-    attachmentStale = false
-    updateSend()
-    updateAttachment()
-    setOpen(true)
-  })
   try {
     const saved = JSON.parse(sessionStorage.getItem(storageKey) ?? 'null')
     if (saved && typeof saved.opened === 'boolean' && typeof saved.draft === 'string') {
       if (typeof saved.detailsShown === 'boolean') detailsShown = saved.detailsShown
-      if (directions.includes(saved.direction)) direction = saved.direction
       if (typeof saved.instruction === 'string' && saved.instruction.length <= 500) instruction = saved.instruction
       opened = saved.opened
       input.value = saved.draft
-      if (
-        saved.attachment &&
-        typeof saved.attachment.block === 'string' &&
-        typeof saved.attachment.text === 'string' &&
-        typeof saved.attachment.page === 'string'
-      ) {
-        attachment = { block: saved.attachment.block, text: saved.attachment.text, page: saved.attachment.page }
-      }
     }
   } catch {
     // An unreadable saved draft must not disable the current panel.
   }
-  if (attachment) {
-    const blocks = [...document.querySelectorAll('[data-hadley-id]')].map((block) => {
-      const copy = block.cloneNode(true)
-      copy.querySelectorAll('.hadley-trigger').forEach((trigger) => trigger.remove())
-      return { id: block.dataset.hadleyId, text: copy.textContent.replace(/\s+/g, ' ').trim() }
-    })
-    const restored = restoreBlock(attachment, location.pathname, blocks)
-    attachmentStale = restored === undefined
-    if (restored !== undefined) attachment.block = restored
-    else error.textContent = t.reattach
-  }
   detailsSwitch.checked = detailsShown
   setOpen(opened, opened)
-  updateAttachment()
   updateSend()
   const stream = new EventSource(`/__hadley/chat/events?lang=${lang}`)
   stream.addEventListener('history', (event) => {
