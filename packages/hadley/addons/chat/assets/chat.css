@@ -326,12 +326,12 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
   display: none !important;
 }
 
+/* a hint, not a control: shown only while a selection is what the button rewrites */
 .hc-rewrite-scope {
-  color: var(--he-muted);
+  color: var(--he-accent, #2563eb);
   font-size: 0.75rem;
-  padding: 0.0625rem 0.5rem;
-  border: 1px solid var(--he-border);
-  border-radius: 999px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 

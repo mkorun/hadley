@@ -5,8 +5,10 @@
 export const TEXT = {
   en: {
     rewrite: 'Rewrite',
-    scopeBlock: 'Whole block',
-    scopeSelection: 'Selection only',
+    scopeSelection: 'Selection · {n} characters',
+    scopeSelectionOne: 'Selection · 1 character',
+    rewriteBlock: 'Rewrite the block',
+    rewriteSelection: 'Rewrite the selection',
     clearer: 'Clearer',
     shorter: 'Shorter',
     formal: 'More formal',
@@ -18,7 +20,8 @@ export const TEXT = {
     instructionOptional: 'Anything else? (optional)',
     permissionNeeded: 'Approval needed',
     undo: 'Undo',
-    rewriteShortcut: 'Rewrite (Ctrl+Enter)',
+    rewriteShortcut: 'Ctrl+Enter',
+    undoShortcut: 'Ctrl+Z',
     sent: 'Sent',
     delivered: 'Delivered',
     waiting: 'Waiting for {n} s',
@@ -68,8 +71,10 @@ export const TEXT = {
   },
   de: {
     rewrite: 'Umschreiben',
-    scopeBlock: 'Ganzer Block',
-    scopeSelection: 'Nur die Markierung',
+    scopeSelection: 'Auswahl · {n} Zeichen',
+    scopeSelectionOne: 'Auswahl · 1 Zeichen',
+    rewriteBlock: 'Block umschreiben',
+    rewriteSelection: 'Auswahl umschreiben',
     clearer: 'Klarer',
     shorter: 'Kürzer',
     formal: 'Formeller',
@@ -81,7 +86,8 @@ export const TEXT = {
     instructionOptional: 'Noch etwas? (optional)',
     permissionNeeded: 'Freigabe nötig',
     undo: 'Rückgängig',
-    rewriteShortcut: 'Umschreiben (Strg+Enter)',
+    rewriteShortcut: 'Strg+Enter',
+    undoShortcut: 'Strg+Z',
     sent: 'Gesendet',
     delivered: 'Zugestellt',
     waiting: 'Warten seit {n} s',
@@ -725,8 +731,6 @@ function startPanel() {
     const send = button('', () => void rewrite(target, row, select.value))
     send.className = 'hc-send'
     send.innerHTML = ICONS.sparkle
-    send.setAttribute('aria-label', t.rewrite)
-    send.title = t.rewriteShortcut
     // the editing field keeps the focus, and with it the selection the browser paints
     send.addEventListener('mousedown', (event) => event.preventDefault())
     const scope = element('span', undefined, 'hc-rewrite-scope')
@@ -740,7 +744,7 @@ function startPanel() {
     undo.className = 'hc-undo'
     undo.innerHTML = ICONS.undo
     undo.setAttribute('aria-label', t.undo)
-    undo.title = `${t.undo} (Ctrl+Z)`
+    undo.title = `${t.undo} (${t.undoShortcut})`
     undo.hidden = true
     const row = { node, state, custom, undo, pending: false, controls: [select, custom, send] }
     select.addEventListener('change', () => {
@@ -761,9 +765,16 @@ function startPanel() {
     }
     custom.addEventListener('keydown', (key) => sendOnEnter(key, true))
     target.textarea.addEventListener('keydown', (key) => sendOnEnter(key, false))
-    // what the next action rewrites: the selection, or the whole block
+    // what the next action rewrites: the button names it; a selection also shows, with its length, as the whole block
+    // is what it rewrites otherwise
     const showScope = () => {
-      scope.textContent = selectionOf(target.textarea) ? t.scopeSelection : t.scopeBlock
+      const selection = selectionOf(target.textarea)
+      const label = selection ? t.rewriteSelection : t.rewriteBlock
+      send.setAttribute('aria-label', label)
+      send.title = `${label} (${t.rewriteShortcut})`
+      const length = selection ? [...target.textarea.value.slice(selection.start, selection.end)].length : 0
+      scope.hidden = !selection
+      scope.textContent = length === 1 ? t.scopeSelectionOne : t.scopeSelection.replace('{n}', String(length))
     }
     for (const type of ['select', 'keyup', 'mouseup', 'input', 'focus'])
       target.textarea.addEventListener(type, showScope)

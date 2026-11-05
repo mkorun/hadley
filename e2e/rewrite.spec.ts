@@ -25,8 +25,9 @@ for (const lang of ['en', 'de']) {
           shorter: 'Shorter',
           clearer: 'Clearer',
           formal: 'More formal',
-          block: 'Whole block',
-          selected: 'Selection only',
+          block: 'Rewrite the block',
+          selected: 'Rewrite the selection',
+          scope: 'Selection · 5 characters',
           own: 'Only instructions',
           instruction: 'Instruction for Claude (at most 500 characters)',
           direction: 'Way to rewrite',
@@ -48,8 +49,9 @@ for (const lang of ['en', 'de']) {
           shorter: 'Kürzer',
           clearer: 'Klarer',
           formal: 'Formeller',
-          block: 'Ganzer Block',
-          selected: 'Nur die Markierung',
+          block: 'Block umschreiben',
+          selected: 'Auswahl umschreiben',
+          scope: 'Auswahl · 5 Zeichen',
           own: 'Nur Anweisungen',
           instruction: 'Anweisung für Claude (höchstens 500 Zeichen)',
           direction: 'Art des Umschreibens',
@@ -68,7 +70,7 @@ for (const lang of ['en', 'de']) {
   // the row's way to rewrite, chosen in its menu, sent with its button
   const rewriteAs = async (row: Locator, way: string) => {
     await row.getByRole('combobox', { name: t.direction, exact: true }).selectOption({ label: way })
-    await row.getByRole('button', { name: t.rewrite, exact: true }).click()
+    await row.locator('.hc-send').click()
   }
   const open = async (page: Page, origin: string) => {
     await page.goto(origin + (lang === 'en' ? '/panel/' : '/de/panel/'))
@@ -150,11 +152,13 @@ for (const lang of ['en', 'de']) {
     await expect(timeline.locator('pre').last()).toBeVisible()
     await expect(timeline.locator('pre').last()).toContainText('suggestion')
     await page.getByRole('button', { name: 'Chat', exact: true }).click()
-    await expect(row.locator('.hc-rewrite-scope')).toHaveText(t.block)
+    await expect(row.locator('.hc-rewrite-scope')).toBeHidden()
+    await expect(row.getByRole('button', { name: t.block, exact: true })).toBeVisible()
     await select(page, 0, 5)
     await field.press('Shift+ArrowRight')
     await field.press('Shift+ArrowLeft')
-    await expect(row.locator('.hc-rewrite-scope')).toHaveText(t.selected)
+    await expect(row.locator('.hc-rewrite-scope')).toHaveText(t.scope)
+    await expect(row.getByRole('button', { name: t.selected, exact: true })).toBeVisible()
     if (info.repeatEachIndex === 0)
       await page.screenshot({ path: resolve(screenshots, `selection-${lang}-${info.project.name}.png`) })
     await rewriteAs(row, t.shorter)
@@ -184,7 +188,7 @@ for (const lang of ['en', 'de']) {
         node.selectionEnd,
       ]),
     ).toEqual([0, 5])
-    await expect(row.getByRole('button', { name: t.rewrite, exact: true })).toBeEnabled()
+    await expect(row.locator('.hc-send')).toBeEnabled()
     await field.press('Control+z')
     await expect(field).toHaveValue(selection.draft + '!')
     expect(await readFile(dev.source, 'utf8')).toBe(source)
@@ -202,7 +206,7 @@ for (const lang of ['en', 'de']) {
       .filter({ hasText: lang === 'en' ? 'First words' : 'Erste Wörter' })
       .first()
       .click({ button: 'right' })
-    await expect(row.getByRole('button', { name: t.rewrite, exact: true })).toBeEnabled()
+    await expect(row.locator('.hc-send')).toBeEnabled()
   })
 
   test(`${lang}: keeps changed and closed blocks as fallback cards, inserts at current selection and undoes`, async ({
@@ -368,7 +372,7 @@ for (const lang of ['en', 'de']) {
       await expect(page.locator('.hc-proposal')).toHaveCount(1)
       release()
       await expect(field).toHaveValue('Fast proposal.')
-      await expect(row.getByRole('button', { name: t.rewrite, exact: true })).toBeEnabled()
+      await expect(row.locator('.hc-send')).toBeEnabled()
       await field.press('Control+z')
       await expect(field).toHaveValue(draft)
       await page.unroute('**/__hadley/chat?*')
