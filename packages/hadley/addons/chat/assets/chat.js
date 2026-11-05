@@ -625,6 +625,7 @@ function startPanel() {
   })
   document.addEventListener('hadley:editor-open', (event) => {
     editor = event.detail
+    if (editor.frontMatter) return
     const target = editor
     const node = element('div', undefined, 'hadley-rewrite')
     const state = element('span', undefined, 'hc-rewrite-state')

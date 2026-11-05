@@ -926,6 +926,8 @@ function openEditor(blockId, blockEl, text) {
     new CustomEvent('hadley:editor-open', {
       detail: {
         block: blockId,
+        // the front matter is Lima, which the chat does not rewrite
+        frontMatter: blockEl.dataset.hadleyFrontMatter !== undefined,
         textarea,
         wrapper,
         insert(start, end, replacement) {
