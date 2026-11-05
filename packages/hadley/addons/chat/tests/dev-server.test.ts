@@ -7,7 +7,6 @@ import { createServer, type AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createInterface } from 'node:readline'
-import { fileURLToPath } from 'node:url'
 import { certificateFingerprint, directories, parseRendezvous } from '../rendezvous.ts'
 import { browserKey } from '../browser-key.ts'
 import { channelProcess, events, Inbox, post } from './support.ts'
@@ -30,7 +29,8 @@ async function start(config: string, certificate?: ReturnType<typeof testCertifi
       'dev:\n  https:\n    cert: ../test-cert.pem\n    key: ../test-key.pem\n',
     )
   }
-  const source = `import { startDevServer } from ${JSON.stringify(fileURLToPath(new URL('../../../lib/dev-server.ts', import.meta.url)))};
+  // an import names a module by its URL: Node on Windows takes no drive path there
+  const source = `import { startDevServer } from ${JSON.stringify(new URL('../../../lib/dev-server.ts', import.meta.url).href)};
     try {
       await startDevServer({ siteDir: ${JSON.stringify(root)}, outputMode: 'dev',
         serve: { port: ${port}, https: ${certificate !== undefined}, host: false }, noBuild: true, noWatch: true });

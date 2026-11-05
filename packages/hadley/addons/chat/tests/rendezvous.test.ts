@@ -15,7 +15,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
-import { fileURLToPath } from 'node:url'
 import {
   alive,
   assertPrivate,
@@ -101,7 +100,8 @@ it('skips dead, malformed and shared records, and replaces a stale record', asyn
 
 it('removes rendezvous files on normal process exit', async () => {
   const runtime = rendezvousDirectory({ XDG_RUNTIME_DIR: dir, LOCALAPPDATA: dir })
-  const module = fileURLToPath(new URL('../rendezvous.ts', import.meta.url))
+  // an import names a module by its URL: Node on Windows takes no drive path there
+  const module = new URL('../rendezvous.ts', import.meta.url).href
   const source = `import { createRendezvous } from ${JSON.stringify(module)}; createRendezvous(${JSON.stringify(options())}, ${JSON.stringify(runtime)})`
   const child = spawn(process.execPath, ['--input-type=module', '-e', source], { timeout: 10_000, stdio: 'pipe' })
   let stderr = ''

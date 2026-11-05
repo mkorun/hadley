@@ -139,7 +139,8 @@ export async function events(
 
 export function channelProcess(root: string, watchErrors = false, environment: NodeJS.ProcessEnv = {}) {
   const module = fileURLToPath(new URL('../channel.ts', import.meta.url))
-  const watcher = `import { watch } from 'node:fs'; import { runChannel } from ${JSON.stringify(module)};
+  // an import names a module by its URL: Node on Windows takes no drive path there
+  const watcher = `import { watch } from 'node:fs'; import { runChannel } from ${JSON.stringify(new URL('../channel.ts', import.meta.url).href)};
     let attempt = 0;
     await runChannel((dir, listener) => {
       if (++attempt === 1) throw new Error('test watcher could not start');
