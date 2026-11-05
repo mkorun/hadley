@@ -1,5 +1,5 @@
 import { test, expect } from './chat-fixture.ts'
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { mkdir, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
@@ -27,8 +27,10 @@ for (const lang of ['en', 'de']) {
           formal: 'More formal',
           block: 'Whole block',
           selected: 'Selection only',
-          own: 'Own…',
-          instruction: 'Own instruction (at most 500 characters)',
+          own: 'Only instructions',
+          instruction: 'Instruction for Claude (at most 500 characters)',
+          direction: 'Way to rewrite',
+          undo: 'Undo',
           cancel: 'Cancel',
           sent: 'Sent',
           delivered: 'Delivered',
@@ -48,8 +50,10 @@ for (const lang of ['en', 'de']) {
           formal: 'Formeller',
           block: 'Ganzer Block',
           selected: 'Nur die Markierung',
-          own: 'Eigene…',
-          instruction: 'Eigene Anweisung (höchstens 500 Zeichen)',
+          own: 'Nur Anweisungen',
+          instruction: 'Anweisung für Claude (höchstens 500 Zeichen)',
+          direction: 'Art des Umschreibens',
+          undo: 'Rückgängig',
           cancel: 'Abbrechen',
           sent: 'Gesendet',
           delivered: 'Zugestellt',
@@ -61,6 +65,11 @@ for (const lang of ['en', 'de']) {
           applied: 'Ins Bearbeitungsfeld eingefügt',
           title: 'Chat mit Claude',
         }
+  // the row's way to rewrite, chosen in its menu, sent with its button
+  const rewriteAs = async (row: Locator, way: string) => {
+    await row.getByRole('combobox', { name: t.direction, exact: true }).selectOption({ label: way })
+    await row.getByRole('button', { name: t.rewrite, exact: true }).click()
+  }
   const open = async (page: Page, origin: string) => {
     await page.goto(origin + (lang === 'en' ? '/panel/' : '/de/panel/'))
     await page.getByRole('button', { name: t.edit, exact: true }).click()
@@ -86,7 +95,7 @@ for (const lang of ['en', 'de']) {
       await mkdir(screenshots, { recursive: true })
       await page.screenshot({ path: resolve(screenshots, `row-${lang}-${info.project.name}.png`) })
     }
-    await row.getByRole('button', { name: t.clearer, exact: true }).click()
+    await rewriteAs(row, t.clearer)
     const action = (await channel.inbox.next((entry) => entry.event === 'message')).data as {
       id: string
       action: string
@@ -97,10 +106,10 @@ for (const lang of ['en', 'de']) {
     expect(action.action).toBe('rewrite-block')
     expect(action.direction).toBe('clearer')
     expect(action.draft).toBe(draft + ' Unsaved.')
-    await expect(row.locator('.hc-rewrite-state')).toHaveText(t.sent)
+    await expect(row.locator('.hc-status-label')).toHaveText(t.sent)
     expect((await channel.send({ event: 'delivered', data: { id: action.id } })).status).toBe(200)
-    await expect(row.locator('.hc-rewrite-state')).toHaveText(t.delivered)
-    await expect(row.locator('.hc-rewrite-state')).toHaveText(t.waiting)
+    await expect(row.locator('.hc-status-label')).toHaveText(t.delivered)
+    await expect(row.locator('.hc-status-label')).toHaveText(t.waiting)
     expect(
       (
         await channel.send({
@@ -111,7 +120,7 @@ for (const lang of ['en', 'de']) {
         })
       ).status,
     ).toBe(200)
-    await expect(row.locator('.hc-rewrite-state')).toHaveText(t.permission)
+    await expect(row.locator('.hc-status-label')).toHaveText(t.permission)
     await field.focus()
     await expect(field).toBeEditable()
     expect(
@@ -119,7 +128,14 @@ for (const lang of ['en', 'de']) {
         .status,
     ).toBe(200)
     await expect(field).toHaveValue('A clearer *block*.')
-    await expect(row.locator('.hc-rewrite-state')).toHaveText(/In [0-9]+\.[0-9] s/)
+    await expect(row.locator('.hc-status-label')).toHaveText(/In [0-9]+\.[0-9] s/)
+    // done: a check, and Undo takes the proposal back as Ctrl+Z does
+    await expect(row.locator('.hc-rewrite-state')).toHaveAttribute('data-state', 'done')
+    await row.getByRole('button', { name: t.undo, exact: true }).click()
+    await expect(field).toHaveValue(action.draft)
+    await expect(row.getByRole('button', { name: t.undo, exact: true })).toBeHidden()
+    await field.press('Control+Shift+z')
+    await expect(field).toHaveValue('A clearer *block*.')
     await field.press('Control+z')
     await expect(field).toHaveValue(action.draft)
     const panel = page.locator('#hadley-chat')
@@ -141,7 +157,7 @@ for (const lang of ['en', 'de']) {
     await expect(row.locator('.hc-rewrite-scope')).toHaveText(t.selected)
     if (info.repeatEachIndex === 0)
       await page.screenshot({ path: resolve(screenshots, `selection-${lang}-${info.project.name}.png`) })
-    await row.getByRole('button', { name: t.shorter, exact: true }).click()
+    await rewriteAs(row, t.shorter)
     // 2026-11-05: the click took the focus, and the browser no longer painted the selection
     await expect(field).toBeFocused()
     expect(
@@ -168,7 +184,7 @@ for (const lang of ['en', 'de']) {
         node.selectionEnd,
       ]),
     ).toEqual([0, 5])
-    await expect(row.getByRole('button', { name: t.clearer, exact: true })).toBeEnabled()
+    await expect(row.getByRole('button', { name: t.rewrite, exact: true })).toBeEnabled()
     await field.press('Control+z')
     await expect(field).toHaveValue(selection.draft + '!')
     expect(await readFile(dev.source, 'utf8')).toBe(source)
@@ -186,7 +202,7 @@ for (const lang of ['en', 'de']) {
       .filter({ hasText: lang === 'en' ? 'First words' : 'Erste Wörter' })
       .first()
       .click({ button: 'right' })
-    await expect(row.getByRole('button', { name: t.shorter, exact: true })).toBeEnabled()
+    await expect(row.getByRole('button', { name: t.rewrite, exact: true })).toBeEnabled()
   })
 
   test(`${lang}: keeps changed and closed blocks as fallback cards, inserts at current selection and undoes`, async ({
@@ -197,7 +213,7 @@ for (const lang of ['en', 'de']) {
     const field = await open(page, dev.origin)
     const row = page.locator('.hadley-rewrite')
     const panel = page.locator('#hadley-chat')
-    await row.getByRole('button', { name: t.clearer, exact: true }).click()
+    await rewriteAs(row, t.clearer)
     const action = (await channel.inbox.next((entry) => entry.event === 'message')).data as { id: string }
     await field.fill('Changed while waiting.')
     expect(
@@ -223,7 +239,7 @@ for (const lang of ['en', 'de']) {
     await expect(field).toHaveValue('Changed while waiting.')
     await page.getByRole('button', { name: 'Chat', exact: true }).click()
     await select(page, 0, 7)
-    await row.getByRole('button', { name: t.formal, exact: true }).click()
+    await rewriteAs(row, t.formal)
     const selected = (await channel.inbox.next((entry) => entry.event === 'message')).data as { id: string }
     await field.fill('Selection changed.')
     expect(
@@ -232,7 +248,7 @@ for (const lang of ['en', 'de']) {
     await expect(field).toHaveValue('Selection changed.')
     await panel.locator('.hc-proposal').last().getByRole('button', { name: t.discard, exact: true }).click()
     await page.getByRole('button', { name: 'Chat', exact: true }).click()
-    await row.getByRole('button', { name: t.clearer, exact: true }).click()
+    await rewriteAs(row, t.clearer)
     const closed = (await channel.inbox.next((entry) => entry.event === 'message')).data as { id: string }
     await page.locator('.hadley-editor').getByRole('button', { name: t.cancel, exact: true }).click()
     expect(
@@ -286,7 +302,7 @@ for (const lang of ['en', 'de']) {
     await field.click({ button: 'right' })
     await expect(page.getByRole('menu')).toHaveCount(0)
     const row = page.locator('.hadley-rewrite')
-    await row.getByRole('button', { name: t.own, exact: true }).click()
+    await row.getByRole('combobox', { name: t.direction, exact: true }).selectOption({ label: t.own })
     const custom = row.getByRole('textbox', { name: t.instruction, exact: true })
     await expect(custom).toHaveAttribute('maxlength', '500')
     await custom.fill('Keep the tone.')
@@ -313,6 +329,17 @@ for (const lang of ['en', 'de']) {
     expect(selected.selection).toEqual({ start: 0, end: 5 })
     await channel.send({ event: 'suggestion', data: { id: 'suggest2', to: selected.id, text: 'Warm' } })
     await expect(field).toHaveValue('Warmcement.')
+
+    // 2026-11-05: a way and a word of one's own at once, sent with Ctrl+Enter from the editing field
+    await row.getByRole('combobox', { name: t.direction, exact: true }).selectOption({ label: t.shorter })
+    await custom.fill('Keep the dry tone.')
+    await field.press('Control+Enter')
+    const both = (await channel.inbox.next((entry) => entry.event === 'message')).data as {
+      direction: string
+      instruction: string
+    }
+    expect(both.direction).toBe('shorter')
+    expect(both.instruction).toBe('Keep the dry tone.')
   })
   test(`${lang}: retains fast events before HTTP acceptance and never applies to a reopened block`, async ({
     page,
@@ -332,20 +359,20 @@ for (const lang of ['en', 'de']) {
       await route.fulfill({ response })
     })
     try {
-      await row.getByRole('button', { name: t.clearer, exact: true }).click()
+      await rewriteAs(row, t.clearer)
       const action = (await channel.inbox.next((entry) => entry.event === 'message')).data as { id: string }
       await channel.send({ event: 'delivered', data: { id: action.id } })
       await channel.send({ request_id: 'abcde', tool: 'mcp__hadley__suggest', description: 'Propose', preview: '' })
-      await expect(row.locator('.hc-rewrite-state')).toHaveText(t.permission)
+      await expect(row.locator('.hc-status-label')).toHaveText(t.permission)
       await channel.send({ event: 'suggestion', data: { id: 'suggest1', to: action.id, text: 'Fast proposal.' } })
       await expect(page.locator('.hc-proposal')).toHaveCount(1)
       release()
       await expect(field).toHaveValue('Fast proposal.')
-      await expect(row.getByRole('button', { name: t.clearer, exact: true })).toBeEnabled()
+      await expect(row.getByRole('button', { name: t.rewrite, exact: true })).toBeEnabled()
       await field.press('Control+z')
       await expect(field).toHaveValue(draft)
       await page.unroute('**/__hadley/chat?*')
-      await row.getByRole('button', { name: t.clearer, exact: true }).click()
+      await rewriteAs(row, t.clearer)
       const closed = (await channel.inbox.next((entry) => entry.event === 'message')).data as { id: string }
       await page.locator('.hadley-editor').getByRole('button', { name: t.cancel, exact: true }).click()
       await page

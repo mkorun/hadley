@@ -50,7 +50,8 @@ const T = {
     editAriaLabel: 'Block-Inhalt bearbeiten (Markdown)',
     save: 'Speichern',
     frontMatter: 'Front Matter',
-    escToCancel: 'Esc = Abbrechen',
+    escToCancel: 'Abbrechen (Esc)',
+    saveShortcut: 'Speichern (Strg+S)',
     parseError: (msg) => `Parse-Fehler — bitte Text korrigieren:\n\n${msg}`,
     parseErrorElsewhere: (msg) =>
       `Es gibt außerdem einen vorbestehenden Fehler an anderer Stelle im Dokument (nicht in diesem Text):\n\n${msg}`,
@@ -84,7 +85,8 @@ const T = {
     editAriaLabel: 'Edit block content (Markdown)',
     save: 'Save',
     frontMatter: 'Front matter',
-    escToCancel: 'Esc = Cancel',
+    escToCancel: 'Cancel (Esc)',
+    saveShortcut: 'Save (Ctrl+S)',
     parseError: (msg) => `Parse error — please fix the text:\n\n${msg}`,
     parseErrorElsewhere: (msg) =>
       `There is also a pre-existing error elsewhere in the document (not in this text):\n\n${msg}`,
@@ -176,16 +178,20 @@ function failAction(error) {
 
 // ─── SVG icons ───────────────────────────────────────────────────────────────
 
+// One set of icons for the whole editor (and the chat, addons/chat/assets/chat.js): a 16 × 16 grid, lines of 1.6 with
+// round ends and joins, no fill, in currentColor, so that each takes the colour and contrast of its control.
 const _ic = {
-  dots: '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="3" cy="8" r="2" fill="currentColor"/><circle cx="8" cy="8" r="2" fill="currentColor"/><circle cx="13" cy="8" r="2" fill="currentColor"/></svg>',
-  up: '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3,10 8,5 13,10"/></svg>',
-  down: '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3,6 8,11 13,6"/></svg>',
+  dots: '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="3.5" cy="8" r="1.2" fill="currentColor" stroke="none"/><circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none"/><circle cx="12.5" cy="8" r="1.2" fill="currentColor" stroke="none"/></svg>',
+  up: '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10l4-4 4 4"/></svg>',
+  down: '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>',
   merge_top:
-    '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><line x1="2" y1="3" x2="14" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polygon points="8,6 4,13 12,13" fill="currentColor"/></svg>',
+    '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h10M8 13V6.5M5 9.5l3-3 3 3"/></svg>',
   merge_bot:
-    '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><polygon points="8,10 4,3 12,3" fill="currentColor"/><line x1="2" y1="13" x2="14" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13h10M8 3v6.5M5 6.5l3 3 3-3"/></svg>',
   delete:
-    '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="2" y1="4" x2="14" y2="4"/><path d="M5 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M3.2 4l.9 8.5a1 1 0 0 0 1 .9h5.8a1 1 0 0 0 1-.9l.9-8.5"/></svg>',
+    '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5M7 7v3.5M9 7v3.5"/></svg>',
+  pencil:
+    '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.5 2.5l3 3L6 13H3v-3zM9 4l3 3"/></svg>',
 }
 
 // ─── Slide-out menu (↑ ↓ 🗑) ─────────────────────────────────────────────────
@@ -324,6 +330,13 @@ document.addEventListener('pointermove', (e) => {
   const inBlock = x >= br.left && x <= br.right && y >= br.top && y <= br.bottom
   const inMenu = x >= mr.left && x <= mr.right && y >= mr.top && y <= mr.bottom
   if (!inBlock && !inMenu) scheduleMenuClose()
+})
+
+// Ctrl+S (Cmd+S on a Mac) saves the open block, not the page
+document.addEventListener('keydown', (e) => {
+  if (!activeBlockId || !(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 's') return
+  e.preventDefault()
+  activeWrapper?.querySelector('.hadley-save-btn')?.click()
 })
 
 // Global Escape handler: editor before menu (the order matters)
@@ -818,7 +831,8 @@ async function attachHeadListeners() {
     const badge = document.createElement('button')
     badge.type = 'button'
     badge.className = 'hadley-front-matter-badge'
-    badge.textContent = T.frontMatter
+    badge.innerHTML = _ic.pencil
+    badge.append(T.frontMatter)
     badge.dataset.hadleyFrontMatter = ''
     badge.addEventListener('click', () => {
       if (!isEditMode() || activeBlockId || mutationLocked) return
@@ -902,12 +916,10 @@ function openEditor(blockId, blockEl, text) {
   cancelBtn.className = 'hadley-cancel-btn'
   cancelBtn.type = 'button'
   cancelBtn.textContent = T.cancel
+  cancelBtn.title = T.escToCancel
+  saveBtn.title = T.saveShortcut
 
-  const hint = document.createElement('span')
-  hint.className = 'hadley-toolbar-hint'
-  hint.textContent = T.escToCancel
-
-  editorToolbar.append(saveBtn, cancelBtn, hint)
+  editorToolbar.append(saveBtn, cancelBtn)
   wrapper.append(textarea, editorToolbar)
   blockEl.insertAdjacentElement('afterend', wrapper)
 

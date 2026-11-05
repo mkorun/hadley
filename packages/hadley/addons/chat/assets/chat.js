@@ -12,8 +12,13 @@ export const TEXT = {
     formal: 'More formal',
     casual: 'More casual',
     fix: 'Only fix errors',
-    custom: 'Own…',
-    instruction: 'Own instruction (at most 500 characters)',
+    custom: 'Only instructions',
+    direction: 'Way to rewrite',
+    instruction: 'Instruction for Claude (at most 500 characters)',
+    instructionOptional: 'Anything else? (optional)',
+    permissionNeeded: 'Approval needed',
+    undo: 'Undo',
+    rewriteShortcut: 'Rewrite (Ctrl+Enter)',
     sent: 'Sent',
     delivered: 'Delivered',
     waiting: 'Waiting for {n} s',
@@ -70,8 +75,13 @@ export const TEXT = {
     formal: 'Formeller',
     casual: 'Lockerer',
     fix: 'Nur Fehler korrigieren',
-    custom: 'Eigene…',
-    instruction: 'Eigene Anweisung (höchstens 500 Zeichen)',
+    custom: 'Nur Anweisungen',
+    direction: 'Art des Umschreibens',
+    instruction: 'Anweisung für Claude (höchstens 500 Zeichen)',
+    instructionOptional: 'Noch etwas? (optional)',
+    permissionNeeded: 'Freigabe nötig',
+    undo: 'Rückgängig',
+    rewriteShortcut: 'Umschreiben (Strg+Enter)',
     sent: 'Gesendet',
     delivered: 'Zugestellt',
     waiting: 'Warten seit {n} s',
@@ -226,6 +236,7 @@ function startPanel() {
   let replaying = false
   let rewritesSending = 0
   let detailsShown = false
+  let direction = 'clearer'
   let instruction = ''
   let editor = null
   let rewriteRow = null
@@ -323,7 +334,10 @@ function startPanel() {
   }
   function save() {
     try {
-      sessionStorage.setItem(storageKey, JSON.stringify({ opened, draft: input.value, detailsShown, instruction }))
+      sessionStorage.setItem(
+        storageKey,
+        JSON.stringify({ opened, draft: input.value, detailsShown, direction, instruction }),
+      )
     } catch {
       // Storage can be disabled or full; the current page still works.
     }
@@ -489,7 +503,11 @@ function startPanel() {
           ? t.delivered
           : t.sent
     const local = [...localActions.values()].find((action) => action.request === request)
-    if (local?.row.node.isConnected) local.row.state.textContent = request.state.textContent
+    if (local?.row.node.isConnected) {
+      const kind = request.permission ? 'permission' : 'pending'
+      if (local.row.state.dataset.state !== kind) setStatus(local.row, kind, request.state.textContent)
+      else setStatusLabel(local.row, request.state.textContent)
+    }
   }
   function complete(id, event, data, label, at = Date.now()) {
     const request = messages.get(id)
@@ -499,7 +517,7 @@ function startPanel() {
     record(id, event, data, label, at)
     const local = localActions.get(id)
     if (local) {
-      local.row.state.textContent = request.state.textContent
+      setStatus(local.row, 'done', request.state.textContent)
       local.row.pending = false
       updateSend()
     }
@@ -554,26 +572,80 @@ function startPanel() {
     if (editor === target && unchanged && target.insert(start, end, card.data.text)) {
       card.controls.remove()
       card.result.textContent = t.applied
+      // the proposal can be taken back from the row, as Ctrl+Z does
+      if (local.row.node.isConnected) local.row.undo.hidden = false
     } else setOpen(true, false)
     localActions.delete(card.data.to)
+  }
+  // One set of icons with the editor's (addons/editor/assets/editor.js): a 16 × 16 grid, lines of 1.6, round ends
+  const icon = (d) =>
+    `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`
+  const ICONS = {
+    sparkle: icon(
+      '<path d="M8 2v3M8 11v3M2 8h3M11 8h3M4.2 4.2l1.6 1.6M10.2 10.2l1.6 1.6M11.8 4.2l-1.6 1.6M5.8 10.2l-1.6 1.6"/>',
+    ),
+    check: icon('<path d="M3.5 8.5l3 3 6-7"/>'),
+    cross: icon('<path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/>'),
+    undo: icon('<path d="M5.5 5H10a3.25 3.25 0 0 1 0 6.5H6M7.5 3 5.5 5l2 2"/>'),
+  }
+  // the spinner of Claude Code, its glyphs in turn; with reduced motion one stays
+  const SPINNER = ['·', '✢', '✳', '✶', '✻', '✽']
+  const still = matchMedia('(prefers-reduced-motion: reduce)')
+  /** The row's status: what a rewrite is doing, its label for a screen reader, and the time it has taken. */
+  function setStatus(row, kind, label) {
+    clearInterval(row.timer)
+    const { state } = row
+    state.dataset.state = kind
+    state.title = kind === 'done' || kind === 'error' ? label : ''
+    const text = element('span', label, 'hc-status-label')
+    if (kind === 'pending') {
+      const glyph = element('span', SPINNER[0], 'hc-spinner')
+      const time = element('span', '0.0 s', 'hc-status-time')
+      glyph.setAttribute('aria-hidden', 'true')
+      time.setAttribute('aria-hidden', 'true')
+      let frame = 0
+      const tick = () => {
+        glyph.textContent = still.matches ? '✻' : SPINNER[frame++ % SPINNER.length]
+        time.textContent = `${((Date.now() - row.started) / 1000).toFixed(1)} s`
+      }
+      tick()
+      row.timer = setInterval(tick, 120)
+      state.replaceChildren(glyph, time, text)
+    } else if (kind === 'permission') {
+      state.replaceChildren(
+        button(t.permissionNeeded, () => setOpen(true)),
+        text,
+      )
+    } else {
+      const mark = element('span', undefined, 'hc-status-icon')
+      mark.innerHTML = kind === 'done' ? ICONS.check : ICONS.cross
+      state.replaceChildren(mark, text)
+    }
+    if (kind !== 'done') row.undo.hidden = true
+  }
+  /** A label for the screen reader, while the row keeps its kind and its time. */
+  function setStatusLabel(row, label) {
+    const text = row.state.querySelector('.hc-status-label')
+    if (text) text.textContent = label
   }
   async function rewrite(target, row, chosen) {
     if (!connected || row.pending || editor !== target) return
     const selection = selectionOf(target.textarea)
-    const own = row.custom.value
-    if (chosen === 'custom' && (!own.trim() || own.length > 500)) {
-      row.state.textContent = t.instructionInvalid
+    const own = row.custom.value.trim()
+    if ((chosen === 'custom' && !own) || own.length > 500) {
+      setStatus(row, 'error', t.instructionInvalid)
       return
     }
-    instruction = own
-    row.custom.value = own
+    direction = chosen
+    instruction = row.custom.value
     save()
     const started = Date.now()
     const draft = target.textarea.value
     row.pending = true
+    row.started = started
     row.earlyPermissions = []
     rewritesSending++
-    row.state.textContent = t.sent
+    setStatus(row, 'pending', t.sent)
     updateSend()
     try {
       const data = {
@@ -582,17 +654,20 @@ function startPanel() {
         draft,
         action: selection ? 'rewrite-selection' : 'rewrite-block',
         direction: chosen,
-        ...(chosen === 'custom' ? { instruction: own } : {}),
+        ...(own ? { instruction: own } : {}),
         ...(selection ? { selection } : {}),
       }
       const response = await post('/__hadley/chat', data)
       if (!response.ok) {
-        row.state.textContent =
+        setStatus(
+          row,
+          'error',
           response.status === 409 || response.status === 404
             ? t.reload
             : response.status === 503
               ? t.disconnected
-              : t.invalid
+              : t.invalid,
+        )
         row.pending = false
         return
       }
@@ -604,7 +679,6 @@ function startPanel() {
       for (const event of row.earlyPermissions) record(result.id, 'permission', event.data, t.permission, event.at)
       request.permission = permissions.some((card) => card.open)
       updateState(request)
-      row.state.textContent = request.state.textContent
       if (request.completed) row.pending = false
       for (const [id, card] of suggestions)
         if (card.data.to === result.id) {
@@ -613,13 +687,14 @@ function startPanel() {
         }
     } catch {
       row.pending = false
-      row.state.textContent = t.failed
+      setStatus(row, 'error', t.failed)
     } finally {
       rewritesSending--
       updateSend()
     }
   }
   document.addEventListener('hadley:editor-close', () => {
+    clearInterval(rewriteRow?.timer)
     editor = null
     rewriteRow = null
   })
@@ -627,54 +702,74 @@ function startPanel() {
     editor = event.detail
     if (editor.frontMatter) return
     const target = editor
+    // the rewrite stands in the editor's toolbar, after Save and Cancel: a way, an instruction, the send button, what
+    // it rewrites, its status and Undo
     const node = element('div', undefined, 'hadley-rewrite')
-    const state = element('span', undefined, 'hc-rewrite-state')
-    state.setAttribute('role', 'status')
-    const custom = element('input')
+    const select = element('select', undefined, 'hc-direction')
+    select.setAttribute('aria-label', t.direction)
+    for (const value of directions) {
+      const option = element('option', t[value])
+      option.value = value
+      select.append(option)
+    }
+    select.value = direction
+    const custom = element('input', undefined, 'hc-instruction')
     custom.type = 'text'
     custom.maxLength = 500
     custom.value = instruction
     custom.setAttribute('aria-label', t.instruction)
-    custom.placeholder = t.instruction
-    const choices = element('div', undefined, 'hc-directions')
-    choices.setAttribute('role', 'group')
-    choices.setAttribute('aria-label', t.rewrite)
-    const row = { node, state, custom, pending: false, controls: [] }
-    // one click rewrites the block in its direction; Own… asks for the instruction first, and Enter in it sends
-    for (const value of directions) {
-      const control = button(t[value], () => {
-        if (value !== 'custom' || (!custom.hidden && custom.value.trim())) void rewrite(target, row, value)
-        else {
-          custom.hidden = false
-          custom.focus()
-        }
-      })
-      // the editing field keeps the focus, and with it the selection the browser paints
-      control.addEventListener('mousedown', (event) => event.preventDefault())
-      row.controls.push(control)
-      choices.append(control)
+    const placeholder = () => {
+      custom.placeholder = select.value === 'custom' ? t.instruction : t.instructionOptional
     }
-    custom.hidden = true
+    placeholder()
+    const send = button('', () => void rewrite(target, row, select.value))
+    send.className = 'hc-send'
+    send.innerHTML = ICONS.sparkle
+    send.setAttribute('aria-label', t.rewrite)
+    send.title = t.rewriteShortcut
+    // the editing field keeps the focus, and with it the selection the browser paints
+    send.addEventListener('mousedown', (event) => event.preventDefault())
+    const scope = element('span', undefined, 'hc-rewrite-scope')
+    const state = element('span', undefined, 'hc-rewrite-state')
+    state.setAttribute('role', 'status')
+    const undo = button('', () => {
+      target.textarea.focus()
+      document.execCommand('undo')
+      undo.hidden = true
+    })
+    undo.className = 'hc-undo'
+    undo.innerHTML = ICONS.undo
+    undo.setAttribute('aria-label', t.undo)
+    undo.title = `${t.undo} (Ctrl+Z)`
+    undo.hidden = true
+    const row = { node, state, custom, undo, pending: false, controls: [select, custom, send] }
+    select.addEventListener('change', () => {
+      direction = select.value
+      placeholder()
+      save()
+      // back to the field, whose selection shows again
+      target.textarea.focus()
+    })
     custom.addEventListener('input', () => {
       instruction = custom.value
       save()
     })
-    custom.addEventListener('keydown', (key) => {
-      if (key.key === 'Enter' && !key.isComposing) {
-        key.preventDefault()
-        void rewrite(target, row, 'custom')
-      }
-    })
+    const sendOnEnter = (key, plain) => {
+      if (key.key !== 'Enter' || key.isComposing || (!plain && !(key.ctrlKey || key.metaKey))) return
+      key.preventDefault()
+      void rewrite(target, row, select.value)
+    }
+    custom.addEventListener('keydown', (key) => sendOnEnter(key, true))
+    target.textarea.addEventListener('keydown', (key) => sendOnEnter(key, false))
     // what the next action rewrites: the selection, or the whole block
-    const scope = element('span', undefined, 'hc-rewrite-scope')
     const showScope = () => {
       scope.textContent = selectionOf(target.textarea) ? t.scopeSelection : t.scopeBlock
     }
     for (const type of ['select', 'keyup', 'mouseup', 'input', 'focus'])
       target.textarea.addEventListener(type, showScope)
     showScope()
-    node.append(choices, scope, custom, state)
-    target.wrapper.append(node)
+    node.append(select, custom, send, scope, state, undo)
+    ;(target.wrapper.querySelector('.hadley-editor-toolbar') ?? target.wrapper).append(node)
     rewriteRow = row
     updateSend()
   })
@@ -705,7 +800,7 @@ function startPanel() {
       case 'permission':
         if (rewritesSending && rewriteRow?.pending) {
           rewriteRow.earlyPermissions.push({ data, at })
-          rewriteRow.state.textContent = t.waitingPermission
+          setStatus(rewriteRow, 'permission', t.waitingPermission)
         }
         for (const [id, request] of messages)
           if (!request.completed) {
@@ -780,6 +875,7 @@ function startPanel() {
     const saved = JSON.parse(sessionStorage.getItem(storageKey) ?? 'null')
     if (saved && typeof saved.opened === 'boolean' && typeof saved.draft === 'string') {
       if (typeof saved.detailsShown === 'boolean') detailsShown = saved.detailsShown
+      if (directions.includes(saved.direction)) direction = saved.direction
       if (typeof saved.instruction === 'string' && saved.instruction.length <= 500) instruction = saved.instruction
       opened = saved.opened
       input.value = saved.draft

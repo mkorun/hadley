@@ -91,7 +91,6 @@ it('validates rewrite fields once for browser inputs and channel messages', () =
     { direction: 'unknown' },
     { direction: ['clearer'] },
     { draft: null },
-    { instruction: 'Do this' },
     { selection: { start: 0, end: 1 } },
     { direction: 'custom' },
     { direction: 'custom', instruction: '' },
@@ -99,6 +98,10 @@ it('validates rewrite fields once for browser inputs and channel messages', () =
   ])
     assert.throws(() => validate({ ...base, ...extra }))
   assert.equal(validate({ ...base, direction: 'custom', instruction: 'x'.repeat(500) }).action, 'rewrite-block')
+  // an instruction adds to any direction, and is checked as one of custom
+  const added = validate({ ...base, instruction: 'Keep the dry tone.' })
+  assert.equal(added.action && added.instruction, 'Keep the dry tone.')
+  for (const instruction of ['', 'x'.repeat(501), 5]) assert.throws(() => validate({ ...base, instruction }))
   const selected = { ...base, action: 'rewrite-selection', selection: { start: 4, end: 6 } }
   assert.equal(validate(selected).action, 'rewrite-selection')
   for (const selection of [

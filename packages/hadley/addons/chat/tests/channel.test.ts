@@ -554,7 +554,7 @@ it('composes rewrite notifications, acknowledges delivery, routes one suggestion
     const notification = await channel.stdout.next()
     assert.deepEqual(notification.params, {
       content:
-        'Action: rewrite-selection\nDirection: "Make it warmer."\n' +
+        'Action: rewrite-selection\nDirection: "custom"\nInstruction (JSON string): "Make it warmer."\n' +
         `Text to rewrite (JSON string): ${JSON.stringify(draft.slice(7))}\n` +
         `Editing field context (JSON string): ${JSON.stringify(draft)}`,
       meta: {

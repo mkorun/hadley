@@ -261,50 +261,123 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
     system-ui,
     sans-serif;
   color: var(--he-text);
-  background: var(--he-bg);
+}
+
+/* in the editor's toolbar, after Save and Cancel: one line, which wraps on a narrow screen */
+.hadley-editor-toolbar {
+  flex-wrap: wrap;
 }
 
 .hadley-rewrite {
   display: flex;
+  flex: 1 1 22rem;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  border-top: 1px solid var(--he-border);
+  gap: 0.375rem;
+  min-width: 0;
+  margin-left: 0.25rem;
+  padding-left: 0.625rem;
+  border-left: 1px solid var(--he-border);
 }
 
-.hadley-rewrite button,
-.hadley-rewrite input {
+.hadley-rewrite select,
+.hadley-rewrite input,
+.hadley-rewrite button {
   font: inherit;
   color: inherit;
-  background: var(--he-bg-deep);
+  background: var(--he-bg);
   border: 1px solid var(--he-border);
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 0.25rem 0.5rem;
-}
-
-.hadley-rewrite button:disabled {
-  opacity: 0.6;
+  min-height: 2rem;
 }
 
 .hadley-rewrite input {
-  flex: 1;
-  min-width: 12rem;
+  flex: 1 1 10rem;
+  min-width: 8rem;
 }
 
-.hadley-rewrite input[hidden] {
-  display: none;
+.hadley-rewrite button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
-.hc-directions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
+.hadley-rewrite .hc-send,
+.hadley-rewrite .hc-undo {
+  width: 2rem;
+  padding: 0;
 }
 
-.hc-rewrite-state,
+/* the send button wears the editor's accent: it is the one that asks Claude */
+.hadley-rewrite .hc-send {
+  color: var(--he-on-accent, #fff);
+  background: var(--he-accent, #2563eb);
+  border-color: transparent;
+}
+
+.hadley-rewrite :disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.hadley-rewrite [hidden] {
+  display: none !important;
+}
+
 .hc-rewrite-scope {
   color: var(--he-muted);
+  font-size: 0.75rem;
+  padding: 0.0625rem 0.5rem;
+  border: 1px solid var(--he-border);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.hc-rewrite-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--he-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.hc-spinner {
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+  color: var(--he-accent, #2563eb);
+}
+
+.hc-rewrite-state[data-state='done'] .hc-status-icon {
+  display: inline-flex;
+  color: var(--he-success, #16a34a);
+}
+
+.hc-rewrite-state[data-state='error'] {
+  color: var(--he-text);
+}
+
+.hc-rewrite-state[data-state='error'] .hc-status-icon {
+  display: inline-flex;
+  color: var(--he-danger, #dc2626);
+}
+
+/* the label is for a screen reader where the row shows the time or a mark; an error says what went wrong */
+.hc-rewrite-state:not([data-state='error']) .hc-status-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.hc-rewrite-state[data-state='permission'] button {
+  min-height: 1.75rem;
+  border-color: var(--he-accent, #2563eb);
 }
 
 .hadley-rewrite :focus-visible {

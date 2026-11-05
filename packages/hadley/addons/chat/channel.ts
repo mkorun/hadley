@@ -29,7 +29,8 @@ const INSTRUCTIONS =
   'Re-read a file before changing it; the author edits it in the editor at the same time. ' +
   'For an action, take no detour: read no file and use no other tool. Call suggest exactly once with message_id ' +
   'and only the replacement text: no quotes, explanation or Markdown fence around it. Keep the original language ' +
-  'and Markanto markup. With direction fix change nothing but errors. Claude proposes; only the editor writes.'
+  'and Markanto markup. With direction fix change nothing but errors. An instruction adds to the direction; with ' +
+  'direction custom it is all there is. Claude proposes; only the editor writes.'
 
 interface Connection {
   record: Rendezvous

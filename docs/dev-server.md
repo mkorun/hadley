@@ -69,9 +69,11 @@ session, the panel offers the start command below to copy.
 Each message names `root`, the absolute directory the dev server serves; `file` is relative to `root`. Claude works
 in that directory and nowhere else for that message.
 
-An open block has a button for each way to rewrite it: Clearer, Shorter, More formal, More casual and Only fix errors
-ask Claude at once for a new version of the block's text, or of the text selected in the editing field, which the row
-names (Whole block, Selection only); Own… asks for an instruction first, which Enter sends. Claude answers with a
+An open block's toolbar has, after Save (Ctrl+S) and Cancel (Esc), a way to rewrite it (Clearer, Shorter, More formal,
+More casual, Only fix errors, or Only instructions), a field for an instruction, which adds to the way and is all of
+Only instructions, and a button that asks Claude, as Ctrl+Enter in the editing field does. It rewrites the text selected
+in the editing field, or the whole block, as the toolbar says (Whole block, Selection only); while Claude works, the
+toolbar counts the seconds, and shows a check once the proposal is in, with Undo beside it. Claude answers with a
 proposal, not a change: it takes the place of the block's text or of the selection, selected, in the editing field,
 Ctrl+Z takes it back, and only saving writes it to the file, as any edit. If the text has changed while Claude was
 answering, or the block was closed, the proposal waits in the panel instead, to insert, copy or discard. Each request

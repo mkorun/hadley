@@ -378,13 +378,6 @@ body.hadley-editing .hadley-trigger {
   background: var(--he-bg);
 }
 
-.hadley-toolbar-hint {
-  margin-left: auto;
-  font-size: 0.75rem;
-  color: var(--he-muted);
-  font-family: ui-sans-serif, system-ui, sans-serif;
-}
-
 /* ─── Delete confirmation overlay ───────────────────────────────────────────── */
 
 #hadley-delete-overlay {
@@ -515,9 +508,11 @@ body.hadley-editing .hadley-trigger {
 }
 
 body.hadley-edit-mode .hadley-front-matter-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
   margin: 0 0 0.5rem;
-  padding: 0.125rem 0.5rem;
+  padding: 0.1875rem 0.625rem 0.1875rem 0.5rem;
   font:
     600 0.75rem/1.5 ui-sans-serif,
     system-ui,
@@ -525,7 +520,11 @@ body.hadley-edit-mode .hadley-front-matter-badge {
   letter-spacing: 0.02em;
   color: var(--he-text);
   background: var(--he-bg-deep);
-  border: 1px dashed var(--he-block-hover);
+  border: 0;
+  /* a ring of the other tone keeps it apart on a light and on a dark ground */
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.55),
+    0 0 0 2px rgb(0 0 0 / 0.35);
   border-radius: 999px;
   cursor: pointer;
 }

@@ -66,9 +66,10 @@ function action(record: Record<string, unknown>): Action {
   const direction = record.direction
   if (typeof direction !== 'string' || !['clearer', 'shorter', 'formal', 'casual', 'fix', 'custom'].includes(direction))
     throw new Error('direction: expected clearer, shorter, formal, casual, fix or custom')
-  const instruction = direction === 'custom' ? text(record.instruction, 'instruction') : undefined
+  // an instruction adds to a direction, and is all of custom (2026-11-05: Clearer and a word of one's own at once)
+  const instruction =
+    direction === 'custom' || record.instruction !== undefined ? text(record.instruction, 'instruction') : undefined
   if (instruction !== undefined && instruction.length > 500) throw new Error('instruction: at most 500 characters')
-  if (direction !== 'custom' && 'instruction' in record) throw new Error('instruction: only with custom direction')
   if (typeof record.draft !== 'string' || Buffer.byteLength(record.draft) > MAX_BYTES)
     throw new Error(`draft: expected text of at most ${MAX_BYTES} bytes`)
   const common = {
@@ -226,7 +227,8 @@ export function actionContent(data: Message): string {
     data.action === 'rewrite-block' ? data.draft : data.draft.slice(data.selection.start, data.selection.end)
   return [
     `Action: ${data.action}`,
-    `Direction: ${JSON.stringify(data.direction === 'custom' ? data.instruction : data.direction)}`,
+    `Direction: ${JSON.stringify(data.direction)}`,
+    ...(data.instruction === undefined ? [] : [`Instruction (JSON string): ${JSON.stringify(data.instruction)}`]),
     `Text to rewrite (JSON string): ${JSON.stringify(source)}`,
     `Editing field context (JSON string): ${JSON.stringify(data.draft)}`,
   ].join('\n')
