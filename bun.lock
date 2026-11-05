@@ -21,12 +21,12 @@
     },
     "packages/hadley": {
       "name": "@mkorun/hadley",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "bin": {
         "hadley": "./hadley.ts",
       },
       "dependencies": {
-        "@limaformat/lima": "^0.7.1",
+        "@limaformat/lima": "^0.8.0",
         "@markantolang/parser": "0.2.1",
         "@mkorun/galley": "^0.3.4",
         "@mkorun/quad": "^0.1.4",
@@ -150,7 +150,7 @@
 
     "@img/sharp-win32-x64": ["@img/sharp-win32-x64@0.35.4", "", { "os": "win32", "cpu": "x64" }, "sha512-XtmnYhBcrORsJ4XJngyzr/EWP0hRZLAZRFaApdKuviyqF78+ylxh2y06ZmtULAMOnObJ3ucpN0AcwSWnMowTRg=="],
 
-    "@limaformat/lima": ["@limaformat/lima@0.7.1", "", {}, "sha512-fvXKtNiNHPC4nXKQ0kKlFfzZ4hTq0dS0kaK8EqBAbKpTSiNz7tmTdXlk0wYVjTQxkHYNVK0nCnlxaNgX73wMvw=="],
+    "@limaformat/lima": ["@limaformat/lima@0.8.0", "", {}, "sha512-koH/O7MmH9WUeJvet+tcs6Uxw5QYlJaJfqdTogNWqNksUZcBraaqgirev6sUicnRUpjiC86eAKb5qg/O+BmY8w=="],
 
     "@markantolang/parser": ["@markantolang/parser@0.2.1", "", { "peerDependencies": { "mdast-util-from-markdown": "2.0.2", "mdast-util-gfm": "3.1.0", "micromark-extension-gfm": "3.0.0" }, "optionalPeers": ["mdast-util-from-markdown", "mdast-util-gfm", "micromark-extension-gfm"], "bin": { "markanto": "dist/cli.js" } }, "sha512-cg3wYLB5NQA4YWx9fG3Y/0gwTtI+pj8snl7cwJJo8kVXOPKUwWSdTIaFXEjaSgA+4yU0f5WMcirfSuoBXQFCvQ=="],
 

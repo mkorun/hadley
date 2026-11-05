@@ -25,7 +25,7 @@
     "node": ">=24"
   },
   "dependencies": {
-    "@limaformat/lima": "^0.7.1",
+    "@limaformat/lima": "^0.8.0",
     "@markantolang/parser": "0.2.1",
     "@mkorun/galley": "^0.3.4",
     "@mkorun/quad": "^0.1.4",
