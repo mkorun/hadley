@@ -21,6 +21,8 @@
   --rule: light-dark(#ddd6ca, #343741);
   --rule-strong: light-dark(#bfb6a7, #4a4d58);
   --accent: light-dark(#a4553b, #d58b6c);
+  /* the block editor's accent in hadley dev (docs/themes.md, "Editor") */
+  --editor-accent: var(--accent);
   --sage: light-dark(#62705c, #a3b19b);
   --shadow: light-dark(rgb(60 45 30 / 0.1), rgb(0 0 0 / 0.4));
 

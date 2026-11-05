@@ -214,6 +214,20 @@ that shows `meta.subtitle`. hems and punch mark them in every template:
 
 A theme that does not mark them shows them as before; the editor then does not offer to edit them there.
 
+The editor takes one colour from the theme, its accent, as `--editor-accent` on `:root`; without it, a neutral blue.
+Plain CSS, so it follows a theme that changes it, a colour picker as well as a dark mode:
+
+```css
+:root {
+  --editor-accent: var(--accent);
+}
+```
+
+Its own colours follow the page's `color-scheme`, light or dark. Its frames, the trigger of a block's menu and its
+badges have two tones, a dark and a light line, so they stand out from a light page, a dark one, a dark area of a light
+page and a picture alike; a browser test measures it at 3:1 at least. A theme can still set any `--he-*` colour of
+`addons/editor/assets/editor.css` on `:root`; it wins over the editor's defaults.
+
 ## Persons
 
 A person is a file in `content/meta/persons/`; a page names one as its `author` (`author: $(persons/odile)`),

@@ -1,31 +1,35 @@
-/* ─── Theme variables (dark default = teblo.de) ────────────────────────────── */
-/* @layer makes sure the site's own :root overrides always win,                 */
-/* whatever the load order.                                                     */
+/* ─── Theme variables ──────────────────────────────────────────────────────── */
+/* One editor for light and dark pages: each colour is light-dark(), after the page's color-scheme, and the accent is the
+   theme's --editor-accent, plain CSS, so it follows a theme that changes it (a colour picker). @layer: a site's own
+   :root overrides win, whatever the load order. */
 @layer hadley-editor-defaults {
   :root {
-    --he-bg: #1e293b;
-    --he-bg-deep: #0f172a;
-    --he-bg-raised: #263344;
-    --he-bg-hover: #334155;
-    --he-bg-cancel-hv: #2d3f55;
-    --he-border: #334155;
-    --he-text: #e2e8f0;
-    --he-muted: #94a3b8;
-    --he-sep: rgba(148, 163, 184, 0.2);
-    --he-accent: #2563eb;
-    --he-accent-deep: #1d4ed8;
-    --he-accent-focus: #60a5fa;
-    --he-danger: #dc2626;
-    --he-danger-deep: #b91c1c;
-    --he-overlay-bg: rgba(15, 23, 42, 0.42);
-    --he-shadow: rgba(0, 0, 0, 0.4);
-    --he-block-idle: rgba(37, 99, 235, 0.22);
-    --he-block-hover: rgba(37, 99, 235, 0.85);
-    --he-block-bg: rgba(37, 99, 235, 0.07);
-    --he-trigger-bg: rgba(37, 99, 235, 0.25);
-    --he-trigger-text: rgba(255, 255, 255, 0.93);
-    --he-danger-icon: rgba(220, 38, 38, 0.09);
-    --he-danger-hv: rgba(239, 68, 68, 0.18);
+    --he-accent: var(--editor-accent, #2563eb);
+    --he-accent-deep: color-mix(in oklab, var(--he-accent) 80%, black);
+    --he-accent-focus: color-mix(in oklab, var(--he-accent) 60%, white);
+    --he-on-accent: #fff;
+    --he-bg: light-dark(#f8f9fb, #1e293b);
+    --he-bg-deep: light-dark(#eef1f5, #0f172a);
+    --he-bg-raised: light-dark(#ffffff, #263344);
+    --he-bg-hover: light-dark(#e3e8ef, #334155);
+    --he-bg-cancel-hv: light-dark(#dde3eb, #2d3f55);
+    --he-border: light-dark(#cbd3de, #334155);
+    --he-text: light-dark(#1e293b, #e2e8f0);
+    --he-muted: light-dark(#556070, #94a3b8);
+    --he-sep: light-dark(rgb(30 41 59 / 0.15), rgb(148 163 184 / 0.2));
+    --he-danger: light-dark(#c62828, #dc2626);
+    --he-danger-deep: light-dark(#a11d1d, #b91c1c);
+    --he-success: light-dark(#15803d, #22c55e);
+    --he-overlay-bg: light-dark(rgb(248 249 251 / 0.55), rgb(15 23 42 / 0.42));
+    --he-shadow: light-dark(rgb(0 0 0 / 0.14), rgb(0 0 0 / 0.4));
+    --he-block-bg: color-mix(in srgb, var(--he-accent) 7%, transparent);
+    --he-trigger-bg: color-mix(in srgb, var(--he-accent) 85%, black);
+    --he-trigger-text: #fff;
+    --he-danger-icon: color-mix(in srgb, var(--he-danger) 10%, transparent);
+    --he-danger-hv: color-mix(in srgb, var(--he-danger) 18%, transparent);
+    /* the two tones of a frame and of a badge's ring: one of them stands out from any ground */
+    --he-tone-dark: rgb(15 23 42 / 0.7);
+    --he-tone-light: rgb(255 255 255 / 0.8);
   }
 }
 
@@ -74,37 +78,74 @@
 
 body.hadley-edit-mode #hadley-edit-toggle {
   background: var(--he-accent);
-  color: #fff;
+  color: var(--he-on-accent);
   border-color: var(--he-accent);
 }
 
 /* ─── Block affordance in edit mode ────────────────────────────────────────── */
 
-/* Transparent outline always present — only the colour transitions (no flash) */
-[data-hadley-id],
-[data-hadley-head-editable] {
-  outline: 2px dashed transparent;
-  outline-offset: 8px;
-  transition:
-    outline-color 0.25s ease,
-    background-color 0.25s ease,
-    box-shadow 0.25s ease;
-}
-
+/* The frames are drawn in their own layer (editor.js, "Frames"); a hovered or open block is tinted behind its text,
+   as far as its frame. */
 body.hadley-edit-mode [data-hadley-id],
 body.hadley-edit-mode [data-hadley-head-editable] {
-  outline-color: var(--he-block-idle);
   position: relative;
   cursor: default;
+  transition:
+    background-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 body.hadley-edit-mode [data-hadley-id]:hover,
 body.hadley-edit-mode [data-hadley-id].hadley-block-active,
 body.hadley-edit-mode [data-hadley-head-editable]:hover,
 body.hadley-edit-mode [data-hadley-head-editable].hadley-block-active {
-  outline-color: var(--he-block-hover);
   background-color: var(--he-block-bg);
   box-shadow: 0 0 0 8px var(--he-block-bg);
+}
+
+#hadley-frames {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+#hadley-frames[hidden],
+.hadley-frame[hidden] {
+  display: none;
+}
+
+/* subtle while the page is in edit mode: a dark dashed line between two light ones */
+.hadley-frame {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px dashed var(--he-tone-dark);
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 1px var(--he-tone-light),
+    inset 0 0 0 1px var(--he-tone-light);
+  opacity: 0.75;
+  transition:
+    opacity 0.2s ease,
+    border-color 0.2s ease;
+}
+
+/* strong under the pointer and while open: the accent, between a light line and a dark one */
+.hadley-frame.is-hover,
+.hadley-frame.is-active {
+  border: 2px solid var(--he-accent);
+  box-shadow:
+    inset 0 0 0 1px var(--he-tone-light),
+    0 0 0 1px var(--he-tone-light),
+    0 0 0 2px var(--he-tone-dark);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hadley-frame {
+    transition: none;
+  }
 }
 
 /* Markanto comments do not exist in the published DOM. In the editor they need
@@ -164,6 +205,10 @@ body.hadley-edit-mode [data-hadley-head-editable].hadley-block-active {
   border-radius: 4px;
   background: var(--he-trigger-bg);
   color: var(--he-trigger-text);
+  /* a ring of both tones, as the frames have */
+  box-shadow:
+    0 0 0 1px var(--he-tone-light),
+    0 0 0 2px var(--he-tone-dark);
   cursor: pointer;
   opacity: 0;
   pointer-events: none;
@@ -191,7 +236,7 @@ body.hadley-edit-mode [data-hadley-id]:hover .hadley-trigger {
 /* Hover on the trigger itself */
 .hadley-trigger:hover {
   background: var(--he-accent);
-  color: #fff;
+  color: var(--he-on-accent);
 }
 
 /* Active (menu open) — stays visible, left side square (joins the menu) */
@@ -199,7 +244,7 @@ body.hadley-edit-mode [data-hadley-id]:hover .hadley-trigger {
   opacity: 1 !important;
   pointer-events: all;
   background: var(--he-accent-deep);
-  color: #fff;
+  color: var(--he-on-accent);
   border-radius: 0 4px 4px 0;
 }
 
@@ -355,7 +400,7 @@ body.hadley-editing .hadley-trigger {
 
 .hadley-save-btn {
   background: var(--he-accent);
-  color: #fff;
+  color: var(--he-on-accent);
   border: none;
 }
 
@@ -523,8 +568,8 @@ body.hadley-edit-mode .hadley-front-matter-badge {
   border: 0;
   /* a ring of the other tone keeps it apart on a light and on a dark ground */
   box-shadow:
-    0 0 0 1px rgb(255 255 255 / 0.55),
-    0 0 0 2px rgb(0 0 0 / 0.35);
+    0 0 0 1px var(--he-tone-light),
+    0 0 0 2px var(--he-tone-dark);
   border-radius: 999px;
   cursor: pointer;
 }

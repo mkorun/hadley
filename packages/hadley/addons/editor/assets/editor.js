@@ -132,6 +132,7 @@ function setEditMode(on) {
     // Disabling browser storage must not disable either dev tool.
   }
   toggleBtn.textContent = isEditMode() ? T.editToggleOn : T.editToggleOff
+  queueFrames()
 }
 
 try {
@@ -842,9 +843,97 @@ async function attachHeadListeners() {
   }
 }
 
+// ─── Frames: what can be edited, visible on any ground ──────────────────────────
+//
+// A frame is two tones, a dark line and a light one, so one of them stands out from a light page, a dark one, a dark
+// area of a light page or a picture. It cannot be the block's own outline (one tone) or box-shadow (it fills the gap
+// to the block), nor a child of the block (a code block's overflow would clip it). So the frames have a layer of their
+// own over the page, z-index 1: under a site's fixed or sticky bars, above the text. They follow the blocks through
+// resizes, changes to the page and the move animations.
+
+const FRAMED = '[data-hadley-id], [data-hadley-head-editable]'
+const frameLayer = document.createElement('div')
+frameLayer.id = 'hadley-frames'
+frameLayer.setAttribute('aria-hidden', 'true')
+const frames = new Map()
+let framesQueued = false
+let framesMovingUntil = 0
+
+function placeFrames() {
+  framesQueued = false
+  if (!isEditMode()) {
+    frameLayer.hidden = true
+    return
+  }
+  frameLayer.hidden = false
+  const seen = new Set()
+  for (const el of document.querySelectorAll(FRAMED)) {
+    seen.add(el)
+    let frame = frames.get(el)
+    if (!frame) {
+      frame = document.createElement('div')
+      frame.className = 'hadley-frame'
+      frameLayer.append(frame)
+      frames.set(el, frame)
+      frameObserver.observe(el)
+    }
+    const r = el.getBoundingClientRect()
+    frame.hidden = r.width === 0 && r.height === 0
+    if (frame.hidden) continue
+    // 8px off the block on every side, as far as the tint of a hovered block reaches (editor.css)
+    Object.assign(frame.style, {
+      top: `${r.top + window.scrollY - 8}px`,
+      left: `${r.left + window.scrollX - 8}px`,
+      width: `${r.width + 16}px`,
+      height: `${r.height + 16}px`,
+    })
+    frame.classList.toggle('is-hover', el.matches(':hover'))
+    frame.classList.toggle('is-active', el.classList.contains('hadley-block-active'))
+  }
+  for (const [el, frame] of frames) {
+    if (seen.has(el)) continue
+    frame.remove()
+    frames.delete(el)
+    frameObserver.unobserve(el)
+  }
+  // while a block moves (the move animations), every frame, for a second at most
+  if (performance.now() < framesMovingUntil) queueFrames()
+}
+
+function queueFrames() {
+  if (framesQueued) return
+  framesQueued = true
+  requestAnimationFrame(placeFrames)
+}
+
+const frameObserver = new ResizeObserver(queueFrames)
+
+function startFrames() {
+  document.body.append(frameLayer)
+  frameObserver.observe(document.documentElement)
+  new MutationObserver((records) => {
+    if (records.some((record) => record.target !== frameLayer && !frameLayer.contains(record.target))) queueFrames()
+  }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] })
+  document.addEventListener('pointerover', queueFrames, { passive: true })
+  document.addEventListener('pointerout', queueFrames, { passive: true })
+  // a frame in a fixed or sticky area moves with the scroll
+  window.addEventListener('scroll', queueFrames, { passive: true })
+  document.addEventListener('transitionrun', (e) => {
+    if (e.propertyName !== 'transform' || !(e.target instanceof Element) || !e.target.matches(FRAMED)) return
+    framesMovingUntil = performance.now() + 1000
+    queueFrames()
+  })
+  document.addEventListener('transitionend', (e) => {
+    if (e.propertyName === 'transform' && e.target instanceof Element && e.target.matches(FRAMED)) queueFrames()
+  })
+  void document.fonts?.ready.then(queueFrames)
+  queueFrames()
+}
+
 function attachListeners() {
   attachBlockListeners()
-  void attachHeadListeners()
+  void attachHeadListeners().then(queueFrames)
+  startFrames()
 }
 
 if (document.readyState === 'loading') {

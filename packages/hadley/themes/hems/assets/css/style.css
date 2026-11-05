@@ -18,6 +18,8 @@
   --rule: light-dark(#d9d5c7, #34322b);
   --rule-strong: light-dark(#b7b2a0, #55523f);
   --red: light-dark(#a63a24, #e0705a);
+  /* the block editor's accent in hadley dev (docs/themes.md, "Editor") */
+  --editor-accent: var(--red);
 
   --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
   --mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
