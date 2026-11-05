@@ -45,6 +45,8 @@ export const TEXT = {
     larger: 'Larger: beside the page',
     smaller: 'Smaller: a card',
     newReply: 'New reply',
+    locked:
+      'This browser holds no key to the chat yet: open the link hadley dev printed in its terminal once ("Chat: open …").',
     connected: '{agent} connected',
     offline: 'No session connected',
     disconnected: 'No Claude Code session connected. Start one in the directory with your .mcp.json:',
@@ -116,6 +118,8 @@ export const TEXT = {
     larger: 'Größer: neben der Seite',
     smaller: 'Kleiner: als Karte',
     newReply: 'Neue Antwort',
+    locked:
+      'Dieser Browser hat noch keinen Schlüssel zum Chat: Öffne einmal den Link, den hadley dev im Terminal ausgibt („Chat: open …“).',
     connected: '{agent} verbunden',
     offline: 'Keine Sitzung verbunden',
     disconnected: 'Keine Claude-Code-Sitzung verbunden. Starte eine im Verzeichnis mit deiner .mcp.json:',
@@ -982,52 +986,66 @@ function startPanel() {
   setSize(size)
   setOpen(opened, opened)
   updateSend()
-  const stream = new EventSource(`/__hadley/chat/events?lang=${lang}`)
-  stream.addEventListener('history', (event) => {
-    try {
-      const entries = JSON.parse(event.data)
-      if (!Array.isArray(entries)) throw new Error('history')
-      const checked = entries.map((entry) => checkEntry(entry.event, entry.data, entry.open, entry.at))
-      list.setAttribute('aria-busy', 'true')
-      list.replaceChildren()
-      messages.clear()
-      replies.clear()
-      suggestions.clear()
-      deliveries.clear()
-      permissions.length = 0
-      // Historical statuses precede permissions that may still be open: only the following live status is current.
-      replaying = true
-      for (const entry of checked) if (entry.event !== 'status') receive(entry)
-    } catch {
-      error.textContent = t.streamFailed
-    } finally {
-      replaying = false
-      list.removeAttribute('aria-busy')
-    }
-  })
-  for (const name of ['reply', 'suggestion', 'delivered', 'permission', 'status']) {
-    stream.addEventListener(name, (event) => {
+  // the chat's routes answer the browser that holds the site's key (browser-key.ts): without it, the panel says how
+  let stream
+  function listen() {
+    stream = new EventSource(`/__hadley/chat/events?lang=${lang}`)
+    stream.addEventListener('history', (event) => {
       try {
-        receive(
-          checkEntry(
-            name,
-            JSON.parse(event.data),
-            name === 'permission' ? true : undefined,
-            event.lastEventId ? Number(event.lastEventId) : Date.now(),
-          ),
-        )
+        const entries = JSON.parse(event.data)
+        if (!Array.isArray(entries)) throw new Error('history')
+        const checked = entries.map((entry) => checkEntry(entry.event, entry.data, entry.open, entry.at))
+        list.setAttribute('aria-busy', 'true')
+        list.replaceChildren()
+        messages.clear()
+        replies.clear()
+        suggestions.clear()
+        deliveries.clear()
+        permissions.length = 0
+        // Historical statuses precede permissions that may still be open: only the following live status is current.
+        replaying = true
+        for (const entry of checked) if (entry.event !== 'status') receive(entry)
       } catch {
         error.textContent = t.streamFailed
+      } finally {
+        replaying = false
+        list.removeAttribute('aria-busy')
       }
     })
+    for (const name of ['reply', 'suggestion', 'delivered', 'permission', 'status']) {
+      stream.addEventListener(name, (event) => {
+        try {
+          receive(
+            checkEntry(
+              name,
+              JSON.parse(event.data),
+              name === 'permission' ? true : undefined,
+              event.lastEventId ? Number(event.lastEventId) : Date.now(),
+            ),
+          )
+        } catch {
+          error.textContent = t.streamFailed
+        }
+      })
+    }
+    // EventSource retries itself and receives a fresh authoritative history, including after a dev server restart.
+    stream.addEventListener('error', () => {
+      setConnected(false)
+      status.textContent = t.reconnecting
+    })
   }
-  // EventSource retries itself and receives a fresh authoritative history, including after a dev server restart.
-  stream.addEventListener('error', () => {
+  function lock() {
     setConnected(false)
-    status.textContent = t.reconnecting
-  })
+    offline.hidden = true
+    status.textContent = t.locked
+    error.textContent = t.locked
+    dot.dataset.state = 'offline'
+  }
+  fetch('/__hadley/chat/key', { cache: 'no-store' })
+    .then((response) => (response.status === 401 ? lock() : listen()))
+    .catch(() => listen())
   window.addEventListener('pagehide', () => {
-    stream.close()
+    stream?.close()
     clearInterval(counter)
   })
 }

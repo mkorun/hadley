@@ -9,6 +9,7 @@ import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import { fileURLToPath } from 'node:url'
 import { certificateFingerprint, directories, parseRendezvous } from '../rendezvous.ts'
+import { browserKey } from '../browser-key.ts'
 import { channelProcess, events, Inbox, post } from './support.ts'
 import { testCertificate } from './certificate.ts'
 
@@ -75,7 +76,15 @@ it(
         const paths = directories(dev.env)
         const record = join(paths[paths.length - 1], `${dev.port}.json`)
         assert.ok(existsSync(record))
-        assert.equal((await post(dev.origin, '/__hadley/chat', { text: 'hello', page: '/' })).status, 503)
+        // the chat's routes answer only a browser that holds the site's key
+        const key = browserKey(paths[paths.length - 1], dev.root)
+        assert.equal((await post(dev.origin, '/__hadley/chat', { text: 'hello', page: '/' })).status, 401)
+        const link = await fetch(`${dev.origin}/?hadley-key=${key.key}`, { redirect: 'manual' })
+        assert.equal(link.status, 303)
+        assert.equal(link.headers.get('location'), '/')
+        assert.equal(link.headers.get('set-cookie'), `${key.cookie}=${key.key}; Path=/; HttpOnly; SameSite=Strict`)
+        const keyed = { Origin: dev.origin, Cookie: `${key.cookie}=${key.key}` }
+        assert.equal((await post(dev.origin, '/__hadley/chat', { text: 'hello', page: '/' }, keyed)).status, 503)
         const info = parseRendezvous(JSON.parse(readFileSync(record, 'utf8')))
         assert.equal(info.origin, dev.origin)
         assert.equal(info.fingerprint, undefined)
@@ -87,7 +96,7 @@ it(
             signal: controller.signal,
           })
           assert.equal(stream.status, 200)
-          assert.equal((await post(dev.origin, '/__hadley/chat', { text: 'hello', page: '/' })).status, 200)
+          assert.equal((await post(dev.origin, '/__hadley/chat', { text: 'hello', page: '/' }, keyed)).status, 200)
         } finally {
           controller.abort()
         }
@@ -138,7 +147,8 @@ it(
       )
       assert.equal(record.origin, dev.origin)
       assert.equal(record.fingerprint, certificateFingerprint(certificate.cert))
-      browser = await events(dev.origin, '/__hadley/chat/events')
+      const key = browserKey(paths[paths.length - 1], dev.root)
+      browser = await events(dev.origin, '/__hadley/chat/events', { Cookie: `${key.cookie}=${key.key}` })
       channel = channelProcess(dev.root)
       await browser.inbox.next((entry) => entry.event === 'status' && (entry.data as { connected: boolean }).connected)
       channel.rpc('tools/call', 1, { _meta: { progressToken: 1 }, name: 'reply', arguments: { text: 'HTTPS reply' } })

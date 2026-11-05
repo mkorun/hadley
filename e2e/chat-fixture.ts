@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { init } from '../packages/hadley/lib/init.ts'
 import { events, Inbox, post } from '../packages/hadley/addons/chat/tests/support.ts'
 import { parseRendezvous } from '../packages/hadley/addons/chat/rendezvous.ts'
+import { browserKey } from '../packages/hadley/addons/chat/browser-key.ts'
 
 async function unusedPort(): Promise<number> {
   const server = createServer()
@@ -128,6 +129,8 @@ async function startSite() {
     site,
     source,
     config,
+    // the site's key to the chat, which hadley dev keeps beside its rendezvous (browser-key.ts)
+    key: () => browserKey(join(runtime, 'hadley', 'chat'), site),
     async channel() {
       const record = parseRendezvous(
         JSON.parse(await readFile(join(runtime, 'hadley', 'chat', `${port}.json`), 'utf8')),
@@ -168,6 +171,14 @@ export const test = base.extend<{ dev: Awaited<ReturnType<typeof startSite>> }>(
     } finally {
       await dev.close()
     }
+  },
+  // the browser holds the key, as after the link hadley dev prints; a test without it makes its own context
+  page: async ({ page, dev }, use) => {
+    const key = dev.key()
+    await page
+      .context()
+      .addCookies([{ name: key.cookie, value: key.key, url: dev.origin, httpOnly: true, sameSite: 'Strict' }])
+    await use(page)
   },
 })
 export { expect }

@@ -356,6 +356,13 @@ export async function startDevServer({
 
   devLog(`Ready at ${origin}`)
   for (const url of network) devLog(`        ${url}`)
+  // the chat's key goes to a terminal only, never into a log file: without one, where it is kept
+  if (chat)
+    devLog(
+      process.stdout.isTTY
+        ? `Chat: open ${chat.link} once in each browser`
+        : `Chat: the link to open once in each browser is ${origin}/?hadley-key=<the key in ${chat.keyFile}>`,
+    )
   if (wsl === 'nat')
     devWarn('WSL runs in NAT mode: other devices reach none of its addresses; see docs/dev-server.md (mirrored mode)')
   else if (wsl === 'unknown')

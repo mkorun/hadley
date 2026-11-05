@@ -63,6 +63,7 @@ export async function devServer(root: string) {
   const port = (server.address() as AddressInfo).port
   origin = `http://localhost:${port}`
   chat = chatPlugin({ root, site: 'https://site.example', port, origin })
+  browserCookie = chat.cookie
   const configure = chat.plugin.configureServer
   assert.equal(typeof configure, 'function')
   if (typeof configure !== 'function') throw new Error('expected a configureServer hook')
@@ -88,11 +89,15 @@ export async function devServer(root: string) {
   }
 }
 
+// the Cookie of a browser that holds the chat's key (browser-key.ts), as devServer's chat made it
+let browserCookie: string | undefined
+const keyed = (): Record<string, string> => (browserCookie ? { Cookie: browserCookie } : {})
+
 export async function post(
   origin: string,
   path: string,
   data: unknown,
-  headers: Record<string, string> = { Origin: origin },
+  headers: Record<string, string> = { Origin: origin, ...keyed() },
 ) {
   return await fetch(origin + path, {
     method: 'POST',
@@ -101,7 +106,7 @@ export async function post(
   })
 }
 
-export async function events(origin: string, path: string, headers: Record<string, string> = {}) {
+export async function events(origin: string, path: string, headers: Record<string, string> = keyed()) {
   const inbox = new Inbox<{ event: string; data: unknown }>()
   const secure = new URL(origin).protocol === 'https:'
   const request = (secure ? https : http).get(origin + path, {

@@ -336,7 +336,9 @@ test('HTTP: real dev serves the assets and relays block context, replies and ver
   expect(await german.text()).toContain('lang="de"')
   const block = /data-hadley-id="([^"]+)"[^>]*>First words/.exec(html)?.[1]
   expect(block).toBeTruthy()
-  const headers = { Origin: dev.origin }
+  // a request with the site's key, as the browser sends it after the link (browser-key.ts)
+  const key = dev.key()
+  const headers = { Origin: dev.origin, Cookie: `${key.cookie}=${key.key}` }
   const send = () =>
     request.post(dev.origin + '/__hadley/chat', { headers, data: { text: 'Explain', page: '/panel/', block } })
   expect((await send()).status()).toBe(503)
@@ -365,4 +367,26 @@ test('HTTP: real dev serves the assets and relays block context, replies and ver
     request_id: 'abcde',
     allow: true,
   })
+})
+
+test('a browser without the key gets no chat, and the link gives it the key', async ({ browser, dev }) => {
+  const context = await browser.newContext()
+  try {
+    const page = await context.newPage()
+    await page.goto(dev.origin + '/panel/')
+    await page.getByRole('button', { name: 'Chat', exact: true }).click()
+    await expect(page.locator('#hadley-chat .hc-error')).toContainText('open the link hadley dev printed')
+    // the request a local program could send is refused as well
+    const refused = await page.request.post(dev.origin + '/__hadley/chat', {
+      headers: { Origin: dev.origin },
+      data: { text: 'hello', page: '/panel/' },
+    })
+    expect(refused.status()).toBe(401)
+    await page.goto(`${dev.origin}/panel/?hadley-key=${dev.key().key}`)
+    expect(new URL(page.url()).search).toBe('')
+    await page.getByRole('button', { name: 'Chat', exact: true }).click()
+    await expect(page.locator('#hadley-chat .hc-error')).toBeEmpty()
+  } finally {
+    await context.close()
+  }
 })
