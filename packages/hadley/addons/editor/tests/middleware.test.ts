@@ -9,6 +9,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import {
   blockIdMap,
   handleGet,
+  blankLinesOnce,
   handlePatch,
   handleDelete,
   handleMove,
@@ -120,6 +121,28 @@ describe('Markanto editor round trip', () => {
       assert.equal(parseDocument(written, {}).parseErrors, undefined)
     })
   }
+
+  // 2026-11-05: Enter pressed to make room for a paragraph left two blank lines in the file
+  it('writes one blank line between the parts of a block and none at its start, but keeps a code fence as it is', async () => {
+    const content = 'Davor.\n\nBody.\n\nDanach.\n'
+    await writeFile(tmpFile, content, 'utf-8')
+    const [, id] = registerMarkantoBlocks(content)
+    const newText = '\n\nBody.\n\n\nA new paragraph.\n\n```\na\n\n\nb\n```\n\n\n'
+    const patchRes = mockRes()
+    await handlePatch(
+      mockReq('POST', '/__hadley/patch', JSON.stringify({ blockId: id, newText }), {
+        'content-type': 'application/json',
+      }),
+      patchRes,
+    )
+    assert.equal(patchRes.statusCode, 200)
+    assert.equal(
+      await readFile(tmpFile, 'utf8'),
+      'Davor.\n\nBody.\n\nA new paragraph.\n\n```\na\n\n\nb\n```\n\nDanach.\n',
+    )
+    assert.equal(blankLinesOnce('Eins.\n   \n\nZwei.'), 'Eins.\n   \nZwei.')
+    assert.equal(blankLinesOnce('~~~~\nx\n\n\n~~~\n\n\ny\n~~~~'), '~~~~\nx\n\n\n~~~\n\n\ny\n~~~~')
+  })
 
   // review 2026-10-24 (follow-up): with CRLF line ends, an unchanged save wrote mixed line ends
   // review 2026-10-26 (dev server): `includes('application/json')` took text/plain with a parameter, which a page of

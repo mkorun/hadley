@@ -138,6 +138,29 @@ export async function handleGet(req: IncomingMessage, res: ServerResponse): Prom
   send(res, 200, { text })
 }
 
+/**
+ * A block's text with one blank line between its parts, as Markanto writes them, and none at its start or its end:
+ * Enter pressed to make room for a paragraph left two blank lines in the file (2026-11-05). Inside a code fence every
+ * line stays as it is.
+ */
+export function blankLinesOnce(text: string): string {
+  const lines: string[] = []
+  let fence: { mark: string; length: number } | undefined
+  for (const line of text.split('\n')) {
+    const marker = /^\s*(`{3,}|~{3,})/.exec(line)?.[1]
+    if (fence) {
+      if (marker && marker[0] === fence.mark && marker.length >= fence.length && line.trim() === marker)
+        fence = undefined
+    } else {
+      if (line.trim() === '' && (lines.length === 0 || lines.at(-1)!.trim() === '')) continue
+      if (marker) fence = { mark: marker[0]!, length: marker.length }
+    }
+    lines.push(line)
+  }
+  while (!fence && lines.length > 0 && lines.at(-1)!.trim() === '') lines.pop()
+  return lines.join('\n')
+}
+
 export async function handlePatch(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const lang = getLang(req)
   // Check the Content-Type (spec 5.5)
@@ -177,7 +200,7 @@ export async function handlePatch(req: IncomingMessage, res: ServerResponse): Pr
   // file could get back: before a \n it would be one, \r\r\n in a file with CRLF
   const text = lf(newText)
   if (text.includes('\r')) return send(res, 422, { error: t(lang, 'loneCarriageReturn') })
-  const normalizedText = text.replace(/\n+$/, '')
+  const normalizedText = blankLinesOnce(text)
   const patched = content.slice(0, entry.start) + normalizedText + '\n' + content.slice(entry.end)
 
   // Parse validation: the whole patched document is checked, not the block alone (spec 5.5, ADR-4). parseDocument()
