@@ -7,6 +7,7 @@ import type { TLSSocket } from 'node:tls'
 import { trafficLog } from './traffic.ts'
 import { certificateFingerprint, readRendezvous, rendezvousDirectory, type Rendezvous } from './rendezvous.ts'
 import {
+  agent,
   MAX_BYTES,
   actionContent,
   suggestion,
@@ -285,10 +286,12 @@ export async function runChannel(
           // its title for people where it gives one (Claude Code: "Claude Code"), else its name (claude-code)
           const given = typeof info === 'object' && info !== null ? (info as { title?: unknown; name?: unknown }) : {}
           const name = typeof given.title === 'string' ? given.title : given.name
-          // a name the panel can show, else none: the dev server checks it again
-          if (typeof name === 'string' && /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/.test(name)) {
-            clientName = name
+          // a name the panel can show (protocol.ts, agent), else none; the dev server checks it again
+          try {
+            clientName = agent({ name }).name
             for (const connection of connections.values()) announce(connection)
+          } catch {
+            clientName = undefined
           }
           result = {
             protocolVersion: text(params.protocolVersion, 'protocolVersion'),

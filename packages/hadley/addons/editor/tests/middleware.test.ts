@@ -1223,6 +1223,40 @@ describe('the head of a page', () => {
     assert.equal(await readFile(tmpFile, 'utf8'), content.replace('# Titel', '# Ein neuer Titel'))
   })
 
+  it('keeps a title or subtitle the text gives as one (review 2026-11-05)', async () => {
+    const content = '---\ndescription: D\n---\n# Titel\n__Untertitel__\n\nEins.\n'
+    await writeFile(tmpFile, content, 'utf-8')
+    let heads = register(content)
+    // `__` inside closes the subtitle early: the line would be a paragraph, which could then be deleted
+    const early = mockRes()
+    await handlePatch(post('/__hadley/patch', { blockId: heads.subtitle!.id, newText: 'one__ two __three' }), early)
+    assert.equal(early.statusCode, 422)
+    // a front matter that gives a subtitle would take the place of the one in the text
+    heads = register(content)
+    const taken = mockRes()
+    await handlePatch(
+      post('/__hadley/patch', { blockId: heads.frontMatter!.id, newText: 'description: D\nsubtitle: Replacement' }),
+      taken,
+    )
+    assert.equal(taken.statusCode, 422)
+    assert.equal(await readFile(tmpFile, 'utf8'), content)
+  })
+
+  it('saves a front matter unchanged as it was, blank lines of a block scalar included (review 2026-11-05)', async () => {
+    const content = '---\nnote: |\n  one\n\n\n  two\n---\nText.\n'
+    await writeFile(tmpFile, content, 'utf-8')
+    const heads = register(content)
+    const getRes = mockRes()
+    await handleGet(mockReq('GET', `/__hadley/block/${heads.frontMatter!.id}`), getRes)
+    const patch = mockRes()
+    await handlePatch(
+      post('/__hadley/patch', { blockId: heads.frontMatter!.id, newText: JSON.parse(getRes.body).text }),
+      patch,
+    )
+    assert.equal(patch.statusCode, 200)
+    assert.equal(await readFile(tmpFile, 'utf8'), content)
+  })
+
   it('edits a title the front matter gives as the front matter, and refuses one Lima does not read', async () => {
     const content = '---\ntitle: T\nsubtitle: S\n---\nText.\n'
     await writeFile(tmpFile, content, 'utf-8')

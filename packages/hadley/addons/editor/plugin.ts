@@ -249,7 +249,9 @@ export async function handlePatch(req: IncomingMessage, res: ServerResponse): Pr
   if (entry.head && line === undefined) return send(res, 422, { error: t(lang, 'headEmpty') })
   const text = line ?? lf(newText)
   if (text.includes('\r')) return send(res, 422, { error: t(lang, 'loneCarriageReturn') })
-  const normalizedText = blankLinesOnce(text)
+  // the front matter is Lima, whose block scalars keep every blank line they hold (review 2026-11-05): only its end
+  // is trimmed; Markdown gets one blank line between its parts
+  const normalizedText = entry.fixed && !entry.head ? text.replace(/\n+$/, '') : blankLinesOnce(text)
   const patched = content.slice(0, entry.start) + normalizedText + '\n' + content.slice(entry.end)
 
   // Parse validation: the whole patched document is checked, not the block alone (spec 5.5, ADR-4). parseDocument()
@@ -285,6 +287,13 @@ export async function handlePatch(req: IncomingMessage, res: ServerResponse): Pr
   if (!integrity.ok) {
     return send(res, 422, { error: t(lang, 'editChangedOtherContent') })
   }
+
+  // A title or subtitle the text gives stays one: neither its own edit (`one__ two __three` would close `__` early)
+  // nor a front matter that gives one may turn its line into a paragraph, which could then be deleted (review
+  // 2026-11-05). The integrity check above compares Markanto's blocks before the title is taken: it cannot see this.
+  const before = parseDocument(content, {}).heads
+  for (const kind of ['title', 'subtitle'] as const)
+    if (before[kind] && !patchResult.heads[kind]) return send(res, 422, { error: t(lang, 'headLost') })
 
   try {
     await writeFile(entry.filePath, written(source, patched), 'utf-8')

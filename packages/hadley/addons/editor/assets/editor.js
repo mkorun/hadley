@@ -43,6 +43,7 @@ document.documentElement.dataset.hadleyLang = LANG
 const T = {
   de: {
     editLabel: 'Bearbeiten',
+    limaUnavailable: 'Lima ließ sich nicht laden: Keys und Fehler zeigt erst das Speichern',
     langSwitch: 'Editor auf Englisch',
     langSwitchBusy: 'Erst den offenen Block speichern oder abbrechen',
     editToggleAriaLabel: 'Edit-Modus umschalten',
@@ -79,6 +80,7 @@ const T = {
   },
   en: {
     editLabel: 'Edit',
+    limaUnavailable: 'Lima could not be loaded: keys and errors show only when saving',
     langSwitch: 'Editor in German',
     langSwitchBusy: 'Save or cancel the open block first',
     editToggleAriaLabel: 'Toggle edit mode',
@@ -1114,6 +1116,7 @@ function openEditor(blockId, blockEl, text) {
 
 let limaOutline = null
 let limaLoading = null
+let limaFailed = false
 
 function loadLima() {
   limaLoading ??= import('/__hadley/lima/index.js')
@@ -1121,7 +1124,8 @@ function loadLima() {
       limaOutline = lima.outline
     })
     .catch(() => {
-      // without Lima the lines are still striped
+      // without Lima the lines are still striped, and the table says that it checks nothing (review 2026-11-05)
+      limaFailed = true
     })
   return limaLoading
 }
@@ -1192,9 +1196,9 @@ function limaTable(textarea) {
     })
     layer.replaceChildren(...rows)
     layer.scrollTop = textarea.scrollTop
-    status.hidden = errors.length === 0
     // Lima's message names the line itself
-    status.textContent = errors[0]?.message ?? ''
+    status.textContent = errors[0]?.message ?? (limaFailed ? T.limaUnavailable : '')
+    status.hidden = !status.textContent
   }
   textarea.addEventListener('input', draw)
   textarea.addEventListener('scroll', () => {
