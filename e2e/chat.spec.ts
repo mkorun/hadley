@@ -261,6 +261,10 @@ test('uses both page languages and the editor colours, at desktop and 390px with
         const panel = page.locator('#hadley-chat')
         await expect(panel).toContainText(lang === 'de' ? 'Chat mit Claude' : 'Chat with Claude')
         await expect(panel).toContainText(lang === 'de' ? 'Claude Code verbunden' : 'Claude Code connected')
+        // measured once the panel has risen into place (chat.css, its opening)
+        await panel.evaluate((node) =>
+          Promise.all(node.getAnimations().map((animation: { finished: Promise<unknown> }) => animation.finished)),
+        )
         const rect = await panel.boundingBox()
         const bar = await page.locator('#hadley-chat-toggle').boundingBox()
         expect(rect!.y + rect!.height).toBeLessThan(bar!.y)
@@ -277,6 +281,9 @@ test('uses both page languages and the editor colours, at desktop and 390px with
         await panel
           .getByRole('button', { name: lang === 'de' ? 'Größer: neben der Seite' : 'Larger: beside the page' })
           .click()
+        await panel.evaluate((node) =>
+          Promise.all(node.getAnimations().map((animation: { finished: Promise<unknown> }) => animation.finished)),
+        )
         expect(Math.round((await panel.boundingBox())!.width)).toBe(width === 390 ? 390 : 352)
         await page.screenshot({ path: `${screenshots}/${lang}-${scheme}-${width}-large.png` })
         await panel.getByRole('button', { name: lang === 'de' ? 'Kleiner: als Karte' : 'Smaller: a card' }).click()

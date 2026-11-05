@@ -511,3 +511,23 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
   border: 1px solid var(--he-border);
   border-radius: 4px;
 }
+
+/* opening and closing (editor.css, "Motion"): from the control at the bottom right */
+#hadley-chat:not([hidden]) {
+  transform-origin: bottom right;
+  animation: hadley-rise 0.18s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+#hadley-chat.hc-closing {
+  animation: hadley-sink 0.14s ease-in forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #hadley-chat:not([hidden]) {
+    animation-name: hadley-fade;
+  }
+
+  #hadley-chat.hc-closing {
+    animation-name: hadley-fade-out;
+  }
+}

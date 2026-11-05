@@ -385,9 +385,20 @@ function startPanel() {
       // Storage can be disabled or full; the current page still works.
     }
   }
+  // closing plays its short animation first (chat.css); opening again stops it
+  let closing
   function setOpen(value, focus = true) {
     opened = value
-    panel.hidden = !value
+    clearTimeout(closing)
+    panel.classList.remove('hc-closing')
+    if (value || panel.hidden) panel.hidden = !value
+    else {
+      panel.classList.add('hc-closing')
+      closing = setTimeout(() => {
+        panel.classList.remove('hc-closing')
+        panel.hidden = true
+      }, 140)
+    }
     toggle.setAttribute('aria-expanded', String(value))
     if (value) unseen = false
     updateDot()

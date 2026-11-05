@@ -110,3 +110,23 @@ test('a frame follows its block when the page above it grows, and leaves with ed
   await page.getByRole('button', { name: 'Toggle edit mode', exact: true }).click()
   await expect(page.locator('#hadley-frames')).toBeHidden()
 })
+
+test('with reduced motion nothing that opens moves; without it, it rises into place', async ({ page, dev }) => {
+  // a theme may stop every animation under reduced motion, as hems does: then none is as good as a fade
+  for (const [motion, names] of [
+    ['reduce', ['hadley-fade', 'none']],
+    ['no-preference', ['hadley-rise']],
+  ] as const) {
+    await page.emulateMedia({ reducedMotion: motion })
+    await page.goto(dev.origin + '/panel/')
+    // the panel stays open across a reload in this tab: it opens anew each time
+    const toggle = page.getByRole('button', { name: 'Chat', exact: true })
+    if ((await toggle.getAttribute('aria-expanded')) === 'true') await toggle.click()
+    await expect(page.locator('#hadley-chat')).toBeHidden()
+    await toggle.click()
+    const panel = page.locator('#hadley-chat')
+    await expect(panel).toBeVisible()
+    const name = await panel.evaluate((node) => node.ownerDocument.defaultView!.getComputedStyle(node).animationName)
+    expect(names as readonly string[]).toContain(name)
+  }
+})
