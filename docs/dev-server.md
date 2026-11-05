@@ -45,9 +45,10 @@ dev:
 With it, every page loads the editor: a right click on a block of its Markdown edits it, and the menu beside the block
 moves, merges and deletes blocks. A right click on the page's title or subtitle, where the theme marks it (themes.md,
 "Editor"), edits its text, while its `#` or `__` stays as it is, or the front matter where that gives it; they are never
-moved, merged or deleted. Each change is saved to the page's Markdown file, and the page reloads; a file that changed
-since the page was built is not edited, the page reloads first. The editor speaks German on a German page and English on
-any other. `hadley deploy` serves no editor.
+moved, merged or deleted. In edit mode a badge above the title opens the page's front matter, which Lima must read when
+it is saved. Each change is saved to the page's Markdown file, and the page reloads; a file that changed since the page
+was built is not edited, the page reloads first. The editor speaks German on a German page and English on any other.
+`hadley deploy` serves no editor.
 
 ## Comments
 

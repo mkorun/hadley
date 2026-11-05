@@ -49,6 +49,7 @@ const T = {
     confirmDelete: 'Löschen',
     editAriaLabel: 'Block-Inhalt bearbeiten (Markdown)',
     save: 'Speichern',
+    frontMatter: 'Front Matter',
     escToCancel: 'Esc = Abbrechen',
     parseError: (msg) => `Parse-Fehler — bitte Text korrigieren:\n\n${msg}`,
     parseErrorElsewhere: (msg) =>
@@ -82,6 +83,7 @@ const T = {
     confirmDelete: 'Delete',
     editAriaLabel: 'Edit block content (Markdown)',
     save: 'Save',
+    frontMatter: 'Front matter',
     escToCancel: 'Esc = Cancel',
     parseError: (msg) => `Parse error — please fix the text:\n\n${msg}`,
     parseErrorElsewhere: (msg) =>
@@ -791,6 +793,20 @@ async function attachHeadListeners() {
       e.stopPropagation()
       void handleEditClick(head.id, el)
     })
+  }
+  // the front matter, from a badge right above the title, shown in edit mode only
+  const title = document.querySelector('[data-hadley-head="title"]')
+  if (heads?.frontMatter && typeof heads.frontMatter.id === 'string' && title) {
+    const badge = document.createElement('button')
+    badge.type = 'button'
+    badge.className = 'hadley-front-matter-badge'
+    badge.textContent = T.frontMatter
+    badge.dataset.hadleyFrontMatter = ''
+    badge.addEventListener('click', () => {
+      if (!isEditMode() || activeBlockId || mutationLocked) return
+      void handleEditClick(heads.frontMatter.id, badge)
+    })
+    title.before(badge)
   }
 }
 

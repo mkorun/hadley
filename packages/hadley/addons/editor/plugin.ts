@@ -43,6 +43,8 @@ export interface PageHeads {
   // from: whether the text gives it (its line of Markdown) or the front matter
   title?: { id: string; from: 'text' | 'front matter' }
   subtitle?: { id: string; from: 'text' | 'front matter' }
+  // the block that edits the page's front matter, where it has one
+  frontMatter?: { id: string }
 }
 export const pageHeads = new Map<string, PageHeads>()
 
@@ -497,6 +499,7 @@ export function blockEditorPlugin(): Plugin {
             send(res, 200, {
               ...(heads?.title ? { title: heads.title } : {}),
               ...(heads?.subtitle ? { subtitle: heads.subtitle } : {}),
+              ...(heads?.frontMatter ? { frontMatter: heads.frontMatter } : {}),
             }),
           )
         } else if (method === 'GET' && url.startsWith('/__hadley/block/')) {

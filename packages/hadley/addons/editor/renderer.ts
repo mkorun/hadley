@@ -63,6 +63,7 @@ export function registerPageBlocks(
       filePath,
       ...(titleId ? { title: { id: titleId, from: title ? 'text' : 'front matter' } } : {}),
       ...(subtitleId ? { subtitle: { id: subtitleId, from: subtitle ? 'text' : 'front matter' } } : {}),
+      ...(frontMatterId ? { frontMatter: { id: frontMatterId } } : {}),
     })
   }
 

@@ -1178,6 +1178,9 @@ describe('the head of a page', () => {
     const heads = register(content)
     assert.equal(heads.title?.from, 'text')
     assert.equal(heads.subtitle?.from, 'text')
+    const frontMatter = mockRes()
+    await handleGet(mockReq('GET', `/__hadley/block/${heads.frontMatter!.id}`), frontMatter)
+    assert.equal(JSON.parse(frontMatter.body).text, 'description: D')
     const getRes = mockRes()
     await handleGet(mockReq('GET', `/__hadley/block/${heads.subtitle!.id}`), getRes)
     // a title or subtitle is edited as its text, its syntax stays the editor's

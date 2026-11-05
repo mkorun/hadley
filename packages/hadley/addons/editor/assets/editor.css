@@ -508,3 +508,34 @@ body.hadley-editing .hadley-trigger {
   outline: 2px solid var(--he-danger);
   outline-offset: 2px;
 }
+
+/* The front matter's badge above the title: shown in edit mode only */
+.hadley-front-matter-badge {
+  display: none;
+}
+
+body.hadley-edit-mode .hadley-front-matter-badge {
+  display: inline-block;
+  margin: 0 0 0.5rem;
+  padding: 0.125rem 0.5rem;
+  font:
+    600 0.75rem/1.5 ui-sans-serif,
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.02em;
+  color: var(--he-text);
+  background: var(--he-bg-deep);
+  border: 1px dashed var(--he-block-hover);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+body.hadley-edit-mode .hadley-front-matter-badge:hover,
+body.hadley-edit-mode .hadley-front-matter-badge.hadley-block-active {
+  background: var(--he-block-bg);
+}
+
+.hadley-front-matter-badge:focus-visible {
+  outline: 2px solid var(--he-accent-focus);
+  outline-offset: 2px;
+}
