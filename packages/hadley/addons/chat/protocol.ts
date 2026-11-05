@@ -220,6 +220,16 @@ export function delivered(value: unknown): { id: string } {
   return { id: matching(record.id, 'id', ID) }
 }
 
+// the name an MCP client gives itself in initialize's clientInfo, such as Claude Code: letters, digits, . _ -
+// and spaces
+const AGENT = /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/
+
+/** The agent the channel serves, by the name its client gave in MCP initialize. */
+export function agent(value: unknown): { name: string } {
+  const record = object(value, ['name'])
+  return { name: matching(record.name, 'name', AGENT) }
+}
+
 /** JSON strings delimit untrusted text even when it contains instruction-like delimiters. */
 export function actionContent(data: Message): string {
   if (!data.action) return data.text

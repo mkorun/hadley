@@ -220,6 +220,23 @@ it('accepts delivery and one proposal only for an action from this dev server', 
     assert.equal((await post(dev.origin, '/__hadley/channel', delivery, headers)).status, 200)
     assert.deepEqual(await browser.inbox.next((entry) => entry.event === 'delivered'), delivery)
     assert.equal((await post(dev.origin, '/__hadley/channel', delivery, headers)).status, 409)
+    // the agent's name, as the channel's client gave it, reaches the browsers; a name that is no name does not
+    const named = { event: 'agent', data: { name: 'Claude Code' } }
+    assert.equal((await post(dev.origin, '/__hadley/channel', named, headers)).status, 200)
+    assert.deepEqual(
+      await browser.inbox.next(
+        (entry) => entry.event === 'status' && (entry.data as { agent?: string }).agent !== undefined,
+      ),
+      {
+        event: 'status',
+        data: { connected: true, agent: 'Claude Code' },
+      },
+    )
+    for (const name of ['', '<b>x</b>', 'x'.repeat(65)])
+      assert.equal(
+        (await post(dev.origin, '/__hadley/channel', { event: 'agent', data: { name } }, headers)).status,
+        400,
+      )
     const proposal = { event: 'suggestion', data: { id: newId(), to: id, text: 'Short.' } }
     assert.equal((await post(dev.origin, '/__hadley/channel', proposal, headers)).status, 200)
     assert.deepEqual(await browser.inbox.next((entry) => entry.event === 'suggestion'), proposal)

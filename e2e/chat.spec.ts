@@ -11,8 +11,9 @@ test('opens, closes, preserves the draft and stays usable without a session or s
 }) => {
   await page.goto(dev.origin + '/panel/')
   const toggle = page.getByRole('button', { name: 'Chat', exact: true })
-  const panel = page.getByRole('region', { name: 'Chat with Claude' })
-  const input = page.getByRole('textbox', { name: 'Message to Claude' })
+  // no session has named itself yet: the panel speaks of the AI
+  const panel = page.getByRole('region', { name: 'Chat with AI', exact: true })
+  const input = page.getByRole('textbox', { name: 'Message to AI', exact: true })
   await expect(panel).toBeHidden()
   await toggle.click()
   await expect(input).toBeFocused()

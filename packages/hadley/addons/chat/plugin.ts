@@ -7,6 +7,7 @@ import { blockIdMap, readBody } from '../editor/plugin.ts'
 import { lf, slashed } from '../../lib/platform.ts'
 import { certificateFingerprint, createRendezvous, rendezvousDirectory } from './rendezvous.ts'
 import {
+  agent,
   chatInput,
   delivered,
   suggestion,
@@ -29,7 +30,7 @@ type Entry = (
   | { event: 'reply' | 'suggestion'; data: Reply }
   | { event: 'delivered'; data: { id: string } }
   | { event: 'permission'; data: Permission }
-  | { event: 'status'; data: { connected: boolean } }
+  | { event: 'status'; data: { connected: boolean; agent?: string } }
 ) & { at?: number }
 
 function send(res: ServerResponse, status: number, data: unknown): void {
@@ -63,6 +64,8 @@ export function chatPlugin(options: {
   const dir = rendezvousDirectory()
   let rendezvous: ReturnType<typeof createRendezvous> | undefined
   let channel: ServerResponse | undefined
+  // the name the channel's client gave itself (MCP initialize), shown in the panel
+  let agentName: string | undefined
   const browsers = new Set<ServerResponse>()
   const history: Entry[] = []
   const open = new Set<string>()
@@ -83,6 +86,7 @@ export function chatPlugin(options: {
 
   function disconnect(): void {
     channel = undefined
+    agentName = undefined
     open.clear()
     broadcast({ event: 'status', data: { connected: false } })
   }
@@ -103,6 +107,7 @@ export function chatPlugin(options: {
       const previous = channel
       stream(res)
       channel = res
+      agentName = undefined
       if (previous) open.clear()
       previous?.end()
       res.once('close', () => {
@@ -120,7 +125,7 @@ export function chatPlugin(options: {
           entry.event === 'permission' ? { ...entry, open: open.has(entry.data.request_id) } : entry,
         ),
       )
-      emit(res, 'status', { connected: channel !== undefined }, Date.now())
+      emit(res, 'status', { connected: channel !== undefined, ...(agentName ? { agent: agentName } : {}) }, Date.now())
       browsers.add(res)
       res.once('close', () => browsers.delete(res))
       return
@@ -184,7 +189,10 @@ export function chatPlugin(options: {
         broadcast({ event: 'permission', data })
       } else if (typeof body === 'object' && body !== null && 'event' in body) {
         const envelope = object(body, ['event', 'data'])
-        if (envelope.event === 'delivered') {
+        if (envelope.event === 'agent') {
+          agentName = agent(envelope.data).name
+          broadcast({ event: 'status', data: { connected: true, agent: agentName } })
+        } else if (envelope.event === 'delivered') {
           const data = delivered(envelope.data)
           if (!['message', 'action'].includes(ids.get(data.id) ?? '') || handed.has(data.id))
             return send(res, 409, { error: 'chat: delivered names an unknown or delivered message' })

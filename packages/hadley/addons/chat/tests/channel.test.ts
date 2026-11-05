@@ -570,8 +570,13 @@ it('composes rewrite notifications, acknowledges delivery, routes one suggestion
       },
     })
     assert.deepEqual(await server.deliveries.next(), { event: 'delivered', data: { id: data.id } })
-    channel.rpc('initialize', 1, { protocolVersion: '2025-06-18' })
+    channel.rpc('initialize', 1, {
+      protocolVersion: '2025-06-18',
+      clientInfo: { name: 'claude-code', title: 'Claude Code', version: '2.1.317' },
+    })
     const instructions = ((await channel.stdout.next()).result as { instructions: string }).instructions
+    // the client's title goes to the dev server, which names the agent in its panel
+    assert.deepEqual(await server.posts.next(), { event: 'agent', data: { name: 'Claude Code' } })
     for (const part of ['read no file', 'no other tool', 'exactly once', 'only the replacement', 'Markanto', 'fix'])
       assert.ok(instructions.includes(part))
     channel.rpc('tools/call', 2, { name: 'reply', arguments: { message_id: data.id, text: 'No' } })

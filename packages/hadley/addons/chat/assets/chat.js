@@ -16,7 +16,7 @@ export const TEXT = {
     fix: 'Only fix errors',
     custom: 'Only instructions',
     direction: 'Way to rewrite',
-    instruction: 'Instruction for Claude (at most 500 characters)',
+    instruction: 'Instruction for {agent} (at most 500 characters)',
     instructionOptional: 'Anything else? (optional)',
     permissionNeeded: 'Approval needed',
     undo: 'Undo',
@@ -39,25 +39,27 @@ export const TEXT = {
     discard: 'Discard',
     noField: 'Open a block first.',
     instructionInvalid: 'Enter an instruction of at most 500 characters.',
-    title: 'Chat with Claude',
+    title: 'Chat with {agent}',
     toggle: 'Chat',
     close: 'Close chat',
     larger: 'Larger: beside the page',
     smaller: 'Smaller: a card',
     newReply: 'New reply',
-    connected: 'Claude Code connected',
+    connected: '{agent} connected',
     offline: 'No session connected',
     disconnected: 'No Claude Code session connected. Start one in the directory with your .mcp.json:',
     reconnecting: 'Reconnecting to the dev server…',
     copy: 'Copy start command',
     copied: 'Command copied',
     copyFailed: 'Could not copy. Select and copy the command above.',
-    input: 'Message to Claude',
+    input: 'Message to {agent}',
     send: 'Send',
     sending: 'Sending…',
     hint: 'Enter sends · Shift+Enter adds a line',
     you: 'You',
-    claude: 'Claude',
+    claude: '{agent}',
+    // until a session says its name
+    agent: 'AI',
     permission: 'Tool permission',
     newest: 'Newest open request',
     preview: 'Show preview',
@@ -85,7 +87,7 @@ export const TEXT = {
     fix: 'Nur Fehler korrigieren',
     custom: 'Nur Anweisungen',
     direction: 'Art des Umschreibens',
-    instruction: 'Anweisung für Claude (höchstens 500 Zeichen)',
+    instruction: 'Anweisung für {agent} (höchstens 500 Zeichen)',
     instructionOptional: 'Noch etwas? (optional)',
     permissionNeeded: 'Freigabe nötig',
     undo: 'Rückgängig',
@@ -108,25 +110,26 @@ export const TEXT = {
     discard: 'Verwerfen',
     noField: 'Bitte zuerst einen Block öffnen.',
     instructionInvalid: 'Bitte eine Anweisung mit höchstens 500 Zeichen eingeben.',
-    title: 'Chat mit Claude',
+    title: 'Chat mit {agent}',
     toggle: 'Chat',
     close: 'Chat schließen',
     larger: 'Größer: neben der Seite',
     smaller: 'Kleiner: als Karte',
     newReply: 'Neue Antwort',
-    connected: 'Claude Code verbunden',
+    connected: '{agent} verbunden',
     offline: 'Keine Sitzung verbunden',
     disconnected: 'Keine Claude-Code-Sitzung verbunden. Starte eine im Verzeichnis mit deiner .mcp.json:',
     reconnecting: 'Verbindung zum Entwicklungsserver wird wiederhergestellt…',
     copy: 'Startbefehl kopieren',
     copied: 'Befehl kopiert',
     copyFailed: 'Kopieren fehlgeschlagen. Bitte den Befehl oben auswählen und kopieren.',
-    input: 'Nachricht an Claude',
+    input: 'Nachricht an {agent}',
     send: 'Senden',
     sending: 'Wird gesendet…',
     hint: 'Enter sendet · Umschalt+Enter fügt eine Zeile ein',
     you: 'Du',
-    claude: 'Claude',
+    claude: '{agent}',
+    agent: 'KI',
     permission: 'Werkzeugfreigabe',
     newest: 'Neueste offene Anfrage',
     preview: 'Vorschau anzeigen',
@@ -235,7 +238,12 @@ function checkEntry(event, data, open, at = Date.now()) {
   }[event]
   if (!fields || fields.some((key) => typeof data[key] !== 'string')) throw new Error('chat event fields')
   if (event === 'reply' && data.to !== undefined && typeof data.to !== 'string') throw new Error('reply to')
-  if (event === 'status' && typeof data.connected !== 'boolean') throw new Error('status')
+  if (
+    event === 'status' &&
+    (typeof data.connected !== 'boolean' ||
+      (data.agent !== undefined && (typeof data.agent !== 'string' || data.agent.length > 64)))
+  )
+    throw new Error('status')
   if (event === 'permission' && typeof open !== 'boolean') throw new Error('permission open')
   if (!Number.isSafeInteger(at) || at < 0) throw new Error('chat event time')
   return { event, data, open, at }
@@ -257,6 +265,9 @@ function startPanel() {
   const localActions = new Map()
   const suggestions = new Map()
   let opened = false
+  // the name the connected session gives itself (the channel's MCP client, through the dev server); the texts carry it
+  let agentName = t.agent
+  const say = (key) => t[key].replaceAll('{agent}', agentName)
   // compact: a card above the control; large: a panel beside the page
   let size = 'compact'
   let unseen = false
@@ -293,7 +304,7 @@ function startPanel() {
   panel.id = 'hadley-chat'
   panel.setAttribute('aria-labelledby', 'hadley-chat-title')
   const header = element('header')
-  const title = element('h2', t.title)
+  const title = element('h2')
   title.id = 'hadley-chat-title'
   const resize = button('', () => setSize(size === 'compact' ? 'large' : 'compact'))
   resize.className = 'hc-resize'
@@ -331,13 +342,11 @@ function startPanel() {
   list.setAttribute('aria-live', 'polite')
   list.setAttribute('aria-relevant', 'additions text')
   const form = element('form')
-  const label = element('label', t.input)
+  const label = element('label')
   label.htmlFor = 'hadley-chat-input'
   const input = element('textarea')
   input.id = 'hadley-chat-input'
   // the compact card hides the label; the field keeps its name and says it in place
-  input.setAttribute('aria-label', t.input)
-  input.placeholder = t.input
   input.rows = 3
   const hint = element('p', t.hint, 'hc-hint')
   hint.id = 'hadley-chat-hint'
@@ -402,7 +411,7 @@ function startPanel() {
           ? 'connected'
           : 'offline'
     dot.dataset.state = state
-    const said = { permission: t.waitingPermission, new: t.newReply, connected: t.connected, offline: t.offline }
+    const said = { permission: t.waitingPermission, new: t.newReply, connected: say('connected'), offline: t.offline }
     toggle.title = `${t.toggle} · ${said[state]}`
   }
   function updateSend() {
@@ -413,9 +422,23 @@ function startPanel() {
       for (const control of card.controls) control.disabled = !connected || card.pending
     }
   }
+  /** Names the agent wherever the panel and the rewrite row say it. */
+  function setAgent(name) {
+    agentName = name ?? t.agent
+    title.textContent = say('title')
+    label.textContent = say('input')
+    input.setAttribute('aria-label', say('input'))
+    input.placeholder = say('input')
+    if (rewriteRow) {
+      rewriteRow.custom.setAttribute('aria-label', say('instruction'))
+      rewriteRow.placeholder()
+    }
+    if (connected) status.textContent = say('connected')
+    updateDot()
+  }
   function setConnected(value) {
     connected = value
-    status.textContent = value ? t.connected : t.offline
+    status.textContent = value ? say('connected') : t.offline
     offline.hidden = value
     updateSend()
     updateDot()
@@ -534,7 +557,7 @@ function startPanel() {
     if (replies.has(data.id)) return
     if (data.to) complete(data.to, 'reply', data, t.answer, at)
     const node = element('article', undefined, 'hc-reply')
-    node.append(element('p', t.claude, 'hc-byline'))
+    node.append(element('p', say('claude'), 'hc-byline'))
     renderReply(node, data.text)
     replies.set(data.id, { to: data.to, node, data, at })
     const parent = messages.get(data.to)?.children ?? list
@@ -780,9 +803,9 @@ function startPanel() {
     custom.type = 'text'
     custom.maxLength = 500
     custom.value = instruction
-    custom.setAttribute('aria-label', t.instruction)
+    custom.setAttribute('aria-label', say('instruction'))
     const placeholder = () => {
-      custom.placeholder = select.value === 'custom' ? t.instruction : t.instructionOptional
+      custom.placeholder = select.value === 'custom' ? say('instruction') : t.instructionOptional
     }
     placeholder()
     const send = button('', () => void rewrite(target, row, select.value))
@@ -803,7 +826,7 @@ function startPanel() {
     undo.setAttribute('aria-label', t.undo)
     undo.title = `${t.undo} (${t.undoShortcut})`
     undo.hidden = true
-    const row = { node, state, custom, undo, pending: false, controls: [select, custom, send] }
+    const row = { node, state, custom, undo, placeholder, pending: false, controls: [select, custom, send] }
     select.addEventListener('change', () => {
       direction = select.value
       placeholder()
@@ -880,6 +903,7 @@ function startPanel() {
         break
       case 'status':
         setConnected(data.connected)
+        setAgent(data.connected ? data.agent : undefined)
         if (!connected) for (const card of permissions) if (card.open) finish(card, t.answered)
         break
     }
@@ -953,6 +977,7 @@ function startPanel() {
     // An unreadable saved draft must not disable the current panel.
   }
   detailsSwitch.checked = detailsShown
+  setAgent(undefined)
   setSize(size)
   setOpen(opened, opened)
   updateSend()

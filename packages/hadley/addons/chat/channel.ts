@@ -158,6 +158,7 @@ export async function runChannel(
       connection.response = response
       connection.connected = true
       connection.failures = 0
+      announce(connection)
       response.setEncoding('utf8')
       const parse = sseParser((event, data) => receive(connection, event, data))
       response.on('data', (chunk: string) => {
@@ -220,6 +221,13 @@ export async function runChannel(
     }
   }
 
+  // the name the client gave itself in initialize, which the dev server shows in its panel
+  let clientName: string | undefined
+  function announce(connection: Connection): void {
+    if (clientName && connection.connected)
+      void post(connection, { event: 'agent', data: { name: clientName } }).catch(diagnostic)
+  }
+
   async function post(connection: Connection, data: object): Promise<void> {
     if (!connection.connected) throw new Error(`port ${connection.record.port}: channel is disconnected`)
     log.write('to-server', data, connection.record.origin)
@@ -273,6 +281,15 @@ export async function runChannel(
       let result: object
       switch (rpc.method) {
         case 'initialize': {
+          const info = params.clientInfo
+          // its title for people where it gives one (Claude Code: "Claude Code"), else its name (claude-code)
+          const given = typeof info === 'object' && info !== null ? (info as { title?: unknown; name?: unknown }) : {}
+          const name = typeof given.title === 'string' ? given.title : given.name
+          // a name the panel can show, else none: the dev server checks it again
+          if (typeof name === 'string' && /^[A-Za-z0-9][A-Za-z0-9 ._-]{0,63}$/.test(name)) {
+            clientName = name
+            for (const connection of connections.values()) announce(connection)
+          }
           result = {
             protocolVersion: text(params.protocolVersion, 'protocolVersion'),
             capabilities: { experimental: { 'claude/channel': {}, 'claude/channel/permission': {} }, tools: {} },

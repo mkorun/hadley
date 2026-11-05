@@ -135,6 +135,8 @@ async function startSite() {
       const headers = { 'X-Hadley-Token': record.token }
       const stream = await events(record.origin, '/__hadley/channel/events', headers)
       channels.push(stream)
+      // as hadley channel does once Claude Code's initialize names it
+      await post(record.origin, '/__hadley/channel', { event: 'agent', data: { name: 'Claude Code' } }, headers)
       return {
         ...stream,
         send: (data: unknown) => post(record.origin, '/__hadley/channel', data, headers),

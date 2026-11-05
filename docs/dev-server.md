@@ -66,12 +66,13 @@ dev:
 halves: Edit turns edit mode on and off, the chat's half opens the panel, and its dot says the state: green connected,
 the accent a reply not seen yet, amber a permission to give, hollow no session. The panel opens as a card above the
 control, with the talk, the permissions and the field; its larger button makes it a panel beside the page, with the
-details of each request, and on a phone the whole screen. A message names the page it was sent from. Claude's answers
-and its requests to use a tool appear in the panel; Allow and Deny answer a request as the terminal would. Escape or the
-chat's half closes the panel. Its open state, its size and the unsent draft survive a page reload in this tab; what was
-said stays while the dev server runs. Without a connected session, the panel offers the start command below to copy.
-Each message names `root`, the absolute directory the dev server serves; `file` is relative to `root`. Claude works
-in that directory and nowhere else for that message.
+details of each request, and on a phone the whole screen. The panel names the agent as its session names itself when it
+connects (MCP's `clientInfo`: Claude Code), and the AI until one does. A message names the page it was sent from.
+Claude's answers and its requests to use a tool appear in the panel; Allow and Deny answer a request as the terminal
+would. Escape or the chat's half closes the panel. Its open state, its size and the unsent draft survive a page reload
+in this tab; what was said stays while the dev server runs. Without a connected session, the panel offers the start
+command below to copy. Each message names `root`, the absolute directory the dev server serves; `file` is relative to
+`root`. Claude works in that directory and nowhere else for that message.
 
 An open block's toolbar has, after Save (Ctrl+S) and Cancel (Esc), a way to rewrite it (Clearer, Shorter, More formal,
 More casual, Only fix errors, or Only instructions), a field for an instruction, which adds to the way and is all of
