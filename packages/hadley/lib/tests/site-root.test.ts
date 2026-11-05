@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { rootOption, siteLabel, siteRoot } from '../site-root.ts'
+import { rootOption, siteHost, siteLabel, siteRoot } from '../site-root.ts'
 
 // Which site a command works on (README, "Dev-Server starten"): --root, else HADLEY_ROOT, else the nearest directory
 // upwards with a config.lima.
@@ -57,5 +57,18 @@ describe('siteLabel', () => {
     assert.equal(siteLabel('/s', { site: { origin: 'https://teblo.de' } }), 'teblo.de (/s)')
     assert.equal(siteLabel('/s', { site: { origin: 'no url' } }), '/s')
     assert.equal(siteLabel('/s', null), '/s')
+  })
+})
+
+// 2026-11-05: a build's header said hadley — publish, and not which site, when several were deployed in a row
+describe('siteHost', () => {
+  it('is the host of the origin config.lima names, for the header of a build', async () => {
+    writeFileSync(join(dir, 'site', 'config.lima'), 'site:\n  origin: https://mko.run\n')
+    assert.equal(await siteHost(join(dir, 'site')), 'mko.run')
+  })
+
+  it('is none without an origin, or without a config.lima that reads', async () => {
+    assert.equal(await siteHost(join(dir, 'site')), undefined)
+    assert.equal(await siteHost(join(dir, 'other')), undefined)
   })
 })

@@ -170,9 +170,14 @@ export function failureText(error: unknown, siteDir?: string): string {
 }
 
 export const logger = {
-  header(mode: 'dev' | 'publish') {
+  /** `hadley — publish`, and the site's host in blue beside it, or below it where the terminal is too narrow. */
+  header(mode: 'dev' | 'publish', site?: string) {
     buildStart = performance.now()
-    const title = `  ${c.bold}hadley${c.reset} ${c.muted}—${c.reset} ${c.bold}${mode}${c.reset}`
+    let title = `  ${c.bold}hadley${c.reset} ${c.muted}—${c.reset} ${c.bold}${mode}${c.reset}`
+    if (site) {
+      const beside = `  hadley — ${mode}  ${site}`.length < columns()
+      title += `${beside ? '  ' : '\n  '}${c.detail}${site}${c.reset}`
+    }
     process.stdout.write(`\n${sep()}\n${title}\n${sep()}\n`)
   },
 

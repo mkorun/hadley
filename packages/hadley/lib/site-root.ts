@@ -3,7 +3,9 @@
  * HADLEY_ROOT names, else the nearest directory, from the current one upwards, that holds a config.lima. A directory
  * named that holds none, or none found, stops with where hadley looked.
  */
-import { dirname, resolve } from 'node:path'
+import { readFile } from 'node:fs/promises'
+import { dirname, join, resolve } from 'node:path'
+import { parse as limaparse } from '@limaformat/lima'
 import { existsExactly } from './platform.ts'
 
 /** The directory `--root <dir>` names, if it is given, and the arguments without it. */
@@ -46,6 +48,22 @@ export function siteRoot(
 
 /** The site in messages: the host of the origin its config.lima gives, and its directory (or the directory alone). */
 export function siteLabel(root: string, config: { site?: { origin?: unknown } } | null): string {
+  const host = originHost(config)
+  return host ? `${host} (${root})` : root
+}
+
+// the host of a site's origin, such as `mko.run`; none where config.lima names no origin
+const originHost = (config: { site?: { origin?: unknown } } | null): string | undefined => {
   const origin = config?.site?.origin
-  return typeof origin === 'string' && URL.canParse(origin) ? `${new URL(origin).host} (${root})` : root
+  return typeof origin === 'string' && URL.canParse(origin) ? new URL(origin).host : undefined
+}
+
+/** The host of the site's origin, for the header of a build; none where config.lima has none or does not read. */
+export async function siteHost(root: string): Promise<string | undefined> {
+  try {
+    return originHost(limaparse(await readFile(join(root, 'config.lima'), 'utf-8')) as { site?: { origin?: unknown } })
+  } catch {
+    // a config.lima that does not read stops the build a step later, with its message
+    return undefined
+  }
 }

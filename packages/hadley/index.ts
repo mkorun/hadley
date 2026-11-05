@@ -32,7 +32,7 @@ import { robotsTxt } from './lib/robots.ts'
 import { linksJson, metaJson, siteJson, sitelinksJson } from './lib/site-data.ts'
 import { runPagefind } from './lib/search.ts'
 import { highlightingThemes, underMaintenance } from './lib/site-config.ts'
-import { siteRoot } from './lib/site-root.ts'
+import { siteHost, siteRoot } from './lib/site-root.ts'
 import { sitemapXml } from './lib/sitemap.ts'
 import { assetsFor, planTheme, published, writeTheme } from './lib/theme-files.ts'
 import { writePages } from './lib/write-pages.ts'
@@ -49,7 +49,7 @@ export async function build(
   const outputDir = `.hadley/${outputMode}`
   const outDir = joinPath(siteDir, outputDir)
 
-  logger.header(outputMode)
+  logger.header(outputMode, await siteHost(siteDir))
 
   if (isPublish) {
     await rm(outDir, { recursive: true, force: true })
