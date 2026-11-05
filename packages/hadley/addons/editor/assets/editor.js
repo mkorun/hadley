@@ -1009,7 +1009,8 @@ function openEditor(blockId, blockEl, text) {
   saveBtn.title = T.saveShortcut
 
   editorToolbar.append(saveBtn, cancelBtn)
-  wrapper.append(textarea, editorToolbar)
+  const frontMatter = blockEl.dataset.hadleyFrontMatter !== undefined
+  wrapper.append(frontMatter ? limaTable(textarea) : textarea, editorToolbar)
   blockEl.insertAdjacentElement('afterend', wrapper)
 
   activeWrapper = wrapper
@@ -1028,7 +1029,7 @@ function openEditor(blockId, blockEl, text) {
       detail: {
         block: blockId,
         // the front matter is Lima, which the chat does not rewrite
-        frontMatter: blockEl.dataset.hadleyFrontMatter !== undefined,
+        frontMatter,
         textarea,
         wrapper,
         insert(start, end, replacement) {
@@ -1045,6 +1046,94 @@ function openEditor(blockId, blockEl, text) {
       },
     }),
   )
+}
+
+// ─── The front matter as a table ────────────────────────────────────────────────
+//
+// The front matter is Lima: its lines are striped, its keys stand out and its comments step back, each where Lima's
+// outline() finds it (@limaformat/lima, served by the dev server), so that `Autor:in: x` has the key `Autor:in` and a
+// line of a `|` scalar has none. A layer under the textarea draws it; the textarea, its text transparent, keeps the
+// caret, the selection, undo and everything else a textarea does. A line Lima refuses is marked as it is typed, its
+// message below.
+
+let limaOutline = null
+let limaLoading = null
+
+function loadLima() {
+  limaLoading ??= import('/__hadley/lima/index.js')
+    .then((lima) => {
+      limaOutline = lima.outline
+    })
+    .catch(() => {
+      // without Lima the lines are still striped
+    })
+  return limaLoading
+}
+
+function limaTable(textarea) {
+  const table = document.createElement('div')
+  table.className = 'hadley-fm'
+  const layer = document.createElement('div')
+  layer.className = 'hadley-fm-layer'
+  layer.setAttribute('aria-hidden', 'true')
+  const status = document.createElement('p')
+  status.className = 'hadley-fm-status'
+  status.setAttribute('role', 'status')
+  status.hidden = true
+  const box = document.createElement('div')
+  box.className = 'hadley-fm-box'
+  textarea.setAttribute('spellcheck', 'false')
+  box.append(layer, textarea)
+  table.append(box, status)
+
+  const draw = () => {
+    const text = textarea.value
+    const marks = new Map() // line → [{ from, to, kind }], columns from 0
+    const mark = (span, kind) => {
+      const { line, column } = span.start
+      // a span ends on its own line: keys and comments never run over one
+      const to = span.end.line === line ? span.end.column - 1 : Infinity
+      if (!marks.has(line)) marks.set(line, [])
+      marks.get(line).push({ from: column - 1, to, kind })
+    }
+    let errors = []
+    if (limaOutline) {
+      const result = limaOutline(text)
+      for (const key of result.keys) mark(key.span, 'key')
+      for (const comment of result.comments) mark(comment, 'comment')
+      errors = result.diagnostics
+    }
+    const errorLines = new Set(errors.map((d) => d.line))
+    const rows = text.split('\n').map((line, index) => {
+      const row = document.createElement('div')
+      row.className = 'hadley-fm-line'
+      if (errorLines.has(index + 1)) row.classList.add('is-error')
+      let at = 0
+      for (const { from, to, kind } of (marks.get(index + 1) ?? []).sort((a, b) => a.from - b.from)) {
+        if (from < at) continue
+        if (from > at) row.append(line.slice(at, from))
+        const part = document.createElement('span')
+        part.className = `hadley-fm-${kind}`
+        part.textContent = line.slice(from, Math.min(to, line.length))
+        row.append(part)
+        at = Math.min(to, line.length)
+      }
+      if (at < line.length) row.append(line.slice(at))
+      return row
+    })
+    layer.replaceChildren(...rows)
+    layer.scrollTop = textarea.scrollTop
+    status.hidden = errors.length === 0
+    // Lima's message names the line itself
+    status.textContent = errors[0]?.message ?? ''
+  }
+  textarea.addEventListener('input', draw)
+  textarea.addEventListener('scroll', () => {
+    layer.scrollTop = textarea.scrollTop
+  })
+  draw()
+  void loadLima().then(draw)
+  return table
 }
 
 function resizeTextarea(ta) {

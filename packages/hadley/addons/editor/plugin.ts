@@ -2,13 +2,16 @@ import type { Plugin } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { readFile, writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseDocument, checkOnlyEditedBlockChanged } from '../../case/index.ts'
 import { lf } from '../../lib/platform.ts'
 import { resolveLang, t, type Lang } from './i18n.ts'
 
 const assetsDir = join(fileURLToPath(new URL('.', import.meta.url)), 'assets')
+// Lima's own reader, for the browser: the editor shows the front matter's keys where outline() finds them
+const limaDir = dirname(fileURLToPath(import.meta.resolve('@limaformat/lima')))
+const LIMA_MODULE = /^\/__hadley\/lima\/([a-z0-9-]+\.js)$/
 
 export interface BlockMapEntry {
   filePath: string
@@ -142,6 +145,19 @@ async function serveAsset(res: ServerResponse, filename: string, contentType: st
     const content = await readFile(join(assetsDir, filename), 'utf-8')
     res.statusCode = 200
     res.setHeader('Content-Type', contentType)
+    res.setHeader('Cache-Control', 'no-store')
+    res.end(content)
+  } catch {
+    send(res, 404, { error: `${t(lang, 'assetNotFound')}: ${filename}` })
+  }
+}
+
+/** A module of @limaformat/lima's dist, by its plain name only: no path, no other file. */
+async function serveLima(res: ServerResponse, filename: string, lang: Lang): Promise<void> {
+  try {
+    const content = await readFile(join(limaDir, filename), 'utf-8')
+    res.statusCode = 200
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8')
     res.setHeader('Cache-Control', 'no-store')
     res.end(content)
   } catch {
@@ -495,6 +511,8 @@ export function blockEditorPlugin(): Plugin {
           handler = serveAsset(res, 'editor.js', 'application/javascript; charset=utf-8', lang)
         } else if (method === 'GET' && url === '/__hadley/editor.css') {
           handler = serveAsset(res, 'editor.css', 'text/css; charset=utf-8', lang)
+        } else if (method === 'GET' && LIMA_MODULE.test(url)) {
+          handler = serveLima(res, LIMA_MODULE.exec(url)?.[1] ?? '', lang)
         } else if (method === 'GET' && url.split('?')[0] === '/__hadley/heads') {
           // the blocks that edit the page's title and subtitle, which the editor opens where the theme marks them
           const path = new URL(url, 'http://localhost').searchParams.get('path') ?? ''
