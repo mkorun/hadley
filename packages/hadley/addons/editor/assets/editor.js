@@ -1085,6 +1085,19 @@ function limaTable(textarea) {
   textarea.setAttribute('spellcheck', 'false')
   box.append(layer, textarea)
   table.append(box, status)
+  // keys in bold only where the font gives bold letters the same width, else the caret would stand beside its letter
+  const probe = (weight) => {
+    const span = document.createElement('span')
+    span.textContent = 'abcdefghijklmnopqrstuvwxyz_:ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    span.style.fontWeight = weight
+    layer.append(span)
+    const width = span.getBoundingClientRect().width
+    span.remove()
+    return width
+  }
+  requestAnimationFrame(() => {
+    if (Math.abs(probe('700') - probe('400')) < 0.5) table.dataset.boldKeys = ''
+  })
 
   const draw = () => {
     const text = textarea.value

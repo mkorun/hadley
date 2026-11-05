@@ -33,6 +33,7 @@
     /* the front matter as a table: every other line, and its keys */
     --he-stripe: color-mix(in srgb, var(--he-text) 6%, transparent);
     --he-key: light-dark(var(--he-accent), var(--he-accent-focus));
+    --he-key-bg: color-mix(in srgb, var(--he-accent) 12%, transparent);
   }
 }
 
@@ -468,9 +469,16 @@ body.hadley-editing .hadley-trigger {
   box-shadow: inset 3px 0 0 var(--he-danger);
 }
 
-/* colour only: a heavier weight could change the width of a glyph, and the caret would stand beside its letter */
+/* a key: its colour on a tint, which changes no width; bold where the font keeps its letters as wide (editor.js) */
 .hadley-fm-key {
   color: var(--he-key);
+  background: var(--he-key-bg);
+  box-shadow: 0 0 0 2px var(--he-key-bg);
+  border-radius: 2px;
+}
+
+.hadley-fm[data-bold-keys] .hadley-fm-key {
+  font-weight: 700;
 }
 
 .hadley-fm-comment {
