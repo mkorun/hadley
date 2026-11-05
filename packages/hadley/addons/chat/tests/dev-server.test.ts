@@ -109,8 +109,12 @@ it(
         }
         dev.child.kill(signal)
         const [code] = await dev.exited
-        assert.equal(existsSync(record), false)
-        assert.ok(code === 0 || code === 128 + (signal === 'SIGINT' ? 2 : 15), dev.errors())
+        // Windows ends the process at once on kill(), before it can clean up; a record left behind names a dead
+        // process, which readers skip (rendezvous.ts, alive)
+        if (process.platform !== 'win32') {
+          assert.equal(existsSync(record), false)
+          assert.ok(code === 0 || code === 128 + (signal === 'SIGINT' ? 2 : 15), dev.errors())
+        }
       } finally {
         await dev.close()
       }

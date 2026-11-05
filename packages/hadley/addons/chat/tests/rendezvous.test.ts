@@ -121,9 +121,12 @@ it('chooses the platform runtime paths and refuses relative environment paths', 
   ])
   assert.throws(() => directories({}, 'win32'), /LOCALAPPDATA/)
   assert.throws(() => directories({ XDG_RUNTIME_DIR: 'relative' }, 'linux'), /XDG_RUNTIME_DIR/)
-  const paths = directories({}, 'linux')
-  assert.equal(paths[1], join(paths[0], 'chat'))
-  assert.match(paths[0], /hadley-/)
+  // the paths of a POSIX system name its user id, which a Windows host has none of
+  if (process.getuid) {
+    const paths = directories({}, 'linux')
+    assert.equal(paths[1], join(paths[0], 'chat'))
+    assert.match(paths[0], /hadley-/)
+  }
 })
 
 it('validates the explicit local origin and requires a SHA-256 pin only for HTTPS', () => {

@@ -5,12 +5,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { browserKey, isKey } from '../browser-key.ts'
 
+// Windows keeps no mode bits (Node reports 0o666), and a link needs rights there: the user's own directory keeps the
+// key file private (lib/platform.ts)
+const windows = process.platform === 'win32'
+
 it("keeps a site's key private and the same across restarts, one for each site", () => {
   const dir = mkdtempSync(join(tmpdir(), 'hadley-key-'))
   try {
     const first = browserKey(dir, '/sites/a')
     assert.match(first.key, /^[0-9a-f]{64}$/)
-    assert.equal(statSync(first.file).mode & 0o777, 0o600)
+    if (!windows) assert.equal(statSync(first.file).mode & 0o777, 0o600)
     assert.deepEqual(browserKey(dir, '/sites/a'), first)
     const other = browserKey(dir, '/sites/b')
     assert.notEqual(other.key, first.key)
@@ -24,10 +28,13 @@ it("keeps a site's key private and the same across restarts, one for each site",
   }
 })
 
-it('compares a key whole, and replaces a key file that is a link or that others may read', () => {
+it('compares a key whole', () => {
   const key = 'a'.repeat(64)
   assert.ok(isKey(key, key))
   for (const value of [undefined, '', 'a'.repeat(63), 'b'.repeat(64), `${key}a`]) assert.ok(!isKey(value, key))
+})
+
+it('replaces a key file that is a link or that others may read', { skip: windows && 'no mode bits on Windows' }, () => {
   const dir = mkdtempSync(join(tmpdir(), 'hadley-key-'))
   try {
     const first = browserKey(dir, '/sites/a')
