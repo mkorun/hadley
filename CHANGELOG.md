@@ -14,6 +14,42 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
   may hold, so that the theme can colour it; a `.narrow.svg` beside it is the drawing for a narrow screen, and a click
   enlarges it on a wide one (docs/content.md, "Drawings"). hems and punch colour a drawing by class, in both schemes,
   and label its button in all their languages.
+- Notes: a short, dated page of its own under `notes/`, built like any page; templates list them as `noteList`, and
+  `link` is a field of every page (docs/content.md, "Notes").
+- og images: `ogPosition` in a page's front matter says where its og image cuts the picture, and `og:image: false`
+  makes one without a picture, its title on `--og-background`.
+- og images: `--og-tilt` turns the claim of `og-default.jpg`; a theme can give a cover style a colour matrix,
+  `--cover-<style>`, which its templates read as `coverMatrix` and the og image uses as well (docs/themes.md,
+  "Covers"); a site without a logo has its title in them.
+- Templates read the AI tool a cover's metadata names as `coverAiTool`, and every page the listed articles as
+  `articleList`.
+- The dev server shows the Markdown twin of a page that is not published yet, such as a draft.
+
+### Changed
+
+- Search: an index for each language, with its word forms, now that Pagefind keeps umlauts; Pagefind 1.6.0. hems and
+  punch leave out results that do not fit the words asked for.
+- The output of the CLI: calmer colours, one mark for each step (◉ done, ○ running, ✕ failed, ! warnings), and a
+  narrow layout that fits a phone.
+- og images: an opaque picture fills the image, and a transparent one lies whole on `--og-background`.
+  `og-default.jpg` is set straight and without a line under its claim: `--og-accent` is no longer required, and draws
+  that line where a theme sets it. A long claim is broken into two lines.
+- JSON-LD: an article names its author, else the site's owner, and its image the creator its metadata names.
+- hems and punch: [@mrCabez](https://github.com/mrCabez) reviewed the Italian texts as a native speaker
+  ([#6](https://github.com/mkorun/hadley/pull/6)), and what the review found in the header and the starter is fixed in
+  every language. The label of an AI-generated cover is one text, `image.aiCover`, in place of `image.coverLabel` and
+  `image.aiGenerated` side by side; a site's own copy of a theme is not changed.
+- hems and punch say "Built with hadley" in every language. `hadley init` writes the year it runs in as `site.since`,
+  and a span of copyright years takes an en dash.
+
+### Fixed
+
+- Texts of an image's metadata showed a character reference as written, such as `&#39;` for an apostrophe.
+
+### Known limits
+
+- The hang at the start of Vite in `hadley dev` was seen once on macOS (Intel) in the CI too, not only on Linux. Its
+  cause is still not known: start it again.
 
 ## [0.1.0] — 2026-11-01
 

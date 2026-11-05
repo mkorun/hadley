@@ -13,7 +13,9 @@ HTML it writes. [Vite](https://vite.dev), [sharp](https://sharp.pixelplumbing.co
 - **Front matter in the author's language:** a field may have other names in `config.lima`, in any language and
   gendered — `titel:`, `größe:`, `題名:`, `autor:in:`, `autor*in:` — so every author of a site writes the keys they would
   write.
-- **Images** in the widths and formats the theme asks for, with AI-generated pictures labelled from their metadata.
+- **Images** in the widths and formats the theme asks for, with AI-generated pictures labelled from their metadata;
+  **drawings** written into the page, which the theme colours.
+- **Notes** beside articles and essays: short, dated pages of their own.
 - **Two themes** to start from, which become the site's own: hems, for writing, and punch, for a personal site.
 - **A dev server** with live reload and an editor for the page in the browser; **search**, a **feed**, a **sitemap**,
   **og images** and **comments** (a small service of its own) when the site wants them.
