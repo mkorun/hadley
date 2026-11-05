@@ -142,6 +142,8 @@ for (const lang of ['en', 'de']) {
     await expect(field).toHaveValue(action.draft)
     const panel = page.locator('#hadley-chat')
     if (!(await panel.isVisible())) await page.getByRole('button', { name: 'Chat', exact: true }).click()
+    // the details belong to the large panel
+    await panel.getByRole('button', { name: /^(Larger|Größer)/ }).click()
     await panel.getByRole('checkbox', { name: 'Details', exact: true }).check()
     const timeline = panel.locator('.hc-timeline').first()
     await expect(timeline).toBeVisible()

@@ -42,6 +42,9 @@ export const TEXT = {
     title: 'Chat with Claude',
     toggle: 'Chat',
     close: 'Close chat',
+    larger: 'Larger: beside the page',
+    smaller: 'Smaller: a card',
+    newReply: 'New reply',
     connected: 'Claude Code connected',
     offline: 'No session connected',
     disconnected: 'No Claude Code session connected. Start one in the directory with your .mcp.json:',
@@ -108,6 +111,9 @@ export const TEXT = {
     title: 'Chat mit Claude',
     toggle: 'Chat',
     close: 'Chat schließen',
+    larger: 'Größer: neben der Seite',
+    smaller: 'Kleiner: als Karte',
+    newReply: 'Neue Antwort',
     connected: 'Claude Code verbunden',
     offline: 'Keine Sitzung verbunden',
     disconnected: 'Keine Claude-Code-Sitzung verbunden. Starte eine im Verzeichnis mit deiner .mcp.json:',
@@ -251,6 +257,9 @@ function startPanel() {
   const localActions = new Map()
   const suggestions = new Map()
   let opened = false
+  // compact: a card above the control; large: a panel beside the page
+  let size = 'compact'
+  let unseen = false
   let connected = false
   let sending = false
   let sequence = 0
@@ -271,19 +280,30 @@ function startPanel() {
     node.addEventListener('click', action)
     return node
   }
-  const toggle = button(t.toggle, () => setOpen(!opened))
+  // the chat's half of the editor's control (editor.js, "Dev bar"): a bubble and a dot that tells its state
+  const toggle = button('', () => setOpen(!opened))
   toggle.id = 'hadley-chat-toggle'
   toggle.setAttribute('aria-controls', 'hadley-chat')
+  toggle.setAttribute('aria-label', t.toggle)
+  toggle.innerHTML =
+    '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4.5h10v6H7l-3 2.5v-2.5H3z"/></svg>'
+  const dot = element('span', undefined, 'hc-dot')
+  toggle.append(dot)
   const panel = element('section')
   panel.id = 'hadley-chat'
   panel.setAttribute('aria-labelledby', 'hadley-chat-title')
   const header = element('header')
   const title = element('h2', t.title)
   title.id = 'hadley-chat-title'
-  header.append(
-    title,
-    button(t.close, () => setOpen(false)),
-  )
+  const resize = button('', () => setSize(size === 'compact' ? 'large' : 'compact'))
+  resize.className = 'hc-resize'
+  const close = button('', () => setOpen(false))
+  close.className = 'hc-close'
+  close.setAttribute('aria-label', t.close)
+  close.title = t.close
+  close.innerHTML =
+    '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>'
+  header.append(title, resize, close)
   const detailsSwitch = element('input')
   detailsSwitch.type = 'checkbox'
   const detailsLabel = element('label', t.details, 'hc-details-switch')
@@ -315,6 +335,9 @@ function startPanel() {
   label.htmlFor = 'hadley-chat-input'
   const input = element('textarea')
   input.id = 'hadley-chat-input'
+  // the compact card hides the label; the field keeps its name and says it in place
+  input.setAttribute('aria-label', t.input)
+  input.placeholder = t.input
   input.rows = 3
   const hint = element('p', t.hint, 'hc-hint')
   hint.id = 'hadley-chat-hint'
@@ -327,7 +350,7 @@ function startPanel() {
   panel.append(header, detailsLabel, status, offline, list, form)
   // Sharing the editor's bar keeps all its fixed controls clear of the chat button.
   const devBar = document.querySelector('#hadley-dev-bar')
-  devBar.prepend(toggle)
+  ;(devBar.querySelector('.hadley-pill') ?? devBar).append(toggle)
   devBar.prepend(panel)
 
   async function copyCommand() {
@@ -342,7 +365,7 @@ function startPanel() {
     try {
       sessionStorage.setItem(
         storageKey,
-        JSON.stringify({ opened, draft: input.value, detailsShown, direction, instruction }),
+        JSON.stringify({ opened, size, draft: input.value, detailsShown, direction, instruction }),
       )
     } catch {
       // Storage can be disabled or full; the current page still works.
@@ -352,8 +375,35 @@ function startPanel() {
     opened = value
     panel.hidden = !value
     toggle.setAttribute('aria-expanded', String(value))
+    if (value) unseen = false
+    updateDot()
     save()
     if (focus) (value ? input : toggle).focus()
+  }
+  function setSize(value) {
+    size = value
+    panel.dataset.size = value
+    const label = value === 'compact' ? t.larger : t.smaller
+    resize.setAttribute('aria-label', label)
+    resize.title = label
+    resize.innerHTML =
+      value === 'compact'
+        ? '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 3H13v3.5M6.5 13H3V9.5M13 3l-4 4M3 13l4-4"/></svg>'
+        : '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 6.5H9.5V3M3 9.5h3.5V13M9.5 6.5 13 3M6.5 9.5 3 13"/></svg>'
+    save()
+  }
+  /** The dot on the control: a permission to give, a reply not seen yet, connected, or none (no dot). */
+  function updateDot() {
+    const state = permissions.some((card) => card.open)
+      ? 'permission'
+      : unseen
+        ? 'new'
+        : connected
+          ? 'connected'
+          : 'offline'
+    dot.dataset.state = state
+    const said = { permission: t.waitingPermission, new: t.newReply, connected: t.connected, offline: t.offline }
+    toggle.title = `${t.toggle} · ${said[state]}`
   }
   function updateSend() {
     send.disabled = !connected || sending || !input.value.trim()
@@ -368,6 +418,7 @@ function startPanel() {
     status.textContent = value ? t.connected : t.offline
     offline.hidden = value
     updateSend()
+    updateDot()
   }
   function newest() {
     const last = permissions.findLast((card) => card.open)
@@ -382,6 +433,7 @@ function startPanel() {
     card.controls = []
     card.result.textContent = text
     answers.set(card.id, text)
+    updateDot()
     if (!permissions.some((entry) => entry.open)) {
       for (const request of messages.values()) {
         request.permission = false
@@ -442,6 +494,7 @@ function startPanel() {
     } else result.textContent = answers.get(card.id) ?? t.answered
     node.append(result)
     permissions.push(card)
+    updateDot()
     list.append(node)
     newest()
     updateSend()
@@ -486,6 +539,10 @@ function startPanel() {
     replies.set(data.id, { to: data.to, node, data, at })
     const parent = messages.get(data.to)?.children ?? list
     parent.append(node)
+    if (!opened) {
+      unseen = true
+      updateDot()
+    }
   }
   function record(id, event, data, label, at = Date.now()) {
     const request = messages.get(id)
@@ -889,12 +946,14 @@ function startPanel() {
       if (directions.includes(saved.direction)) direction = saved.direction
       if (typeof saved.instruction === 'string' && saved.instruction.length <= 500) instruction = saved.instruction
       opened = saved.opened
+      if (saved.size === 'large') size = 'large'
       input.value = saved.draft
     }
   } catch {
     // An unreadable saved draft must not disable the current panel.
   }
   detailsSwitch.checked = detailsShown
+  setSize(size)
   setOpen(opened, opened)
   updateSend()
   const stream = new EventSource(`/__hadley/chat/events?lang=${lang}`)

@@ -1,6 +1,5 @@
 /* The editor owns --he-* defaults; site overrides colour both tools. No animation or inline styles. */
-#hadley-chat,
-#hadley-chat-toggle {
+#hadley-chat {
   box-sizing: border-box;
   font:
     0.875rem/1.5 ui-sans-serif,
@@ -12,17 +11,44 @@
   border-radius: 6px;
 }
 
-#hadley-chat-toggle {
-  padding: 0.4rem 0.9rem;
-  cursor: pointer;
-}
-
+/* the chat's half of the editor's control (.hadley-pill in editor.css) */
 #hadley-chat-toggle[aria-expanded='true'] {
-  border-color: var(--he-accent-focus);
+  background: var(--he-bg-deep);
 }
 
+/* the dot: a permission to give, a reply not seen yet, connected; hollow while no session is connected */
+.hc-dot {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.35rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--he-bg);
+}
+
+.hc-dot[data-state='connected'] {
+  background: var(--he-success, #16a34a);
+}
+
+.hc-dot[data-state='new'] {
+  background: var(--he-accent, #2563eb);
+}
+
+.hc-dot[data-state='permission'] {
+  background: var(--he-warn, #d97706);
+}
+
+.hc-dot[data-state='offline'] {
+  background: var(--he-bg);
+  box-shadow:
+    inset 0 0 0 1.5px var(--he-muted),
+    0 0 0 2px var(--he-bg);
+}
+
+/* large: a panel beside the page, as high as it; compact: a card above the control */
 #hadley-chat {
-  height: calc(100dvh - 2.5rem);
+  height: calc(100dvh - 5.5rem);
   min-height: 0;
   width: 22rem;
   max-width: calc(100vw - 2.5rem);
@@ -32,13 +58,23 @@
   isolation: isolate;
 }
 
+#hadley-chat[data-size='compact'] {
+  height: auto;
+  max-height: min(30rem, calc(100dvh - 6rem));
+  width: 20rem;
+}
+
+#hadley-chat[data-size='compact'] .hc-messages {
+  min-height: 0;
+}
+
 /* The fixed editor bar reserves its controls' actual height; the panel takes the remaining space above them. */
-#hadley-dev-bar:has(#hadley-chat) {
+#hadley-dev-bar:has(#hadley-chat:not([hidden])) {
   justify-content: flex-end;
   max-height: calc(100dvh - 2.5rem);
 }
 
-#hadley-dev-bar:has(#hadley-chat) > * {
+#hadley-dev-bar:has(#hadley-chat:not([hidden])) > * {
   flex-shrink: 0;
 }
 
@@ -54,6 +90,49 @@
 
 #hadley-chat * {
   box-sizing: border-box;
+}
+
+#hadley-chat header .hc-resize,
+#hadley-chat header .hc-close {
+  display: inline-flex;
+  padding: 0.3rem;
+  color: var(--he-muted);
+  background: transparent;
+  border-color: transparent;
+}
+
+#hadley-chat header .hc-resize {
+  margin-left: auto;
+}
+
+#hadley-chat header .hc-resize + .hc-close {
+  margin-left: 0.25rem;
+}
+
+/* compact: the card keeps the talk, the permissions and the field; the dot on the control says the state, and the
+   details wait for the large panel */
+#hadley-chat[data-size='compact'] .hc-details-switch,
+#hadley-chat[data-size='compact'] .hc-status,
+#hadley-chat[data-size='compact'] form label,
+#hadley-chat[data-size='compact'] .hc-hint {
+  display: none;
+}
+
+#hadley-chat[data-size='compact'] form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+#hadley-chat[data-size='compact'] textarea {
+  flex: 1;
+  width: auto;
+  min-height: 2.5rem;
+}
+
+#hadley-chat[data-size='compact'] .hc-error {
+  flex-basis: 100%;
 }
 
 #hadley-chat header {
@@ -102,8 +181,7 @@
   margin-left: 0.5rem;
 }
 
-#hadley-chat button:hover,
-#hadley-chat-toggle:hover {
+#hadley-chat button:hover {
   background: var(--he-bg-hover);
 }
 
@@ -112,8 +190,7 @@
   cursor: default;
 }
 
-#hadley-chat :focus-visible,
-#hadley-chat-toggle:focus-visible {
+#hadley-chat :focus-visible {
   outline: 2px solid var(--he-accent-focus);
   outline-offset: 2px;
 }
@@ -229,21 +306,32 @@
   display: none;
 }
 
+/* on a phone: compact, a sheet across the width above the control; large, the whole screen */
 @media (max-width: 480px) {
-  #hadley-dev-bar:has(#hadley-chat) {
-    top: 0;
-    right: 0;
+  #hadley-dev-bar:has(#hadley-chat:not([hidden])) {
     left: 0;
-    max-height: none;
+    right: 0;
   }
 
-  #hadley-dev-bar:has(#hadley-chat) > :not(#hadley-chat) {
+  #hadley-dev-bar:has(#hadley-chat:not([hidden])) > :not(#hadley-chat) {
     margin-right: 1.25rem;
   }
 
-  #hadley-chat {
+  #hadley-chat,
+  #hadley-chat[data-size='compact'] {
     width: 100%;
     max-width: 100%;
+    border-radius: 12px 12px 0 0;
+  }
+
+  #hadley-dev-bar:has(#hadley-chat[data-size='large']:not([hidden])) {
+    top: 0;
+    max-height: none;
+  }
+
+  #hadley-chat[data-size='large'] {
+    height: auto;
+    flex: 1;
     border-radius: 0;
   }
 }

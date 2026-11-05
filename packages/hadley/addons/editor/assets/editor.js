@@ -22,8 +22,7 @@ const LANG = document.documentElement.lang === 'de' ? 'de' : 'en'
 
 const T = {
   de: {
-    editToggleOn: 'Edit ✓',
-    editToggleOff: 'Edit',
+    editLabel: 'Bearbeiten',
     editToggleAriaLabel: 'Edit-Modus umschalten',
     blockActionsLabel: 'Block-Aktionen',
     reloading: 'Wird neu geladen…',
@@ -57,8 +56,7 @@ const T = {
       `Es gibt außerdem einen vorbestehenden Fehler an anderer Stelle im Dokument (nicht in diesem Text):\n\n${msg}`,
   },
   en: {
-    editToggleOn: 'Edit ✓',
-    editToggleOff: 'Edit',
+    editLabel: 'Edit',
     editToggleAriaLabel: 'Toggle edit mode',
     blockActionsLabel: 'Block actions',
     reloading: 'Reloading…',
@@ -131,7 +129,7 @@ function setEditMode(on) {
   } catch {
     // Disabling browser storage must not disable either dev tool.
   }
-  toggleBtn.textContent = isEditMode() ? T.editToggleOn : T.editToggleOff
+  drawToggle()
   queueFrames()
 }
 
@@ -143,16 +141,29 @@ try {
 
 const toggleBtn = document.createElement('button')
 toggleBtn.id = 'hadley-edit-toggle'
-toggleBtn.textContent = isEditMode() ? 'Edit ✓' : 'Edit'
+toggleBtn.type = 'button'
+toggleBtn.textContent = T.editLabel
 toggleBtn.setAttribute('aria-label', T.editToggleAriaLabel)
+toggleBtn.setAttribute('aria-pressed', String(isEditMode()))
 toggleBtn.addEventListener('click', () => setEditMode(!isEditMode()))
 
-// ─── Dev bar: dev-overlay + edit toggle together, bottom right ──────────────
+/** The toggle: a pencil and its label, in the accent while edit mode is on (aria-pressed). */
+function drawToggle() {
+  toggleBtn.innerHTML = _ic.pencil
+  toggleBtn.append(Object.assign(document.createElement('span'), { textContent: T.editLabel }))
+  toggleBtn.setAttribute('aria-pressed', String(isEditMode()))
+}
+
+// ─── Dev bar: dev-overlay and one control, bottom right ─────────────────────
+// The control is a pill: edit mode at its left; the chat add-on puts its own half at its right (addons/chat).
 const devBar = document.createElement('div')
 devBar.id = 'hadley-dev-bar'
 const devOverlay = document.querySelector('.dev-overlay')
 if (devOverlay) devBar.appendChild(devOverlay)
-devBar.appendChild(toggleBtn)
+const pill = document.createElement('div')
+pill.className = 'hadley-pill'
+pill.appendChild(toggleBtn)
+devBar.appendChild(pill)
 document.body.appendChild(devBar)
 
 // ─── Mutation lock (ADR-14) ──────────────────────────────────────────────────
@@ -931,6 +942,7 @@ function startFrames() {
 }
 
 function attachListeners() {
+  drawToggle()
   attachBlockListeners()
   void attachHeadListeners().then(queueFrames)
   startFrames()

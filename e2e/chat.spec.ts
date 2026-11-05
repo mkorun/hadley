@@ -260,15 +260,22 @@ test('uses both page languages and the editor colours, at desktop and 390px with
         const rect = await panel.boundingBox()
         const bar = await page.locator('#hadley-chat-toggle').boundingBox()
         expect(rect!.y + rect!.height).toBeLessThan(bar!.y)
-        expect(Math.round(rect!.width)).toBe(width === 390 ? 390 : 352)
+        // compact, a card above the control; on a phone, a sheet across the width
+        expect(Math.round(rect!.width)).toBe(width === 390 ? 390 : 320)
         const colours = await panel.evaluate((node) => ({
           bg: node.ownerDocument.defaultView!.getComputedStyle(node).backgroundColor,
-          editor: node.ownerDocument.defaultView!.getComputedStyle(
-            node.ownerDocument.querySelector('#hadley-edit-toggle')!,
-          ).backgroundColor,
+          editor: node.ownerDocument.defaultView!.getComputedStyle(node.ownerDocument.querySelector('.hadley-pill')!)
+            .backgroundColor,
         }))
         expect(colours.bg).toBe(colours.editor)
         await page.screenshot({ path: `${screenshots}/${lang}-${scheme}-${width}.png` })
+        // large, a panel beside the page, and back
+        await panel
+          .getByRole('button', { name: lang === 'de' ? 'Größer: neben der Seite' : 'Larger: beside the page' })
+          .click()
+        expect(Math.round((await panel.boundingBox())!.width)).toBe(width === 390 ? 390 : 352)
+        await page.screenshot({ path: `${screenshots}/${lang}-${scheme}-${width}-large.png` })
+        await panel.getByRole('button', { name: lang === 'de' ? 'Kleiner: als Karte' : 'Smaller: a card' }).click()
       }
     }
   }
