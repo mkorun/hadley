@@ -1176,12 +1176,12 @@ describe('the head of a page', () => {
     const content = '---\ndescription: D\n---\n# Titel\n__Untertitel__\n\nEins.\n\nZwei.\n'
     await writeFile(tmpFile, content, 'utf-8')
     const heads = register(content)
-    assert.equal(heads.title?.text, 'Titel')
     assert.equal(heads.title?.from, 'text')
     assert.equal(heads.subtitle?.from, 'text')
     const getRes = mockRes()
     await handleGet(mockReq('GET', `/__hadley/block/${heads.subtitle!.id}`), getRes)
-    assert.equal(JSON.parse(getRes.body).text, '__Untertitel__')
+    // a title or subtitle is edited as its text, its syntax stays the editor's
+    assert.equal(JSON.parse(getRes.body).text, 'Untertitel')
     for (const [handler, url, body] of [
       [handleDelete, '/__hadley/delete', { blockId: heads.title!.id }],
       [handleMove, '/__hadley/move', { blockId: heads.title!.id, direction: 'down' }],
@@ -1196,8 +1196,11 @@ describe('the head of a page', () => {
     const up = mockRes()
     await handleMove(post('/__hadley/move', { blockId: first![0], direction: 'up' }), up)
     assert.equal(up.statusCode, 400)
+    const empty = mockRes()
+    await handlePatch(post('/__hadley/patch', { blockId: heads.title!.id, newText: ' \n ' }), empty)
+    assert.equal(empty.statusCode, 422)
     const patch = mockRes()
-    await handlePatch(post('/__hadley/patch', { blockId: heads.title!.id, newText: '# Ein neuer Titel' }), patch)
+    await handlePatch(post('/__hadley/patch', { blockId: heads.title!.id, newText: 'Ein neuer\nTitel' }), patch)
     assert.equal(patch.statusCode, 200)
     assert.equal(await readFile(tmpFile, 'utf8'), content.replace('# Titel', '# Ein neuer Titel'))
   })

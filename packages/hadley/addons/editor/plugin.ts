@@ -18,18 +18,31 @@ export interface BlockMapEntry {
   isParagraph?: boolean
   // a page's title, subtitle or front matter: edited as a block, never moved, merged or deleted
   fixed?: boolean
+  // a title or subtitle the text gives is edited as its text alone: `# ` and `__…__` stay the editor's (headText)
+  head?: 'title' | 'subtitle'
+}
+
+/** The text of a title or subtitle line without its syntax, as the editor shows it. */
+const headText = (head: 'title' | 'subtitle', line: string): string =>
+  head === 'title' ? line.replace(/^#[ \t]+/, '') : line.replace(/^__([\s\S]*)__$/, '$1')
+
+/** A title or subtitle, edited as its text, as its line again: one line, never empty. */
+const headLine = (head: 'title' | 'subtitle', text: string): string | undefined => {
+  const line = text.replace(/\s+/g, ' ').trim()
+  if (!line) return undefined
+  return head === 'title' ? `# ${line}` : `__${line}__`
 }
 
 // The server's map: blockId → source file and offsets. Every build fills it anew (registerPageBlocks drops a file's
 // old entries).
 export const blockIdMap = new Map<string, BlockMapEntry>()
 
-/** What a page's head shows, by its URL path: the block that edits its title or subtitle, and the text it shows. */
+/** A page's head, by its URL path: the block that edits its title and its subtitle. */
 export interface PageHeads {
   filePath: string
   // from: whether the text gives it (its line of Markdown) or the front matter
-  title?: { id: string; text: string; from: 'text' | 'front matter' }
-  subtitle?: { id: string; text: string; from: 'text' | 'front matter' }
+  title?: { id: string; from: 'text' | 'front matter' }
+  subtitle?: { id: string; from: 'text' | 'front matter' }
 }
 export const pageHeads = new Map<string, PageHeads>()
 
@@ -146,7 +159,7 @@ export async function handleGet(req: IncomingMessage, res: ServerResponse): Prom
   if (source.hash !== entry.fileHashAtRender) return send(res, 409, { error: t(lang, 'fileChangedSinceOpen') })
 
   const text = content.slice(entry.start, entry.end - 1)
-  send(res, 200, { text })
+  send(res, 200, { text: entry.head ? headText(entry.head, text) : text })
 }
 
 /**
@@ -208,8 +221,11 @@ export async function handlePatch(req: IncomingMessage, res: ServerResponse): Pr
   }
 
   // Normalise the trailing \n: a textarea value can end with \n, which would make \n\n. A lone \r is no line end the
-  // file could get back: before a \n it would be one, \r\r\n in a file with CRLF
-  const text = lf(newText)
+  // file could get back: before a \n it would be one, \r\r\n in a file with CRLF. A title or subtitle comes as its
+  // text and goes back into its line.
+  const line = entry.head ? headLine(entry.head, lf(newText)) : undefined
+  if (entry.head && line === undefined) return send(res, 422, { error: t(lang, 'headEmpty') })
+  const text = line ?? lf(newText)
   if (text.includes('\r')) return send(res, 422, { error: t(lang, 'loneCarriageReturn') })
   const normalizedText = blankLinesOnce(text)
   const patched = content.slice(0, entry.start) + normalizedText + '\n' + content.slice(entry.end)
@@ -474,7 +490,7 @@ export function blockEditorPlugin(): Plugin {
         } else if (method === 'GET' && url === '/__hadley/editor.css') {
           handler = serveAsset(res, 'editor.css', 'text/css; charset=utf-8', lang)
         } else if (method === 'GET' && url.split('?')[0] === '/__hadley/heads') {
-          // what the page's head shows, which the editor makes editable where the theme shows it
+          // the blocks that edit the page's title and subtitle, which the editor opens where the theme marks them
           const path = new URL(url, 'http://localhost').searchParams.get('path') ?? ''
           const heads = pageHeads.get(path)
           handler = Promise.resolve(

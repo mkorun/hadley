@@ -32,8 +32,8 @@
         {#if isAiCover}<span>{ t.image.aiCover }</span>{/if}
         {#if showBadge}<span class="badge">{#if status === 'draft'}{ t.status.draft }{:else if status === 'seed'}{ t.status.seed }{:else if status === 'scheduled'}{ t.status.scheduled }{:else}{ t.status.archived }{/if}</span>{/if}
       </p>
-      <h1>{ meta.title }</h1>
-      {#if meta.subtitle}<p class="subtitle">{ meta.subtitle }</p>{/if}
+      <h1{#if isDevBuild} data-hadley-head="title"{/if}>{ meta.title }</h1>
+      {#if meta.subtitle}<p class="subtitle"{#if isDevBuild} data-hadley-head="subtitle"{/if}>{ meta.subtitle }</p>{/if}
       {#if isUpdated && meta.publishFrom}<p class="entry-meta" data-pagefind-ignore>{ t.article.firstPublished } <time datetime="{ meta.publishFrom | isoDate }">{ meta.publishFrom | dateFormat('yyyy-MM-dd') }</time></p>{/if}
     </header>
 

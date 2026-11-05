@@ -6,7 +6,7 @@ import { blockIdMap, pageHeads } from './plugin.ts'
  * Registers every top-level block of a page in blockIdMap, and returns getBlockId, which the renderer calls for each
  * data-hadley-id. It must finish BEFORE the page is rendered (the build calls it before render()). With `page`, its
  * head is registered too, as fixed blocks: the title and subtitle the text gives, and the front matter, which edits a
- * title or subtitle given there; pageHeads names them by the page's URL path, with the text the page shows.
+ * title or subtitle given there; pageHeads names them by the page's URL path.
  */
 export function registerPageBlocks(
   blocks: BlockToken[],
@@ -42,7 +42,7 @@ export function registerPageBlocks(
   }
 
   if (page) {
-    const at = (block: BlockToken) => {
+    const at = (block: BlockToken, head?: 'title' | 'subtitle') => {
       const id = crypto.randomUUID()
       blockIdMap.set(id, {
         filePath,
@@ -50,22 +50,19 @@ export function registerPageBlocks(
         end: block.end - returnsBefore(block.end) + (rawDoc[block.end - 1] === '\r' ? 1 : 0),
         fileHashAtRender: fileHash,
         fixed: true,
+        ...(head ? { head } : {}),
       })
       return id
     }
     const { title, subtitle, frontMatter } = page.heads
     const frontMatterId = frontMatter ? at(frontMatter) : undefined
     // a title or subtitle the text does not give comes from the front matter
-    const titleId = title ? at(title) : page.title !== undefined ? frontMatterId : undefined
-    const subtitleId = subtitle ? at(subtitle) : page.subtitle !== undefined ? frontMatterId : undefined
+    const titleId = title ? at(title, 'title') : page.title !== undefined ? frontMatterId : undefined
+    const subtitleId = subtitle ? at(subtitle, 'subtitle') : page.subtitle !== undefined ? frontMatterId : undefined
     pageHeads.set(page.urlPath, {
       filePath,
-      ...(titleId && page.title
-        ? { title: { id: titleId, text: page.title, from: title ? 'text' : 'front matter' } }
-        : {}),
-      ...(subtitleId && page.subtitle
-        ? { subtitle: { id: subtitleId, text: page.subtitle, from: subtitle ? 'text' : 'front matter' } }
-        : {}),
+      ...(titleId ? { title: { id: titleId, from: title ? 'text' : 'front matter' } } : {}),
+      ...(subtitleId ? { subtitle: { id: subtitleId, from: subtitle ? 'text' : 'front matter' } } : {}),
     })
   }
 

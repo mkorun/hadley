@@ -202,6 +202,18 @@ theme does three things in its CSS:
 
 A page with a drawing needs `t.drawing.enlarge` in the theme's texts of its language; without it the page fails.
 
+## Editor
+
+The block editor of `hadley dev` (dev-server.md) edits a page's title and subtitle where the theme marks them, in a
+dev build: `data-hadley-head="title"` on the element that shows `meta.title`, `data-hadley-head="subtitle"` on the one
+that shows `meta.subtitle`. hems and punch mark them in every template:
+
+```html
+<h1{#if isDevBuild} data-hadley-head="title"{/if}>{ meta.title }</h1>
+```
+
+A theme that does not mark them shows them as before; the editor then does not offer to edit them there.
+
 ## Persons
 
 A person is a file in `content/meta/persons/`; a page names one as its `author` (`author: $(persons/odile)`),

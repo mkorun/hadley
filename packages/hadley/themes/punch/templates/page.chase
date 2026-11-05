@@ -19,7 +19,7 @@
 <main id="main" data-pagefind-body data-pagefind-filter="lang:{ meta.lang }">
   <article>
     <header class="title-block">
-      <h1>{ meta.title }</h1>
+      <h1{#if isDevBuild} data-hadley-head="title"{/if}>{ meta.title }</h1>
       {#if showBadge}<p class="entry-meta" data-pagefind-ignore><span class="badge">{#if status === 'draft'}{ t.status.draft }{:else if status === 'seed'}{ t.status.seed }{:else if status === 'scheduled'}{ t.status.scheduled }{:else}{ t.status.archived }{/if}</span></p>{/if}
     </header>
     <div class="prose">

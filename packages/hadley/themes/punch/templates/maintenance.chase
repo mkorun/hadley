@@ -22,7 +22,7 @@
     {@raw html.cover}
   </figure>
   {/if}
-  <h1>{ meta.title }</h1>
+  <h1{#if isDevBuild} data-hadley-head="title"{/if}>{ meta.title }</h1>
   <div class="prose">
     {@raw html.markup}
   </div>

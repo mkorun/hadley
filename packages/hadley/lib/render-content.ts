@@ -13,7 +13,7 @@ export type BlockEditorHook = (
   blocks: BlockToken[],
   filePath: string,
   rawDoc: string,
-  // the page's address, where its title, subtitle and front matter stand, and the title and subtitle as it shows them
+  // the page's address, where its title, subtitle and front matter stand, and its title and subtitle, from either
   page: { urlPath: string; heads: ParsedDocument['heads']; title?: string; subtitle?: string },
 ) => (start: number) => string | undefined
 

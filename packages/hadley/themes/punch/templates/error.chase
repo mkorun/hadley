@@ -7,7 +7,7 @@
 <main id="main">
   <article>
     <header class="title-block">
-      <h1>{ meta.title }</h1>
+      <h1{#if isDevBuild} data-hadley-head="title"{/if}>{ meta.title }</h1>
     </header>
     <div class="prose">
       {@raw html.markup}

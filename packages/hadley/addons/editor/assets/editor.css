@@ -82,7 +82,7 @@ body.hadley-edit-mode #hadley-edit-toggle {
 
 /* Transparent outline always present — only the colour transitions (no flash) */
 [data-hadley-id],
-[data-hadley-head] {
+[data-hadley-head-editable] {
   outline: 2px dashed transparent;
   outline-offset: 8px;
   transition:
@@ -92,7 +92,7 @@ body.hadley-edit-mode #hadley-edit-toggle {
 }
 
 body.hadley-edit-mode [data-hadley-id],
-body.hadley-edit-mode [data-hadley-head] {
+body.hadley-edit-mode [data-hadley-head-editable] {
   outline-color: var(--he-block-idle);
   position: relative;
   cursor: default;
@@ -100,8 +100,8 @@ body.hadley-edit-mode [data-hadley-head] {
 
 body.hadley-edit-mode [data-hadley-id]:hover,
 body.hadley-edit-mode [data-hadley-id].hadley-block-active,
-body.hadley-edit-mode [data-hadley-head]:hover,
-body.hadley-edit-mode [data-hadley-head].hadley-block-active {
+body.hadley-edit-mode [data-hadley-head-editable]:hover,
+body.hadley-edit-mode [data-hadley-head-editable].hadley-block-active {
   outline-color: var(--he-block-hover);
   background-color: var(--he-block-bg);
   box-shadow: 0 0 0 8px var(--he-block-bg);

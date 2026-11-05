@@ -19,6 +19,7 @@ type Key =
   | 'assetNotFound'
   | 'blockNotFound'
   | 'blockFixed'
+  | 'headEmpty'
   | 'couldNotReadFile'
   | 'mixedLineEnds'
   | 'loneCarriageReturn'
@@ -47,6 +48,7 @@ const MESSAGES: Record<Lang, Record<Key, string>> = {
     assetNotFound: 'Asset nicht gefunden',
     blockNotFound: 'Block nicht gefunden',
     blockFixed: 'Titel, Untertitel und Front Matter werden bearbeitet, nicht verschoben, verbunden oder gelöscht',
+    headEmpty: 'Ein Titel oder Untertitel ist nicht leer',
     couldNotReadFile: 'Datei konnte nicht gelesen werden',
     mixedLineEnds: 'Die Datei mischt LF- und CRLF-Zeilenenden; der Editor braucht eine Art durchgehend',
     loneCarriageReturn: 'Der Text enthält ein einzelnes Wagenrücklaufzeichen (\\r), das kein Zeilenende ist',
@@ -75,6 +77,7 @@ const MESSAGES: Record<Lang, Record<Key, string>> = {
     assetNotFound: 'Asset not found',
     blockNotFound: 'Block not found',
     blockFixed: 'A title, subtitle or front matter is edited, not moved, merged or deleted',
+    headEmpty: 'A title or subtitle is not empty',
     couldNotReadFile: 'Could not read file',
     mixedLineEnds: 'The file mixes LF and CRLF line ends; the editor needs one kind throughout',
     loneCarriageReturn: 'The text holds a lone carriage return (\\r), which is no line end',

@@ -764,26 +764,9 @@ function attachBlockListeners() {
 
 // ─── The page's head: its title and subtitle, edited where the theme shows them ──────
 //
-// hadley takes the title and subtitle out of the text, and the theme shows them where it likes. The dev server names
-// them with the block that edits them (their line of Markdown, or the front matter that gives them) and the text the
-// page shows; they are found by that text. A right click opens them as any block; they have no block menu.
-
-const shownText = (node) => node.textContent.replace(/\s+/g, ' ').trim()
-
-/** The innermost element of the page that shows `text` and nothing else, outside the text's blocks and the editor. */
-function shownAt(text) {
-  const wanted = text.replace(/\s+/g, ' ').trim()
-  if (!wanted) return null
-  const skip = '[data-hadley-id], #hadley-dev-bar, #hadley-block-menu, script, style, template'
-  let found = null
-  for (const el of document.body.querySelectorAll('*')) {
-    if (el.closest(skip) || shownText(el) !== wanted) continue
-    // a match inside the one found is closer to the text; the next outside it comes later in the page
-    if (!found || found.contains(el)) found = el
-    else break
-  }
-  return found
-}
+// hadley takes the title and subtitle out of the text, and the theme shows them where it likes; in a dev build it marks
+// them, data-hadley-head="title" and "subtitle" (docs/themes.md). The dev server names the block that edits each, its
+// line of Markdown or the front matter that gives it; a right click opens it as any block, without a block menu.
 
 async function attachHeadListeners() {
   let heads
@@ -796,10 +779,10 @@ async function attachHeadListeners() {
   }
   for (const which of ['title', 'subtitle']) {
     const head = heads?.[which]
-    if (!head || typeof head.id !== 'string' || typeof head.text !== 'string') continue
-    const el = shownAt(head.text)
-    if (!el || el.dataset.hadleyHead) continue
-    el.dataset.hadleyHead = which
+    if (!head || typeof head.id !== 'string') continue
+    const el = document.querySelector(`[data-hadley-head="${which}"]`)
+    if (!el) continue
+    el.dataset.hadleyHeadEditable = ''
     // the front matter, where it gives the title or subtitle, is Lima, not text to rewrite (addons/chat)
     if (head.from === 'front matter') el.dataset.hadleyFrontMatter = ''
     el.addEventListener('contextmenu', (e) => {
