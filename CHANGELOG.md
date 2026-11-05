@@ -4,6 +4,14 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `hadley dev` no longer waits for a start of Vite that hangs: after 15 s it goes on where the port answers, and
+  starts Vite again where it does not, once (docs/dev-server.md). It hung, rarely, in the CI on Linux, macOS and
+  Windows.
+
 ## [0.2.0] — 2026-11-05
 
 The second release: notes, drawings and og images that fit every site, a search index for each language, and the first

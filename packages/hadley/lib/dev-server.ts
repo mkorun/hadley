@@ -3,7 +3,7 @@ import { access, constants, mkdir, readFile, readdir, realpath } from 'node:fs/p
 import { realpathSync, watch } from 'node:fs'
 import { basename, join, resolve, sep } from 'node:path'
 import http from 'node:http'
-import { createServer as createViteServer, createLogger } from 'vite'
+import { createServer as createViteServer, createLogger, type InlineConfig } from 'vite'
 import { parse as limaparse } from '@limaformat/lima'
 import { build } from '../index.ts'
 import { networkUrls, qrCode, wslNetworking } from './dev-addresses.ts'
@@ -15,6 +15,7 @@ import { changedSince, isSystemFile } from './platform.ts'
 import { FORMS_PROGRAM, devServiceEnv, formsDataDir, formsProgram } from './forms-service.ts'
 import { siteLabel } from './site-root.ts'
 import { readUserConfig } from './user-config.ts'
+import { startVite } from './vite-start.ts'
 
 // what the dev server hands to the comments service instead of serving it
 const COMMENTS_PATHS = ['/api/comment/', '/admin/']
@@ -175,16 +176,25 @@ export async function startDevServer({
     _warnOrig(msg, opts)
   }
 
-  // Vite starts in well under a second; a start that hangs would otherwise say nothing at all
-  let starting = 'creating its server'
-  const stalled = setTimeout(
-    () =>
-      devErr(`Vite has not started after ${VITE_STALL_MS / 1000} s, at: ${starting}; stop and start hadley dev again`),
-    VITE_STALL_MS,
-  )
   // by its long name: under a Windows short name (C:\Users\RUNNER~1) Vite refuses the files as outside its root
   const served = realpathSync.native(siteTmp)
-  const vite = await createViteServer({
+  // Vite's server, made again where its start hangs (lib/vite-start.ts); it is made in well under a second, and one
+  // that hangs there would otherwise say nothing at all
+  const makeVite = async () => {
+    const stalled = setTimeout(
+      () =>
+        devErr(
+          `Vite has not started after ${VITE_STALL_MS / 1000} s, at: creating its server; stop and start hadley dev again`,
+        ),
+      VITE_STALL_MS,
+    )
+    try {
+      return await createViteServer(viteConfig)
+    } finally {
+      clearTimeout(stalled)
+    }
+  }
+  const viteConfig: InlineConfig = {
     configFile: false,
     root: served,
     // a site of pages, not one page for every path: a file that is not there is a 404, not the home page
@@ -305,10 +315,8 @@ export async function startDevServer({
         },
       },
     ],
-  })
-  starting = `listening on ${serve.host ? 'every interface' : 'localhost'}`
-  await vite.listen()
-  clearTimeout(stalled)
+  }
+  const vite = await startVite(makeVite, { port: serve.port, stallMs: VITE_STALL_MS, bound: portInUse, warn: devWarn })
 
   devLog(`Ready at ${origin}`)
   for (const url of network) devLog(`        ${url}`)

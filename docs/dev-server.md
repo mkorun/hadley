@@ -24,6 +24,10 @@ dev:
 The comments service takes the next port, so ports 10 apart (8000, 8010, 8020, …) leave room for it. A port that is
 taken, or with comments the next one, stops the server before it starts; it does not move to another.
 
+Vite starts in well under a second, but its start has hung, rarely, in the CI. So when it has not answered after
+15 s, hadley looks whether the port answers: if it does, it goes on; if not, it makes Vite anew, once, and says so. A
+second start that hangs as well stops `hadley dev` with a message.
+
 The server answers with the files of the output directory alone, and only to localhost, addresses and the names the
 user configuration gives (below); a path with `.` or `..` segments is refused. The block editor reads a page's
 Markdown and saves it only for a browser on this machine, on the page's own origin.
