@@ -42,7 +42,7 @@ export const locatedPhoto = async (
 
 /**
  * What exiftool reads of a file's location (by position and by name), camera, orientation and rights, `Tag: value`
- * per line; none for a tag it lacks.
+ * per line (LF, as exiftool on Windows ends them with CRLF); none for a tag it lacks.
  */
 export const exifOf = (path: string): string => {
   const tags = ['-s', '-s', '-GPS:all', '-XMP-exif:GPSLatitude', '-Model', '-SerialNumber', '-Orientation', '-n']
@@ -50,5 +50,5 @@ export const exifOf = (path: string): string => {
   tags.push('-XMP-photoshop:City', '-XMP-iptcCore:Location')
   const exiftool = spawnSync('exiftool', [...tags, path], { encoding: 'utf8', timeout: 30_000 })
   assert.equal(exiftool.status, 0, exiftool.stderr)
-  return exiftool.stdout
+  return exiftool.stdout.replace(/\r\n/g, '\n')
 }
