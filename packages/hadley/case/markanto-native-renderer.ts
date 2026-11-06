@@ -51,6 +51,10 @@ const isReserved = (key: string) => RESERVED_DATA.has(key) || key.startsWith('pa
 
 const SIZING_DATA = new Set(['size', 'style'])
 
+/** What a bundle picture keeps that is published without it: its EXIF and location, where an `<m>` says so. */
+const keptExif = (...attrs: (ResourceAttributes | undefined)[]): { exif?: 'keep' } =>
+  attrs.some((each) => each?.dataAttrs?.exif === 'keep') ? { exif: 'keep' } : {}
+
 /**
  * The data-* attributes of content, checked: a destination-shaped value (…href, …src, …url, …link) is read as one and
  * written resolved, or refused; a name hadley reserves is left out. Both are reported. Keys in `omit` are left out
@@ -66,6 +70,11 @@ function contentData(
     if (omit.has(key)) continue
     if (isReserved(key)) {
       ctx.ignoredAttributes.push(`data-${key}`)
+      continue
+    }
+    // a picture's data-exif=keep is for the build (keptExif), not for the page
+    if (key === 'exif') {
+      if (value !== 'keep') refused(ctx, attrs!, `data-exif=${value}`, 'is not data-exif=keep, the only one there is')
       continue
     }
     // a drawing reads its data-svg itself (renderDrawing); anywhere else it would quietly make a picture of one
@@ -135,7 +144,13 @@ const DIMENSIONS = /^(\d+)(?:x(\d+))?$/
 
 // What the renderer asks lib to build for a destination: a file of the bundle (copied, or an image) or a site path.
 type Wanted =
-  | { kind: 'image' | 'native' | 'copy' | 'drawing'; rel: string; suffix: string; config?: string | undefined }
+  | {
+      kind: 'image' | 'native' | 'copy' | 'drawing'
+      rel: string
+      suffix: string
+      config?: string | undefined
+      exif?: 'keep'
+    }
   | { kind: 'path'; path: string; suffix: string; href: string }
 
 /**
@@ -204,6 +219,7 @@ function destinationHref(
   node: object,
   destination: string,
   read: Destination,
+  keep: { exif?: 'keep' } = {}, // a bundle picture's (keptExif)
 ): { href: string } | { failed: string } {
   switch (read.kind) {
     case 'self':
@@ -213,7 +229,7 @@ function destinationHref(
       refused(ctx, node, destination, read.reason)
       return { failed: `${destination} ${read.reason}` }
     case 'bundle':
-      return fileHref(ctx, node, destination, { kind: 'copy', rel: read.rel, suffix: read.suffix })
+      return fileHref(ctx, node, destination, { kind: 'copy', rel: read.rel, suffix: read.suffix, ...keep })
     case 'path':
       return fileHref(ctx, node, destination, { kind: 'path', path: read.path, suffix: read.suffix, href: read.href })
   }
@@ -478,7 +494,7 @@ function renderInlineImage(
   // An inline image sized by <m data-size/data-style> stays in the text as a plain <img>, and a bundle file is only
   // copied: <figure><picture> would be invalid inside text.
   if (sizesInline(sizing)) {
-    const file = destinationHref(ctx, node, src, read)
+    const file = destinationHref(ctx, node, src, read, keptExif(spanAttrs, node.attrs))
     if ('failed' in file) return notBuilt(file.failed)
     return startTag('img', [
       ['src', file.href],
@@ -493,7 +509,7 @@ function renderInlineImage(
   if (read.kind === 'bundle') {
     const image = { alt, title: node.title || undefined, caption: undefined }
     return bundleImageHtml(
-      built(ctx, node, src, { kind: 'image', rel: read.rel, suffix: read.suffix }),
+      built(ctx, node, src, { kind: 'image', rel: read.rel, suffix: read.suffix, ...keptExif(node.attrs) }),
       image,
       meta,
       ctx,
@@ -696,7 +712,7 @@ function renderImage(block: Extract<DocumentBlock, { type: 'imageBlock' }>, ctx:
   if (read.kind === 'refused') return refused(ctx, block, block.src, read.reason)
   if (block.attrs?.dataAttrs?.svg !== undefined) return renderDrawing(block, read, ctx, dhi)
   const attr = resourceConfigAttr(block.attrs)
-  const bundle = read.kind === 'bundle' ? { rel: read.rel, suffix: read.suffix } : undefined
+  const bundle = read.kind === 'bundle' ? { rel: read.rel, suffix: read.suffix, ...keptExif(block.attrs) } : undefined
   const file =
     bundle === undefined
       ? destinationHref(ctx, block, block.src, read)

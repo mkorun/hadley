@@ -46,14 +46,16 @@ export type PageRequests = ReadonlyMap<Page, readonly FileRequest[]>
 /**
  * Builds the files every page's content and front matter name (lib/build-files.ts); fills `page.files`,
  * `page.cover`, `page.ogSource` and `page.ogImage`. Returns what it could not build, what each page named, and how
- * many images it made and took from the store.
+ * many images it made, took from the store and published without their location.
  */
-export async function buildFiles(
-  options: FilesOptions,
-): Promise<{ problems: Problem[]; requests: PageRequests; images: { built: number; cached: number } }> {
+export async function buildFiles(options: FilesOptions): Promise<{
+  problems: Problem[]
+  requests: PageRequests
+  images: { built: number; cached: number; located: number }
+}> {
   const { site, output, isPublish } = options
   const problems: Problem[] = []
-  const images = { built: 0, cached: 0 }
+  const images = { built: 0, cached: 0, located: 0 }
   // what each page's content names, kept for the site paths its links name
   const pageRequests = new Map<Page, FileRequest[]>()
 
@@ -98,6 +100,7 @@ export async function buildFiles(
         for (const failure of files.failures) pageProblems.push(problemOf(page, failure))
         images.built += files.images.built
         images.cached += files.images.cached
+        images.located += files.images.located
         const ogFile = files.files.get(ogNode)
         // the og image is made from the cover or the first image, or without one where its og:image is false
         page.files = files.files

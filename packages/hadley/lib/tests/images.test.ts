@@ -10,6 +10,9 @@ import {
   stripAiPromptFromXmp,
   stripLocationFromXmp,
   processImage,
+  exifLocated,
+  publishedCopy,
+  publishedXmp,
   extractXmpText,
   aiToolOf,
   buildCover,
@@ -22,6 +25,7 @@ import { join } from 'node:path'
 import { mkdtemp, readFile, rm, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { crc32 } from 'node:zlib'
+import { exifOf, locatedPhoto } from './located-photo.ts'
 
 // Injects XMP as APP1 segment into an existing JPEG buffer (mirrors generate-og-image.ts)
 const XMP_NS = Buffer.from('http://ns.adobe.com/xap/1.0/\0')
@@ -262,6 +266,94 @@ describe('the location in an image', () => {
       assert.doesNotMatch(xmp, /GPS|Orientation/, output)
       assert.match(xmp, /Jane Doe/, output)
     }
+  })
+})
+
+describe('what is published of a photo', () => {
+  let dir: string
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'hadley-published-photo-test-'))
+  })
+  afterEach(() => rm(dir, { recursive: true, force: true }))
+  const at = (name: string) => join(dir, name)
+  // its pixels as they are stored, not as they stand
+  const pixels = (bytes: Buffer) => sharp(bytes).raw().toBuffer()
+
+  test('exifLocated finds a GPS latitude in EXIF, in either byte order, and nothing in EXIF without one', async () => {
+    await locatedPhoto(at('photo.jpg'), 'jpeg')
+    assert.equal(exifLocated((await sharp(at('photo.jpg')).metadata()).exif), true)
+    const camera = await sharp({ create: { width: 4, height: 4, channels: 3, background: '#000' } })
+      .jpeg()
+      .withExif({ IFD0: { Model: 'TestCam' } })
+      .toBuffer()
+    assert.equal(exifLocated((await sharp(camera).metadata()).exif), false)
+    assert.equal(exifLocated(Buffer.from('Exif\0\0II*\0\xff\xff\xff\x7f', 'latin1')), false)
+    assert.equal(exifLocated(undefined), false)
+  })
+
+  for (const format of ['jpeg', 'png'] as const) {
+    test(`a ${format} keeps its pixels and its orientation, and loses its location, camera and serial number`, async () => {
+      const source = at(`photo.${format}`)
+      await locatedPhoto(source, format)
+      assert.match(exifOf(source), /GPSLatitude: 51\.5/)
+      const bytes = await readFile(source)
+      const meta = await sharp(bytes).metadata()
+      await writeFile(at(`out.${format}`), publishedCopy(bytes, publishedXmp(meta.xmp), meta.orientation ?? 1))
+      const published = await readFile(at(`out.${format}`))
+      assert.ok((await pixels(published)).equals(await pixels(bytes)))
+      const tags = exifOf(at(`out.${format}`))
+      assert.doesNotMatch(tags, /GPS|Model|SerialNumber/)
+      assert.match(tags, /Orientation: 6/)
+      const xmp = (await sharp(published).metadata()).xmp?.toString('utf-8') ?? ''
+      assert.match(xmp, /Jane Doe/)
+      assert.match(xmp, /trainedAlgorithmicMedia/)
+    })
+  }
+
+  test('upright, a photo keeps no EXIF at all, and without an XMP to keep none of that either', async () => {
+    await locatedPhoto(at('photo.png'), 'png', 1)
+    const bytes = await readFile(at('photo.png'))
+    const meta = await sharp(bytes).metadata()
+    assert.ok(meta.exif && meta.xmp)
+    const published = await sharp(publishedCopy(bytes, null, 1)).metadata()
+    assert.equal(published.exif, undefined)
+    assert.equal(published.xmp, undefined)
+  })
+
+  test('anything but a JPEG or PNG comes back as it is', () => {
+    const pdf = Buffer.from('%PDF-1.7 Exif')
+    assert.equal(publishedCopy(pdf, null, 6), pdf)
+  })
+
+  test('a derivative the content keeps the EXIF of has it all, stands upright and says it was turned no more', async () => {
+    await locatedPhoto(at('photo.jpg'), 'jpeg')
+    const config = { widths: [10], formats: ['webp'], sizes: '100vw', quality: 80 }
+    const place = (name: string) => at(`out-${name}`)
+    const cache = {}
+    const kept = await processImage(
+      at('photo.jpg'),
+      'photo',
+      'photo.jpg',
+      place,
+      config,
+      cache,
+      'test',
+      at('store'),
+      'keep',
+    )
+    await kept.written
+    assert.equal(kept.located, false)
+    const tags = exifOf(at('out-photo-10w.webp'))
+    assert.match(tags, /GPSLatitude/)
+    assert.match(tags, /Model: TestCam/)
+    assert.match(tags, /Orientation: 1/)
+    assert.deepEqual([kept.naturalWidth, kept.naturalHeight], [20, 40])
+    // made again without it, from the same cache: what it keeps is part of the cache key
+    const clean = await processImage(at('photo.jpg'), 'photo', 'photo.jpg', place, config, cache, 'test', at('store'))
+    await clean.written
+    assert.equal(clean.fromCache, false)
+    assert.equal(clean.located, true)
+    assert.doesNotMatch(exifOf(at('out-photo-10w.webp')), /GPS|Model/)
   })
 })
 

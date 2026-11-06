@@ -4,17 +4,26 @@
  */
 import { readFile } from 'node:fs/promises'
 import { basename } from 'node:path'
-import sharp from 'sharp'
+import sharp, { type Metadata } from 'sharp'
 import type { Built, Drawing, FileRequest } from '../case/index.ts'
 import { readDestination } from '../case/index.ts'
 import { DrawingError, readDrawing } from './drawing.ts'
 import {
   copyInto,
   derivativeOwner,
+  isAiXmp,
+  located,
   pictureBytes,
   pictureOf,
   processImage,
+  publishedCopy,
+  publishedXmp,
+  replaceJpegXmp,
+  replacePngXmp,
   resolveConfig,
+  stripAiPromptFromXmp,
+  uprightSize,
+  writeInto,
   type AiLabels,
   type ImageCache,
   type ImageConfigs,
@@ -36,6 +45,9 @@ const BROWSER_DOCUMENT = /\.(?:html?|xhtml?|shtml|xml|mht|mhtml)$/i
  */
 export type Failure = { message: string; node?: object; field?: string; hint?: true }
 
+/** A file hadley reads as a picture when it is copied, for what it says of where it was taken. */
+const PICTURE_FILE = /\.(?:jpe?g|png|webp|avif|gif|tiff?|heic|heif|jxl)$/i
+
 /** A drawing over this many bytes is reported (docs/content.md, "Drawings"). */
 export const DRAWING_BYTES = 32 * 1024
 
@@ -43,15 +55,17 @@ export type PageFiles = {
   files: Map<object, Built>
   firstImage?: ContentFile
   failures: Failure[]
-  images: { built: number; cached: number } // the images it made, and those it took from the store
+  // the images it made, those it took from the store, and those whose location it left out
+  images: { built: number; cached: number; located: number }
 }
 
 /**
  * Builds or copies every file of the bundle a page's content names (fileRequests): an image in the widths of its
- * config, a native-size image and every other file copied as it is. A file that cannot be found, built or copied is
- * `failed`, which the renderer shows, and one of the `failures`. It returns once every name is claimed, in the
- * order of the content, as the conflicts the plan finds name them (lib/output.ts); `written` is the files, once
- * they are written, so that a caller can claim the next page's names meanwhile.
+ * config, a native-size image and every other file copied as it is, a picture without its EXIF and its location
+ * unless the content keeps them (`<m data-exif=keep>`, on any of its names on the page). A file that cannot be found,
+ * built or copied is `failed`, which the renderer shows, and one of the `failures`. It returns once every name is
+ * claimed, in the order of the content, as the conflicts the plan finds name them (lib/output.ts); `written` is the
+ * files, once they are written, so that a caller can claim the next page's names meanwhile.
  */
 export const buildPageFiles = async (
   page: { file: string },
@@ -77,6 +91,9 @@ export const buildPageFiles = async (
   const made = new Map<string, ReturnType<typeof processImage>>()
   // the ids of the page's drawings, each its own (drawingId)
   const drawingIds = new Set<string>()
+  // the files whose EXIF the content keeps, and those whose location was left out
+  const keepsExif = new Set(refs.flatMap((ref) => ('exif' in ref && ref.exif === 'keep' ? [ref.rel] : [])))
+  const leftOut = new Set<string>()
   for (const [i, ref] of refs.entries()) {
     const fail = (reason: string) => {
       failures[i]!.push({ message: `${ref.destination} ${reason}`, node: ref.node })
@@ -115,6 +132,7 @@ export const buildPageFiles = async (
     const images = {
       built: results.filter((result) => result && !result.fromCache).length,
       cached: results.filter((result) => result?.fromCache).length,
+      located: leftOut.size,
     }
     return { files, failures: failures.flat(), images, ...(firstImage ? { firstImage } : {}) }
   })
@@ -187,22 +205,32 @@ export const buildPageFiles = async (
       }
       const destFile = target.place(file.rel, file.rel)
       try {
-        const meta = ref.kind === 'native' ? await sharp(await pictureBytes(file.source)).metadata() : undefined
-        const ai = labelled(meta?.xmp !== undefined && /trainedAlgorithmicMedia/i.test(meta.xmp.toString('utf-8')))
-        await copyInto(file.source, destFile)
+        // a native image is read as a picture; any other file is one if sharp reads it as one
+        const bytes = ref.kind === 'native' || PICTURE_FILE.test(file.rel) ? await pictureBytes(file.source) : undefined
+        const read = bytes && sharp(bytes).metadata()
+        const meta = ref.kind === 'native' ? await read : await read?.catch(() => undefined)
+        const published = bytes && meta ? publishedPicture(bytes, meta, keepsExif.has(file.rel)) : undefined
+        if (typeof published === 'string') {
+          fail(published)
+          return
+        }
+        if (meta && located(meta) && !keepsExif.has(file.rel)) leftOut.add(file.rel)
+        await (published ? writeInto(destFile, published) : copyInto(file.source, destFile))
         const href = `${urlOf(target.base + file.rel)}${ref.suffix}`
-        files.set(
-          ref.node,
-          meta
-            ? {
-                kind: 'native',
-                href,
-                ...(meta.width ? { width: meta.width } : {}),
-                ...(meta.height ? { height: meta.height } : {}),
-                ...(ai ? { ai } : {}),
-              }
-            : { kind: 'file', href },
-        )
+        if (ref.kind !== 'native' || !meta) {
+          files.set(ref.node, { kind: 'file', href })
+          return
+        }
+        const ai = labelled(isAiXmp(meta.xmp))
+        // as it stands: what is published keeps the orientation of its source
+        const { width, height } = uprightSize(meta)
+        files.set(ref.node, {
+          kind: 'native',
+          href,
+          ...(width ? { width } : {}),
+          ...(height ? { height } : {}),
+          ...(ai ? { ai } : {}),
+        })
       } catch {
         fail('could not be copied')
       }
@@ -228,9 +256,11 @@ export const buildPageFiles = async (
           cache,
           JSON.stringify(cfg),
           target.store,
+          keepsExif.has(file.rel) ? 'keep' : 'clean',
         ),
       )
     const result = await made.get(key)!
+    if (result.located) leftOut.add(file.rel)
     const ai = labelled(result.isAi)
     files.set(ref.node, {
       kind: 'picture',
@@ -315,4 +345,22 @@ export const frontMatterFiles = async (
       refuse(`og:image ${ogImage} is neither an http(s) URL nor a file of the bundle, nor false for none`, 'og:image')
   }
   return out
+}
+
+/**
+ * A picture of the bundle as it is copied into the site (a native-size image, a linked or sized one): a JPEG or PNG
+ * without its EXIF but for its orientation, its XMP without a location (publishedCopy); kept, it loses only an AI
+ * image's prompt, as its derivatives do. Any other picture goes as it is, unless it says where it was taken or carries
+ * EXIF, which hadley cannot take out of it: then why it is not published.
+ */
+function publishedPicture(bytes: Buffer, meta: Metadata, keep: boolean): Buffer | string {
+  const jpegOrPng = meta.format === 'jpeg' || meta.format === 'png'
+  if (keep) {
+    if (!jpegOrPng || !meta.xmp || !isAiXmp(meta.xmp)) return bytes
+    const xmp = stripAiPromptFromXmp(meta.xmp)
+    return meta.format === 'jpeg' ? replaceJpegXmp(bytes, xmp) : replacePngXmp(bytes, xmp)
+  }
+  if (jpegOrPng) return publishedCopy(bytes, publishedXmp(meta.xmp), meta.orientation ?? 1)
+  if (!meta.exif && !located(meta)) return bytes
+  return `carries EXIF or says where it was taken, which hadley takes out of a JPEG or PNG only: save it without, or as one of those, or keep it with <m data-exif=keep> (docs/content.md, "Pictures")`
 }

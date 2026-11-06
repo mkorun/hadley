@@ -6,6 +6,17 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- `<m data-exif=keep>` around a picture publishes its EXIF and location as they are (docs/content.md, "Pictures").
+
+### Changed
+
+- Pictures no longer say where they were taken: those made in widths keep their colour profile and XMP but no EXIF
+  (location, camera, serial number), the XMP loses its location, and a photo stands upright. A JPEG or PNG copied as
+  it is loses the same but keeps its pixels and its orientation; another picture with EXIF or a location fails the
+  build. The build log says how many pictures lost their location, and the next build makes every image again.
+
 ### Fixed
 
 - `hadley dev` no longer waits for a start of Vite that hangs: after 15 s it goes on where the port answers, and

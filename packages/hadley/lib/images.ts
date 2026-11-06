@@ -1,11 +1,12 @@
 /**
  * The images a build makes: each in the widths and formats of its image config, under derivative names next to it
  * (`a-480w.webp`), kept in a store between builds (.hadley/cache/images) and in the image cache (images.json); an
- * AI-generated image keeps its XMP but loses the prompt it was made from.
+ * AI-generated image keeps its XMP but loses the prompt it was made from. What is published of an image says nothing of
+ * where it was taken, nor with what camera, unless the content keeps it (`<m data-exif=keep>`, docs/content.md).
  */
 import { createHash } from 'node:crypto'
-import sharp from 'sharp'
-import { mkdir, access, readFile, stat, copyFile } from 'node:fs/promises'
+import sharp, { type Metadata } from 'sharp'
+import { mkdir, access, readFile, stat, copyFile, writeFile } from 'node:fs/promises'
 import { join as joinPath, extname, dirname, posix } from 'node:path'
 import { crc32 } from 'node:zlib'
 import type { Picture } from '../case/index.ts'
@@ -103,85 +104,188 @@ export const stripLocationFromXmp = (xmp: Buffer): Buffer => {
   return Buffer.from(cleaned)
 }
 
+// A location the filter leaves: a property with a structure of its own (exif:GPSAreaInformation as an rdf:Alt)
+const XMP_LOCATION_LEFT = /:GPS|:Orientation/
+
+/**
+ * The XMP a published image keeps of its source's: never a location, nor an AI image's prompt; null for none, also
+ * when a location is left that stripLocationFromXmp could not take out.
+ */
+export const publishedXmp = (xmp: Buffer | undefined): Buffer | null => {
+  if (!xmp) return null
+  const cleaned = stripLocationFromXmp(isAiXmp(xmp) ? stripAiPromptFromXmp(xmp) : xmp)
+  return XMP_LOCATION_LEFT.test(cleaned.toString('utf-8')) ? null : cleaned
+}
+
+/** Whether XMP labels its image as made by a trained model (IPTC Digital Source Type). */
+export const isAiXmp = (xmp: Buffer | undefined): boolean =>
+  xmp !== undefined && /trainedAlgorithmicMedia/i.test(xmp.toString('utf-8'))
+
+const GPS_IFD = 0x8825
+const GPS_LATITUDE = 0x0002
+
+/** Whether EXIF, as sharp gives it ("Exif\0\0" and a TIFF structure), says where its picture was taken. */
+export const exifLocated = (exif: Buffer | undefined): boolean => {
+  if (!exif) return false
+  const tiff = startsWith(exif, JPEG_EXIF_NS) ? exif.subarray(JPEG_EXIF_NS.length) : exif
+  const order = tiff.toString('latin1', 0, 2)
+  if (tiff.length < 8 || (order !== 'MM' && order !== 'II')) return false
+  const u16 = (at: number) => (order === 'MM' ? tiff.readUInt16BE(at) : tiff.readUInt16LE(at))
+  const u32 = (at: number) => (order === 'MM' ? tiff.readUInt32BE(at) : tiff.readUInt32LE(at))
+  // the tags of the IFD at `at`, each with its value field: for the GPS IFD's tag, where that IFD is
+  const tags = (at: number): Map<number, number> => {
+    const found = new Map<number, number>()
+    const count = at + 2 <= tiff.length ? u16(at) : 0
+    for (let entry = at + 2; entry < at + 2 + 12 * count && entry + 12 <= tiff.length; entry += 12)
+      found.set(u16(entry), u32(entry + 8))
+    return found
+  }
+  const gps = tags(u32(4)).get(GPS_IFD)
+  return gps !== undefined && tags(gps).has(GPS_LATITUDE)
+}
+
+/** Whether an image's metadata, as sharp reads it, says where it was taken: in its EXIF or its XMP. */
+export const located = (meta: { exif?: Buffer | undefined; xmp?: Buffer | undefined }): boolean =>
+  exifLocated(meta.exif) || /:GPS(?:Latitude|Longitude)\b/.test(meta.xmp?.toString('utf-8') ?? '')
+
+/** An image's size as it stands upright: an EXIF orientation of 5 to 8 turns it by a quarter. */
+export const uprightSize = (meta: Metadata): { width: number; height: number } => {
+  const turned = (meta.orientation ?? 1) >= 5
+  return { width: (turned ? meta.height : meta.width) ?? 0, height: (turned ? meta.width : meta.height) ?? 0 }
+}
+
 // Sharp copies XMP from source at libvips level. Strategy: patch XMP in the source buffer BEFORE passing it to sharp,
 // so that every output format (WebP, JPEG, AVIF, …) receives the cleaned XMP that keepXmp() keeps.
 
 const JPEG_XMP_NS = Buffer.from('http://ns.adobe.com/xap/1.0/\0')
+const JPEG_XMP_EXTENSION_NS = Buffer.from('http://ns.adobe.com/xmp/extension/\0')
+const JPEG_EXIF_NS = Buffer.from('Exif\0\0')
+const APP1 = 0xe1
+
+const startsWith = (bytes: Buffer, prefix: Buffer): boolean =>
+  bytes.length >= prefix.length && bytes.subarray(0, prefix.length).equals(prefix)
+
+/**
+ * A JPEG with the segments before its scan edited, its pixels untouched: `edit` gives what stands in a segment's place
+ * (nothing to take it out), or undefined to keep it. Anything that is no JPEG comes back as it is.
+ */
+const editJpeg = (jpeg: Buffer, edit: (marker: number, body: Buffer) => Buffer[] | undefined): Buffer => {
+  if (jpeg.length < 2 || jpeg[0] !== 0xff || jpeg[1] !== 0xd8) return jpeg
+  const out: Buffer[] = [jpeg.subarray(0, 2)]
+  let off = 2
+  // up to the start of the scan (0xda) or the end of the image (0xd9); from there on it stays as it is
+  while (off + 4 <= jpeg.length && jpeg[off] === 0xff && jpeg[off + 1] !== 0xda && jpeg[off + 1] !== 0xd9) {
+    const end = off + 2 + jpeg.readUInt16BE(off + 2)
+    out.push(...(edit(jpeg[off + 1]!, jpeg.subarray(off + 4, end)) ?? [jpeg.subarray(off, end)]))
+    off = end
+  }
+  out.push(jpeg.subarray(off))
+  return Buffer.concat(out)
+}
+
+const jpegSegment = (marker: number, ...body: Buffer[]): Buffer[] => {
+  const head = Buffer.from([0xff, marker, 0, 0])
+  head.writeUInt16BE(2 + body.reduce((n, part) => n + part.length, 0), 2)
+  return [head, ...body]
+}
 
 // Replace the XMP APP1 segment in a JPEG buffer without re-decoding the image.
 // Also used by generate-og-image.ts to inject XMP after composite().
 export const replaceJpegXmp = (jpegBuf: Buffer, cleanXmp: Buffer): Buffer => {
-  if (jpegBuf.length < 2 || jpegBuf[0] !== 0xff || jpegBuf[1] !== 0xd8) return jpegBuf
-  const out: Buffer[] = [jpegBuf.subarray(0, 2)]
-  let off = 2,
-    replaced = false
-  while (off + 4 <= jpegBuf.length) {
-    if (jpegBuf[off] !== 0xff) {
-      out.push(jpegBuf.subarray(off))
-      break
-    }
-    const marker = jpegBuf[off + 1]
-    if (marker === 0xd9 || marker === 0xda) {
-      out.push(jpegBuf.subarray(off))
-      off = jpegBuf.length
-      break
-    }
-    const segLen = jpegBuf.readUInt16BE(off + 2)
-    const segEnd = off + 2 + segLen
-    if (marker === 0xe1 && !replaced) {
-      const body = jpegBuf.subarray(off + 4, segEnd)
-      if (body.length >= JPEG_XMP_NS.length && body.subarray(0, JPEG_XMP_NS.length).equals(JPEG_XMP_NS)) {
-        const hdr = Buffer.allocUnsafe(4)
-        hdr[0] = 0xff
-        hdr[1] = 0xe1
-        hdr.writeUInt16BE(2 + JPEG_XMP_NS.length + cleanXmp.length, 2)
-        out.push(hdr, JPEG_XMP_NS, cleanXmp)
-        replaced = true
-        off = segEnd
-        continue
-      }
-    }
-    out.push(jpegBuf.subarray(off, segEnd))
-    off = segEnd
-  }
-  if (off < jpegBuf.length) out.push(jpegBuf.subarray(off))
-  return Buffer.concat(out)
+  let replaced = false
+  return editJpeg(jpegBuf, (marker, body) => {
+    if (replaced || marker !== APP1 || !startsWith(body, JPEG_XMP_NS)) return undefined
+    replaced = true
+    return jpegSegment(APP1, JPEG_XMP_NS, cleanXmp)
+  })
 }
 
 const PNG_SIG = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
-const PNG_ITXT = Buffer.from('iTXt')
 // iTXt prefix: keyword + \0 + compression_flag(0) + compression_method(0) + lang\0 + keyword\0
 const PNG_XMP_PREFIX = Buffer.from('XML:com.adobe.xmp\0\0\0\0\0')
+// the text chunks in which tools wrote a PNG's EXIF and XMP before it had an eXIf chunk (ImageMagick)
+const PNG_RAW_EXIF = /^Raw profile type (?:exif|APP1)\x00/
+const PNG_RAW_XMP = /^Raw profile type xmp\x00/
+
+/**
+ * A PNG with its chunks edited, as editJpeg edits a JPEG's segments: `edit` gives what stands in a chunk's place, or
+ * undefined to keep it. Anything that is no PNG comes back as it is.
+ */
+const editPng = (png: Buffer, edit: (type: string, data: Buffer) => Buffer[] | undefined): Buffer => {
+  if (png.length < 8 || !png.subarray(0, 8).equals(PNG_SIG)) return png
+  const out: Buffer[] = [png.subarray(0, 8)]
+  let off = 8
+  while (off + 12 <= png.length) {
+    const end = off + 12 + png.readUInt32BE(off)
+    out.push(
+      ...(edit(png.toString('latin1', off + 4, off + 8), png.subarray(off + 8, end - 4)) ?? [png.subarray(off, end)]),
+    )
+    off = end
+  }
+  if (off < png.length) out.push(png.subarray(off))
+  return Buffer.concat(out)
+}
+
+const pngChunk = (type: string, data: Buffer): Buffer[] => {
+  const head = Buffer.alloc(8)
+  head.writeUInt32BE(data.length, 0)
+  head.write(type, 4, 'latin1')
+  const crc = Buffer.alloc(4)
+  crc.writeUInt32BE(crc32(Buffer.concat([head.subarray(4), data]), 0) >>> 0, 0)
+  return [head, data, crc]
+}
+
+const isPngXmp = (type: string, data: Buffer) => type === 'iTXt' && startsWith(data, PNG_XMP_PREFIX)
 
 // Replace the XMP iTXt chunk in a PNG buffer without re-decoding the image.
-export const replacePngXmp = (pngBuf: Buffer, cleanXmp: Buffer): Buffer => {
-  if (pngBuf.length < 8 || !pngBuf.subarray(0, 8).equals(PNG_SIG)) return pngBuf
-  const out: Buffer[] = [pngBuf.subarray(0, 8)]
-  let off = 8
-  while (off + 12 <= pngBuf.length) {
-    const dataLen = pngBuf.readUInt32BE(off)
-    const chunkEnd = off + 12 + dataLen
-    const type = pngBuf.subarray(off + 4, off + 8)
-    const data = pngBuf.subarray(off + 8, off + 8 + dataLen)
-    if (
-      type.equals(PNG_ITXT) &&
-      data.length >= PNG_XMP_PREFIX.length &&
-      data.subarray(0, PNG_XMP_PREFIX.length).equals(PNG_XMP_PREFIX)
-    ) {
-      const newData = Buffer.concat([PNG_XMP_PREFIX, cleanXmp])
-      const lenBuf = Buffer.allocUnsafe(4)
-      lenBuf.writeUInt32BE(newData.length, 0)
-      const crcVal = crc32(Buffer.concat([PNG_ITXT, newData]), 0) >>> 0
-      const crcBuf = Buffer.allocUnsafe(4)
-      crcBuf.writeUInt32BE(crcVal, 0)
-      out.push(lenBuf, PNG_ITXT, newData, crcBuf)
-    } else {
-      out.push(pngBuf.subarray(off, chunkEnd))
-    }
-    off = chunkEnd
+export const replacePngXmp = (pngBuf: Buffer, cleanXmp: Buffer): Buffer =>
+  editPng(pngBuf, (type, data) =>
+    isPngXmp(type, data) ? pngChunk('iTXt', Buffer.concat([PNG_XMP_PREFIX, cleanXmp])) : undefined,
+  )
+
+/** EXIF that says nothing but how its picture is turned: a TIFF structure of one IFD with one entry, Orientation. */
+const orientationExif = (orientation: number): Buffer => {
+  const tiff = Buffer.alloc(26)
+  tiff.write('MM', 0, 'latin1')
+  tiff.writeUInt16BE(42, 2)
+  tiff.writeUInt32BE(8, 4) // its IFD, right after the header
+  tiff.writeUInt16BE(1, 8) // of one entry
+  tiff.writeUInt16BE(0x0112, 10) // Orientation
+  tiff.writeUInt16BE(3, 12) // a SHORT
+  tiff.writeUInt32BE(1, 14) // one of it
+  tiff.writeUInt16BE(orientation, 18) // and no IFD after it: 22 to 25 stay 0
+  return tiff
+}
+
+/**
+ * A JPEG or PNG as it is published without its EXIF: of that only its orientation, so that it still stands as its
+ * camera meant, and in place of its XMP `xmp`, or none for null; its pixels and every other segment or chunk as they
+ * are. Anything else comes back as it is.
+ */
+export const publishedCopy = (bytes: Buffer, xmp: Buffer | null, orientation: number): Buffer => {
+  let turned = orientation === 1
+  // in place of the first EXIF its orientation alone, if it has one; any other EXIF goes
+  const exif = (write: (tiff: Buffer) => Buffer[]): Buffer[] => {
+    if (turned) return []
+    turned = true
+    return write(orientationExif(orientation))
   }
-  if (off < pngBuf.length) out.push(pngBuf.subarray(off))
-  return Buffer.concat(out)
+  const jpeg = editJpeg(bytes, (marker, body) => {
+    if (marker !== APP1) return undefined
+    if (startsWith(body, JPEG_EXIF_NS)) return exif((tiff) => jpegSegment(APP1, JPEG_EXIF_NS, tiff))
+    if (startsWith(body, JPEG_XMP_NS)) return xmp ? jpegSegment(APP1, JPEG_XMP_NS, xmp) : []
+    // the rest of an XMP packet too large for one segment
+    if (startsWith(body, JPEG_XMP_EXTENSION_NS)) return []
+    return undefined
+  })
+  return editPng(jpeg, (type, data) => {
+    if (type === 'eXIf') return exif((tiff) => pngChunk('eXIf', tiff))
+    if (isPngXmp(type, data)) return xmp ? pngChunk('iTXt', Buffer.concat([PNG_XMP_PREFIX, xmp])) : []
+    if (type !== 'tEXt' && type !== 'zTXt' && type !== 'iTXt') return undefined
+    const keyword = data.toString('latin1', 0, 32)
+    if (PNG_RAW_EXIF.test(keyword)) return exif((tiff) => pngChunk('eXIf', tiff))
+    return PNG_RAW_XMP.test(keyword) ? [] : undefined
+  })
 }
 
 export interface ImageConfig {
@@ -208,6 +312,7 @@ export interface CacheEntry {
   creator?: string | undefined
   creditText?: string | undefined
   imageDescription?: string | undefined
+  located?: true // its source said where it was taken, which its derivatives do not
 }
 
 export type ImageCache = Record<string, CacheEntry>
@@ -235,6 +340,12 @@ export const copyInto = async (from: string, to: string): Promise<void> => {
   await copyFile(from, to)
 }
 
+/** Writes a file of a page's output directory that `place` claimed: a picture as it is published (publishedCopy). */
+export const writeInto = async (to: string, bytes: Buffer): Promise<void> => {
+  await mkdir(dirname(to), { recursive: true })
+  await writeFile(to, bytes)
+}
+
 /**
  * The name of an image's derivative in the page's output directory: next to where the image lies in the bundle, so
  * `sub/a.png` and `a.png` do not share one.
@@ -250,9 +361,9 @@ const handled = <T>(work: Promise<T>): Promise<T> => {
   return work
 }
 
-// What a derivative holds besides its pixels: privacy by default since 2026-11-06 (EXIF and the location gone, the
-// orientation applied); a change here makes every derivative again.
-const DERIVATIVE_METADATA = 'icc+xmp, no exif, no location'
+// What a derivative holds besides its pixels, by default and where the content keeps the EXIF: privacy by default
+// since 2026-11-06 (EXIF and the location gone, the orientation applied); a change here makes every derivative again.
+const DERIVATIVE_METADATA = { clean: 'icc+xmp, no exif, no location', keep: 'all but a prompt, upright' }
 
 /**
  * The derivatives of an image in the widths and formats of its config: copied from the store when the cache has them,
@@ -268,12 +379,14 @@ export const processImage = async (
   cache: ImageCache,
   configHash: string,
   store: string, // where derivatives are kept between builds, of either kind
+  exif: 'clean' | 'keep' = 'clean', // keep: as the content asks (`<m data-exif=keep>`), location and all
 ): Promise<{
   naturalWidth: number
   naturalHeight: number
   validWidths: number[]
   isAi: boolean
   aiTool: string | undefined
+  located: boolean // a location of the source was left out
   fromCache: boolean
   written: Promise<void>
 }> => {
@@ -287,7 +400,7 @@ export const processImage = async (
   // Cache hit: source and config unchanged — but only trust it once every expected derivate
   // file actually exists (not just mtime/configHash), else a partially cleaned output dir
   // would silently serve missing images.
-  const derivativeKey = `${configHash} ${DERIVATIVE_METADATA}`
+  const derivativeKey = `${configHash} ${DERIVATIVE_METADATA[exif]}`
   if (cached && cached.sourceChanged === sourceChanged && cached.configHash === derivativeKey) {
     const expectedFiles = imageConfig.formats.flatMap((format) =>
       cached.validWidths.map((w) => derivativeName(rel, w, format)),
@@ -306,6 +419,7 @@ export const processImage = async (
         validWidths: cached.validWidths,
         isAi: cached.isAi ?? false,
         aiTool: cached.aiTool ?? undefined,
+        located: cached.located ?? false,
         fromCache: true,
         written: handled(written),
       }
@@ -319,30 +433,27 @@ export const processImage = async (
   try {
     const source = await pictureBytes(sourceFile)
     const meta = await sharp(source).metadata()
-    // the size as it stands upright: an EXIF orientation of 5 to 8 turns the picture by a quarter
-    const turned = (meta.orientation ?? 1) >= 5
-    const naturalWidth = (turned ? meta.height : meta.width) ?? 0
-    const naturalHeight = (turned ? meta.width : meta.height) ?? 0
+    const { width: naturalWidth, height: naturalHeight } = uprightSize(meta)
     const validWidths = imageConfig.widths.filter((w) => w <= naturalWidth)
     if (validWidths.length === 0 && naturalWidth > 0) validWidths.push(naturalWidth)
 
-    const isAi = meta.xmp !== undefined && /trainedAlgorithmicMedia/i.test(meta.xmp.toString('utf-8'))
+    const isAi = isAiXmp(meta.xmp)
     const aiTool = aiToolOf(meta.xmp)
+    const keep = exif === 'keep'
+    const leftOut = !keep && located(meta)
 
-    // The XMP the derivatives keep, patched in the source buffer before sharp reads it: never a location, and for an AI
-    // image no prompt. A source whose XMP cannot be patched in place (neither JPEG nor PNG) keeps none.
+    // The XMP the derivatives keep, patched in the source buffer before sharp reads it: never a location (unless the
+    // content keeps it), and for an AI image no prompt. A source whose XMP cannot be patched in place (neither JPEG nor
+    // PNG) keeps none.
     let sharpInput = source
     let keepXmp = false
-    if (meta.xmp) {
-      const cleanXmp = stripLocationFromXmp(isAi ? stripAiPromptFromXmp(meta.xmp) : meta.xmp)
+    const cleanXmp = keep ? (isAi && meta.xmp ? stripAiPromptFromXmp(meta.xmp) : null) : publishedXmp(meta.xmp)
+    if (cleanXmp) {
       const ext = extname(sourceFile).toLowerCase()
       if (ext === '.jpg' || ext === '.jpeg') sharpInput = replaceJpegXmp(source, cleanXmp)
       else if (ext === '.png') sharpInput = replacePngXmp(source, cleanXmp)
-      // kept only when the patched source now holds exactly the cleaned packet, and none at all when a location is
-      // left that the filter could not take out (a property with a structure of its own)
-      keepXmp =
-        !/:GPS|:Orientation/.test(cleanXmp.toString('utf-8')) &&
-        ((await sharp(sharpInput).metadata()).xmp?.equals(cleanXmp) ?? false)
+      // kept only when the patched source now holds exactly the cleaned packet
+      keepXmp = (await sharp(sharpInput).metadata()).xmp?.equals(cleanXmp) ?? false
     }
 
     // every name claimed before any is made: a conflict stops at the first, whatever the cache holds
@@ -352,14 +463,18 @@ export const processImage = async (
       names.map(async ({ w, format }, i) => {
         const name = derivativeName(rel, w, format)
         await mkdir(dirname(kept(name)), { recursive: true })
-        // upright, in its own colours, with the cleaned XMP; no EXIF, so no location, camera or serial number
+        // upright, in its own colours, with the cleaned XMP; no EXIF, so no location, camera or serial number. Kept,
+        // it has all its source had but a prompt, its orientation set to upright.
         let derivative = sharp(sharpInput)
           .timeout({ seconds: IMAGE_SECONDS })
           .autoOrient()
           .resize(w)
           .toFormat(format as any, { quality: imageConfig.quality })
-          .keepIccProfile()
-        if (keepXmp) derivative = derivative.keepXmp()
+        if (keep) derivative = derivative.keepMetadata()
+        else {
+          derivative = derivative.keepIccProfile()
+          if (keepXmp) derivative = derivative.keepXmp()
+        }
         await derivative.toFile(kept(name))
         await copyInto(kept(name), targets[i]!)
       }),
@@ -372,10 +487,20 @@ export const processImage = async (
         validWidths,
         isAi,
         aiTool: aiTool ?? null,
+        ...(leftOut ? { located: true as const } : {}),
       }
     })
 
-    return { naturalWidth, naturalHeight, validWidths, isAi, aiTool, fromCache: false, written: handled(written) }
+    return {
+      naturalWidth,
+      naturalHeight,
+      validWidths,
+      isAi,
+      aiTool,
+      located: leftOut,
+      fromCache: false,
+      written: handled(written),
+    }
   } finally {
     if (written) void written.then(endTurn, endTurn)
     else endTurn()

@@ -34,7 +34,7 @@ export interface Annotation {
  * A file the content of a page names, as the renderer meets it (fileRequests) and readDestination reads it. `node`
  * is the tree node that names it; the renderer finds what was built for it by that node. `destination` is as the
  * content writes it; `rel` (a file of the bundle) and `path` (from the site's root) are decoded, `suffix` is the
- * query and fragment the URL keeps.
+ * query and fragment the URL keeps; `exif: 'keep'` publishes a picture's EXIF and location (`<m data-exif=keep>`).
  *
  *   image   a bundle image built in several widths with the image config `config` (none: "default")
  *   native  a bundle image copied as it is (`<m data-size=native>`)
@@ -52,6 +52,7 @@ export type FileRequest =
       rel: string
       suffix: string
       config?: string
+      exif?: 'keep'
     }
   | { node: object; kind: 'path'; destination: string; path: string; suffix: string; href: string } // href: resolved
   | { node: object; kind: 'refused'; destination: string; reason: string }

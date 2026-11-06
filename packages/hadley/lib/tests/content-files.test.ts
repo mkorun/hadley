@@ -9,6 +9,7 @@ import { buildPageFiles, frontMatterFiles, sitePaths } from '../build-files.ts'
 import { planTheme } from '../theme-files.ts'
 import { Output } from '../output.ts'
 import { settle } from '../problems.ts'
+import { exifOf, locatedPhoto } from './located-photo.ts'
 
 // From Markdown to HTML with real files: the renderer names them, build-files builds them, the renderer writes them.
 
@@ -47,6 +48,7 @@ const page = async (
     pageFile = join(bundle, 'page.md'),
     state = 'published' as 'published' | 'draft',
     onWarn = (_msg: string) => {},
+    onImages = (_images: { built: number; cached: number; located: number }) => {},
   } = {},
 ) => {
   const output = new Output(join(dir, 'out'))
@@ -72,6 +74,7 @@ const page = async (
       undefined,
     )
   ).written
+  onImages(files.images)
   const paths = sitePaths(requests, (rel) => output.writesFile(rel), names)
   const failures = [...files.failures, ...paths.failures]
   const problems = failures.map(({ message }) => ({ page: { file: pageFile, state }, message }))
@@ -418,6 +421,49 @@ describe('files the content names', () => {
     assert.match(html, /srcset="sub\/a-4w\.webp 4w"[\s\S]*<img src="sub\/a-4w\.webp" alt="y"/)
     assert.match(html, /srcset="%C3%A4-4w\.webp 4w"[\s\S]*<img src="%C3%A4-4w\.webp" alt="z"/)
     assert.match(html, /srcset="a%20b-4w\.webp 4w"[\s\S]*<img src="a%20b-4w\.webp" alt="w"/)
+  })
+})
+
+// Privacy by default (2026-11-06): what is published of a photo says nothing of where it was taken, unless kept
+describe('the location of a photo the content names', () => {
+  const out = (name: string) => join(dir, 'out', name)
+  beforeEach(() => locatedPhoto(join(bundle, 'photo.jpg'), 'jpeg'))
+
+  it('leaves it out of a native-size image, a linked one and a picture, and says how many lost it', async () => {
+    let images = { built: 0, cached: 0, located: 0 }
+    const html = await page('<m data-size=native>![x](photo.jpg)</m>\n\n![y](photo.jpg)\n\n[Original](photo.jpg)\n', {
+      onImages: (counted) => (images = counted),
+    })
+    for (const file of ['photo.jpg', 'photo-4w.webp']) assert.doesNotMatch(exifOf(out(file)), /GPS|Model|Serial/, file)
+    // the copy still turned as its camera meant, so its size is the upright one
+    assert.match(exifOf(out('photo.jpg')), /Orientation: 6/)
+    assert.match(html, /<img src="photo.jpg" alt="x" width="20" height="40" data-size="native"/)
+    assert.equal(images.located, 1)
+  })
+
+  it('keeps it where an <m data-exif=keep> asks, without writing that into the page', async () => {
+    let images = { built: 0, cached: 0, located: 0 }
+    const html = await page(
+      '<m data-size=native data-exif=keep>![x](photo.jpg)</m>\n\n<m data-exif=keep>![y](photo.jpg)</m>\n',
+      {
+        onImages: (counted) => (images = counted),
+      },
+    )
+    assert.ok(readFileSync(out('photo.jpg')).equals(readFileSync(join(bundle, 'photo.jpg'))))
+    assert.match(exifOf(out('photo-4w.webp')), /GPSLatitude/)
+    assert.doesNotMatch(html, /data-exif/)
+    assert.equal(images.located, 0)
+  })
+
+  it('refuses a data-exif that is not keep', async () => {
+    await assert.rejects(page('<m data-exif=strip>![x](photo.jpg)</m>\n'), /data-exif=strip is not data-exif=keep/)
+  })
+
+  it('does not publish another kind of picture that carries EXIF, unless kept', async () => {
+    await locatedPhoto(join(bundle, 'photo.webp'), 'webp')
+    await assert.rejects(page('[Original](photo.webp)\n'), /photo\.webp carries EXIF or says where it was taken/)
+    await page('<m data-size=native data-exif=keep>![x](photo.webp)</m>\n')
+    assert.match(exifOf(out('photo.webp')), /GPSLatitude/)
   })
 })
 

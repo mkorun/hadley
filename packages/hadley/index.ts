@@ -166,7 +166,9 @@ export async function build(
 
   const doneImages = logger.step('generate images', 'images')
   const files = await buildFiles(filesOptions)
-  doneImages(`${files.images.built} new · ${files.images.cached} cached`, settle(files.problems, isPublish))
+  // privacy by default, said once a build: how many pictures were published without where they were taken
+  const leftOut = files.images.located ? ` · location removed from ${files.images.located}` : ''
+  doneImages(`${files.images.built} new · ${files.images.cached} cached${leftOut}`, settle(files.problems, isPublish))
 
   // the names templates read as assets, and site paths resolve to: the theme's files and the stylesheet of the
   // highlighted code, which is complete once every page's code was highlighted, when its files were recorded above
