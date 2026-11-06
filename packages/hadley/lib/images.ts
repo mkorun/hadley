@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto'
 import sharp, { type Metadata } from 'sharp'
 import { mkdir, access, readFile, stat, copyFile, writeFile } from 'node:fs/promises'
 import { join as joinPath, extname, dirname, posix } from 'node:path'
-import { crc32 } from 'node:zlib'
+import { crc32, inflateSync } from 'node:zlib'
 import type { Picture } from '../case/index.ts'
 import type { ListCover } from './site.ts'
 import type { ContentFile } from './site-paths.ts'
@@ -368,6 +368,41 @@ const PNG_RAW_EXIF = /^Raw profile type (?:exif|APP1)\x00/
 const PNG_RAW_XMP = /^Raw profile type xmp\x00/
 // its IPTC, hex in text, which hadley does not read: it goes as a whole
 const PNG_RAW_IPTC = /^Raw profile type (?:iptc|8bim)\x00/
+
+/**
+ * Whether what a PNG holds packed (its text in zTXt and compressed iTXt, its colour profile in iCCP) unpacks to no more
+ * than `limit` bytes in all, which sharp would otherwise unpack whatever the file's size; true for anything that is no
+ * PNG, false for packed data that does not unpack.
+ */
+export const pngUnpacksWithin = (png: Buffer, limit: number): boolean => {
+  if (png.length < 8 || !png.subarray(0, 8).equals(PNG_SIG)) return true
+  let left = limit
+  for (let off = 8; off + 12 <= png.length; off += 12 + png.readUInt32BE(off)) {
+    const type = png.toString('latin1', off + 4, off + 8)
+    const data = png.subarray(off + 8, off + 8 + png.readUInt32BE(off))
+    const packed = packedPart(type, data)
+    if (!packed) continue
+    try {
+      left -= inflateSync(packed, { maxOutputLength: Math.max(left, 1) }).length
+    } catch {
+      return false
+    }
+    if (left < 0) return false
+  }
+  return true
+}
+
+// what a chunk holds packed: after its keyword and compression method (zTXt, iCCP), or, in an iTXt whose flag says so,
+// after its language and translated keyword too
+const packedPart = (type: string, data: Buffer): Buffer | undefined => {
+  const keyword = data.indexOf(0)
+  if (keyword < 0) return undefined
+  if (type === 'zTXt' || type === 'iCCP') return data.subarray(keyword + 2)
+  if (type !== 'iTXt' || data[keyword + 1] !== 1) return undefined
+  const language = data.indexOf(0, keyword + 3)
+  const translated = language < 0 ? -1 : data.indexOf(0, language + 1)
+  return translated < 0 ? undefined : data.subarray(translated + 1)
+}
 
 /**
  * A PNG with its chunks edited, as editJpeg edits a JPEG's segments: `edit` gives what stands in a chunk's place, or

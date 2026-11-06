@@ -50,6 +50,8 @@ type Key =
   | 'notThisPicture'
   | 'pictureExists'
   | 'pictureNotPlain'
+  | 'pictureBroken'
+  | 'pictureUnpacksTooFar'
 
 const MESSAGES: Record<Lang, Record<Key, string>> = {
   de: {
@@ -89,6 +91,8 @@ const MESSAGES: Record<Lang, Record<Key, string>> = {
     notThisPicture: 'Die Datei ist kein lesbares Bild der Art, die ihr Name sagt (PNG oder JPEG)',
     pictureExists: 'Im Bundle gibt es schon eine Datei dieses Namens',
     pictureNotPlain: 'Unter diesem Namen liegt keine einfache Datei; der Editor ersetzt sie nicht',
+    pictureBroken: 'Das Bild ist abgeschnitten oder beschädigt; der Build könnte es nicht lesen',
+    pictureUnpacksTooFar: 'Das PNG enthält gepackte Daten, die sich auf über 8 MiB entpacken',
   },
   en: {
     assetNotFound: 'Asset not found',
@@ -127,6 +131,8 @@ const MESSAGES: Record<Lang, Record<Key, string>> = {
     notThisPicture: 'The file is no readable picture of the kind its name says (PNG or JPEG)',
     pictureExists: 'The bundle already has a file of this name',
     pictureNotPlain: 'What lies under this name is no plain file; the editor does not replace it',
+    pictureBroken: 'The picture is cut short or broken; the build could not read it',
+    pictureUnpacksTooFar: 'The PNG holds packed data that unpacks to more than 8 MiB',
   },
 }
 

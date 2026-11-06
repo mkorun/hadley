@@ -1,13 +1,14 @@
 import type { Plugin } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { constants, copyFile, link, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
+import { statSync } from 'node:fs'
+import { link, readdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
 import { createHash, randomBytes } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
 import { parseDocument, checkOnlyEditedBlockChanged } from '../../case/index.ts'
 import { isPageName } from '../../lib/bundles.ts'
-import { located } from '../../lib/images.ts'
+import { IMAGE_SECONDS, located, pngUnpacksWithin } from '../../lib/images.ts'
 import { isSystemFile, lf } from '../../lib/platform.ts'
 import { lookupDirs } from '../../lib/site-paths.ts'
 import { resolveLang, t, type Lang } from './i18n.ts'
@@ -185,6 +186,8 @@ const imageType = (name: string): string | undefined =>
  */
 export async function bundleFiles(filePath: string): Promise<Map<string, string>> {
   const files = new Map<string, string>()
+  // a name a link or another entry that is no plain file takes: the build takes it there, so the list offers it nowhere
+  const shadowed = new Set<string>()
   const walk = async (dir: string, prefix: string, depth: number): Promise<void> => {
     let entries
     try {
@@ -201,7 +204,9 @@ export async function bundleFiles(filePath: string): Promise<Map<string, string>
         // a folder in brackets is a bundle of its own, one with a page a language's
         if (depth < 2 && !name.startsWith('[') && !(await holdsPage(path)))
           await walk(path, `${prefix}${name}/`, depth + 1)
-      } else if (entry.isFile() && extension(name) !== 'md' && !files.has(prefix + name)) files.set(prefix + name, path)
+      } else if (files.has(prefix + name) || shadowed.has(prefix + name)) continue
+      else if (entry.isFile() && extension(name) !== 'md') files.set(prefix + name, path)
+      else shadowed.add(prefix + name)
     }
   }
   for (const dir of lookupDirs(filePath)) await walk(dir, '', 0)
@@ -252,8 +257,9 @@ export async function serveBundleFile(res: ServerResponse, url: string, lang: La
 
 // ─── A picture added to a page's bundle (editor.js, addPicture) ────────────────────────────────────────────────────
 
-/** How large a picture the editor adds may be. */
+/** How large a picture the editor adds may be, and how far what a PNG holds packed may unpack. */
 const PICTURE_BYTES = 25 * 1024 * 1024
+const PICTURE_UNPACKED = 8 * 1024 * 1024
 // a name a picture is added under: one file, of letters, digits, `-`, `_` and `.`, not hidden or private, PNG or JPEG
 const PICTURE_NAME = /^[\p{L}\p{N}][\p{L}\p{N}._-]*\.(?:png|jpe?g)$/u
 // a name Windows keeps for a device, with any extension (lib/site-paths.ts, urlPathProblem)
@@ -312,12 +318,24 @@ export async function handleUpload(req: IncomingMessage, res: ServerResponse): P
   } catch (error) {
     return send(res, 413, { error: error instanceof Error ? error.message : t(lang, 'requestBodyTooLarge') })
   }
+  // its text and colour profile, which sharp unpacks whatever the body's size (review 2026-11-06)
+  if (!pngUnpacksWithin(bytes, PICTURE_UNPACKED)) return send(res, 415, { error: t(lang, 'pictureUnpacksTooFar') })
   // what sharp reads it as, by its bytes: the kind its name says, or it is refused
   const meta = await sharp(bytes)
     .metadata()
     .catch(() => undefined)
   if (meta?.format !== (type === 'image/png' ? 'png' : 'jpeg'))
     return send(res, 415, { error: t(lang, 'notThisPicture') })
+  // read whole, as the build reads it: one cut short or broken inside fails here, not when the page is built
+  const whole = await sharp(bytes)
+    .timeout({ seconds: IMAGE_SECONDS })
+    .resize(64, 64, { fit: 'inside' })
+    .toBuffer()
+    .then(
+      () => true,
+      () => false,
+    )
+  if (!whole) return send(res, 415, { error: t(lang, 'pictureBroken') })
 
   const taken = await takenName(dirs, name)
   if (taken && (replace === null || taken.name !== name))
@@ -327,48 +345,63 @@ export async function handleUpload(req: IncomingMessage, res: ServerResponse): P
   const target = taken?.path ?? join(dirs.at(-1)!, name)
   // written whole beside it first, under a hidden name the list leaves out, so that the build never reads half of it
   const temp = join(dirname(target), `.hadley-upload-${randomBytes(8).toString('hex')}`)
-  const quiet = () => {
-    for (const path of [temp, target]) ownWrites.set(path, Date.now() + OWN_WRITE_MS)
-  }
-  quiet()
+  // the temporary file is the editor's whatever it holds, the picture until someone else changes it (wroteItself)
+  ownWrites.set(temp, OURS)
+  ownWrites.set(target, OURS)
   try {
     await writeFile(temp, bytes, { flag: 'wx' })
     if (taken) await rename(temp, target)
     else await addOnce(temp, target)
   } catch (error) {
+    ownWrites.delete(target)
     if ((error as NodeJS.ErrnoException).code === 'EEXIST')
       return send(res, 409, { error: t(lang, 'pictureExists'), exists: name })
     return send(res, 500, { error: t(lang, 'couldNotWriteFile') })
   } finally {
     await unlink(temp).catch(() => undefined)
-    // from the last of its events on
-    quiet()
   }
+  ownWrites.set(target, identity(target))
   send(res, 200, { name, located: located(meta) })
 }
 
-// The pictures the editor wrote, for a moment: the dev server does not rebuild for them, since its reload would close
-// the field with what is not saved yet. The page shows a picture once its text is saved, which rebuilds it.
-const ownWrites = new Map<string, number>()
-const OWN_WRITE_MS = 2000
+// The files the editor wrote, each as it left it: the dev server does not rebuild for them, since its reload would
+// close the field with what is not saved yet; the page shows a picture once its text is saved, which rebuilds it. A
+// change of such a file by anyone else rebuilds as any change does (review 2026-11-06: a time window took the
+// author's for the editor's).
+const ownWrites = new Map<string, string>()
+// a file still being written, or a temporary one, which is the editor's whatever it holds
+const OURS = 'ours'
 
-/** Whether the editor wrote the file at `path` a moment ago (handleUpload): a change of its own, not the author's. */
+/** A file as it stands: its size, its modification and change times and its inode, or that it is gone. */
+const identity = (path: string): string => {
+  try {
+    const { size, mtimeMs, ctimeMs, ino } = statSync(path)
+    return `${size} ${mtimeMs} ${ctimeMs} ${ino}`
+  } catch {
+    return 'gone'
+  }
+}
+
+/** Whether the file at `path` is as the editor left it (handleUpload): a change of its own, not someone else's. */
 export function wroteItself(path: string): boolean {
-  const until = ownWrites.get(path)
-  if (until === undefined) return false
-  if (Date.now() <= until) return true
+  const own = ownWrites.get(path)
+  if (own === undefined) return false
+  if (own === OURS || identity(path) === own) return true
   ownWrites.delete(path)
   return false
 }
 
-/** Puts `temp` in place under `target` unless a file is there by then: a hard link, else an exclusive copy. */
-async function addOnce(temp: string, target: string): Promise<void> {
+/**
+ * Puts `temp` in place under `target` unless a file is there by then, never showing half of it: a hard link, else
+ * (a file system without them) the name claimed by an empty file, exclusively, and the whole file renamed onto it.
+ */
+export async function addOnce(temp: string, target: string, linkFile = link): Promise<void> {
   try {
-    await link(temp, target)
+    await linkFile(temp, target)
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw error
-    // a file system without hard links
-    await copyFile(temp, target, constants.COPYFILE_EXCL)
+    await writeFile(target, '', { flag: 'wx' })
+    await rename(temp, target)
   }
 }
 

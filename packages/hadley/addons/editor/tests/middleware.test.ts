@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { deflateSync, crc32 } from 'node:zlib'
 import { createHash } from 'node:crypto'
 import { Readable } from 'node:stream'
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -22,6 +23,8 @@ import {
   serveBundleFile,
   handleUpload,
   pictureName,
+  wroteItself,
+  addOnce,
 } from '../plugin.ts'
 import { registerPageBlocks } from '../renderer.ts'
 import { parseDocument, type BlockToken } from '../../../case/index.ts'
@@ -1328,11 +1331,14 @@ describe('the files of a bundle', () => {
     await mkdir(join(bundle, 'notes'))
     await writeFile(join(bundle, 'notes', 'README.md'), 'x')
     await writeFile(join(bundle, 'notes', 'sketch.png'), 'x')
+    // review 2026-11-06 (Astra): a link in the language's folder is what the build takes, not the bundle's file
+    await writeFile(join(bundle, 'shadow.png'), 'shared')
+    await symlink(join(bundle, 'map.png'), join(bundle, 'en', 'shadow.png'))
     const files = await bundleFiles(join(bundle, 'en', 'b.md'))
     assert.deepEqual([...files.keys()], ['chart.png', 'photo.jpg', 'map.png', 'notes/sketch.png'])
     // a name of both is the language's, as the build takes it
     assert.equal(files.get('photo.jpg'), join(bundle, 'en', 'photo.jpg'))
-    assert.deepEqual(await bundleFileNames(page), ['map.png', 'notes/sketch.png', 'photo.jpg'])
+    assert.deepEqual(await bundleFileNames(page), ['map.png', 'notes/sketch.png', 'photo.jpg', 'shadow.png'])
   })
 
   it('lists none for a page that is one Markdown file, which has no bundle', async () => {
@@ -1483,6 +1489,77 @@ describe('a picture added to a bundle', () => {
     assert.equal((await upload('name=Karte.png&replace=1', png)).status, 200)
     assert.ok((await readFile(join(bundle, 'Karte.png'))).equals(png))
     assert.deepEqual((await readdir(bundle)).sort(), ['Karte.png', 'b.md'])
+  })
+
+  // review 2026-11-06 (Astra): a PNG cut short passed sharp's metadata() and failed the build
+  it('is refused cut short or broken inside, as the build would refuse it', async () => {
+    const noisy = () =>
+      sharp({
+        create: {
+          width: 256,
+          height: 256,
+          channels: 3,
+          background: '#000',
+          noise: { type: 'gaussian', mean: 128, sigma: 60 },
+        },
+      })
+    const [big, jpeg] = await Promise.all([noisy().png().toBuffer(), noisy().jpeg().toBuffer()])
+    // its head whole, its pixels cut short: sharp's metadata() reads it, the build would not
+    for (const [name, bytes, type] of [
+      ['cut.png', big.subarray(0, big.length / 2), 'image/png'],
+      ['cut.jpg', jpeg.subarray(0, Math.floor(jpeg.length * 0.8)), 'image/jpeg'],
+    ] as const) {
+      assert.ok((await sharp(bytes).metadata()).width, name)
+      assert.deepEqual(await upload(`name=${name}`, bytes, type), {
+        status: 415,
+        body: { error: 'The picture is cut short or broken; the build could not read it' },
+      })
+    }
+    assert.deepEqual(await readdir(bundle), ['b.md'])
+  })
+
+  // review 2026-11-06 (Astra): 16 KB of zTXt unpacked to 16 MiB in sharp
+  it('is refused when what it holds packed unpacks beyond 8 MiB, and taken with a colour profile', async () => {
+    const chunk = (type: string, data: Buffer) => {
+      const head = Buffer.alloc(8)
+      head.writeUInt32BE(data.length, 0)
+      head.write(type, 4, 'latin1')
+      const crc = Buffer.alloc(4)
+      crc.writeUInt32BE(crc32(Buffer.concat([head.subarray(4), data])) >>> 0, 0)
+      return Buffer.concat([head, data, crc])
+    }
+    const text = (size: number) =>
+      chunk('zTXt', Buffer.concat([Buffer.from('Comment\0\0', 'latin1'), deflateSync(Buffer.alloc(size, 65))]))
+    const withText = (size: number) => Buffer.concat([png.subarray(0, 33), text(size), png.subarray(33)])
+    assert.equal((await upload('name=packed.png', withText(9 * 1024 * 1024))).status, 415)
+    assert.equal((await upload('name=small.png', withText(1024))).status, 200)
+    const profiled = await sharp(png).withIccProfile('p3').png().toBuffer()
+    assert.equal((await upload('name=p3.png', profiled)).status, 200)
+  })
+
+  // review 2026-11-06 (Astra): for two seconds the dev server took the author's change of the file for the editor's
+  it("is the editor's own change until someone else changes the file", async () => {
+    assert.equal((await upload('name=own.png', png)).status, 200)
+    const path = join(bundle, 'own.png')
+    assert.equal(wroteItself(path), true)
+    assert.equal(wroteItself(path), true)
+    await writeFile(path, await sharp(png).negate().png().toBuffer())
+    assert.equal(wroteItself(path), false)
+    assert.equal(wroteItself(join(bundle, 'b.md')), false)
+  })
+
+  // review 2026-11-06 (Astra): the copy in place of a hard link showed the file half written
+  it('without hard links claims the name empty and puts the whole file on it, and never replaces one', async () => {
+    const noLink = async () => {
+      throw Object.assign(new Error('no hard links'), { code: 'EOPNOTSUPP' })
+    }
+    await writeFile(join(bundle, '.temp'), png)
+    await addOnce(join(bundle, '.temp'), join(bundle, 'plain.png'), noLink)
+    assert.ok((await readFile(join(bundle, 'plain.png'))).equals(png))
+    await writeFile(join(bundle, '.temp'), 'other')
+    await assert.rejects(addOnce(join(bundle, '.temp'), join(bundle, 'plain.png'), noLink), { code: 'EEXIST' })
+    assert.ok((await readFile(join(bundle, 'plain.png'))).equals(png))
+    await rm(join(bundle, '.temp'))
   })
 
   it('never writes through a link, nor over a folder', async () => {
