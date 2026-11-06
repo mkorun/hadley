@@ -12,6 +12,7 @@ import {
   processImage,
   exifLocated,
   exifRights,
+  located,
   keptExif,
   publishedCopy,
   publishedXmp,
@@ -190,14 +191,27 @@ describe('the location in an image', () => {
     assert.match(cleaned, /trainedAlgorithmicMedia/)
   })
 
-  test('a location the filter cannot take out leaves the derivative without XMP', async (t) => {
+  test('stripLocationFromXmp takes out a place by name, and one with a structure of its own, with all it holds', () => {
+    const places = LOCATED_XMP.replace(
+      '<dc:creator>',
+      '<exif:GPSAreaInformation><rdf:Alt><rdf:li xml:lang="x-default">Dortmund</rdf:li></rdf:Alt></exif:GPSAreaInformation>' +
+        '<Iptc4xmpExt:LocationShown><rdf:Bag><rdf:li rdf:parseType="Resource"><Iptc4xmpExt:City>Unna</Iptc4xmpExt:City>' +
+        '</rdf:li></rdf:Bag></Iptc4xmpExt:LocationShown><photoshop:City>Hagen</photoshop:City><dc:creator>',
+    ).replace('exif:GPSLongitude="7,24.0E"', 'exif:GPSLongitude="7,24.0E" photoshop:Country="Deutschland"')
+    const cleaned = stripLocationFromXmp(Buffer.from(places)).toString('utf-8')
+    assert.doesNotMatch(cleaned, /Dortmund|Unna|Hagen|Deutschland|LocationShown|GPS/)
+    assert.match(cleaned, /<dc:creator>Jane Doe<\/dc:creator>/)
+    // a name that only ends like a place stays: it says nothing of where
+    const licensor =
+      '<rdf:Description plus:LicensorCity="Köln"><exif:SubjectLocation>10</exif:SubjectLocation></rdf:Description>'
+    assert.equal(stripLocationFromXmp(Buffer.from(licensor)).toString('utf-8'), licensor)
+  })
+
+  test('a location the filter cannot take out, in an element never closed, leaves the derivative without XMP', async (t) => {
     const dir = await mkdtemp(join(tmpdir(), 'hadley-location-test-'))
     t.after(() => rm(dir, { recursive: true, force: true }))
-    const nested = LOCATED_XMP.replace(
-      '<dc:creator>',
-      '<exif:GPSAreaInformation><rdf:Alt><rdf:li xml:lang="x-default">Dortmund</rdf:li></rdf:Alt></exif:GPSAreaInformation><dc:creator>',
-    )
-    assert.match(stripLocationFromXmp(Buffer.from(nested)).toString('utf-8'), /Dortmund/)
+    const nested = LOCATED_XMP.replace('<dc:creator>', '<photoshop:City>Dortmund<dc:creator>')
+    assert.equal(publishedXmp(Buffer.from(nested)), null)
     const base = await sharp({ create: { width: 40, height: 20, channels: 3, background: '#888' } })
       .jpeg()
       .toBuffer()
@@ -297,17 +311,23 @@ describe('what is published of a photo', () => {
     test(`a ${format} keeps its pixels and its orientation, and loses its location, camera and serial number`, async () => {
       const source = at(`photo.${format}`)
       await locatedPhoto(source, format)
-      assert.match(exifOf(source), /GPSLatitude: 51\.5/)
+      const before = exifOf(source)
+      for (const tag of ['GPSLatitude: 51.5', 'City: Dortmund', 'Location: Westfalenpark'])
+        assert.ok(before.includes(tag), tag)
+      if (format === 'jpeg') assert.match(before, /Sub-location: Westfalenpark/)
       const bytes = await readFile(source)
       const meta = await sharp(bytes).metadata()
       await writeFile(at(`out.${format}`), publishedCopy(bytes, publishedXmp(meta.xmp), keptExif(meta)))
       const published = await readFile(at(`out.${format}`))
       assert.ok((await pixels(published)).equals(await pixels(bytes)))
       const tags = exifOf(at(`out.${format}`))
-      assert.doesNotMatch(tags, /GPS|Model|SerialNumber/)
+      assert.doesNotMatch(tags, /GPS|Model|SerialNumber|City|Location|Dortmund|Westfalenpark/)
+      assert.equal(located(await sharp(published).metadata()), false)
       assert.match(tags, /Orientation: 6/)
       assert.match(tags, /Artist: Jane Doe\n/)
       assert.match(tags, /Copyright: \(c\) 2026 Jane Doe\n/)
+      // a PNG holds its IPTC as hex in a text chunk, which goes as a whole
+      if (format === 'jpeg') assert.match(tags, /CopyrightNotice: IPTC Jane Doe\n/)
       const xmp = (await sharp(published).metadata()).xmp?.toString('utf-8') ?? ''
       assert.match(xmp, /Jane Doe/)
       assert.match(xmp, /trainedAlgorithmicMedia/)
@@ -349,6 +369,21 @@ describe('what is published of a photo', () => {
     assert.deepEqual(exifRights(keptExif({ exif, orientation: 1 })!), rights)
     assert.equal(keptExif({ orientation: 1 }), null)
     assert.deepEqual(exifRights(undefined), {})
+  })
+
+  test('a place named in the IPTC alone is a location: found, and taken out', async () => {
+    await sharp({ create: { width: 8, height: 8, channels: 3, background: '#000' } })
+      .jpeg()
+      .toFile(at('city.jpg'))
+    const exiftool = spawnSync('exiftool', ['-q', '-overwrite_original', '-IPTC:City=Dortmund', at('city.jpg')], {
+      timeout: 30_000,
+    })
+    assert.equal(exiftool.status, 0)
+    const bytes = await readFile(at('city.jpg'))
+    const meta = await sharp(bytes).metadata()
+    assert.equal(located(meta), true)
+    const published = await sharp(publishedCopy(bytes, null, keptExif(meta))).metadata()
+    assert.equal(located(published), false)
   })
 
   test('anything but a JPEG or PNG comes back as it is', () => {

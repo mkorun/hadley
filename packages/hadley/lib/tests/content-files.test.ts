@@ -434,7 +434,8 @@ describe('the location of a photo the content names', () => {
     const html = await page('<m data-size=native>![x](photo.jpg)</m>\n\n![y](photo.jpg)\n\n[Original](photo.jpg)\n', {
       onImages: (counted) => (images = counted),
     })
-    for (const file of ['photo.jpg', 'photo-4w.webp']) assert.doesNotMatch(exifOf(out(file)), /GPS|Model|Serial/, file)
+    for (const file of ['photo.jpg', 'photo-4w.webp'])
+      assert.doesNotMatch(exifOf(out(file)), /GPS|Model|Serial|City|Location/, file)
     // the copy still turned as its camera meant, so its size is the upright one
     assert.match(exifOf(out('photo.jpg')), /Orientation: 6/)
     // who made it and who holds its rights go with it, in the copy and in its derivatives

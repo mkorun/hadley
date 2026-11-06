@@ -92,20 +92,57 @@ export const stripAiPromptFromXmp = (xmp: Buffer): Buffer => {
   return Buffer.from(cleaned)
 }
 
-// An XMP packet can say where a photo was taken too (exif:GPSLatitude and the rest, under any prefix), as an element
-// or as an attribute of its rdf:Description; and its tiff:Orientation would turn again what the derivatives have
-// already turned upright. Both go; what else it holds stays: an AI label, its creator, its licence.
+// Where a picture was taken, as XMP names it under any prefix: its GPS position (exif:GPSLatitude and the rest), and
+// the place by name (photoshop:City, Iptc4xmpCore:Location, Iptc4xmpExt:LocationCreated with what it holds, …), which
+// a photo program can fill from the position. Decided 2026-11-06, to be looked at again.
+const XMP_PLACES = new Set([
+  'City',
+  'State',
+  'ProvinceState',
+  'Country',
+  'CountryCode',
+  'CountryName',
+  'Sublocation',
+  'WorldRegion',
+  'Location',
+  'LocationCreated',
+  'LocationShown',
+])
+const isXmpPlace = (name: string) => name.startsWith('GPS') || XMP_PLACES.has(name)
+// what goes with it: tiff:Orientation would turn again what the derivatives have already turned upright
+const goes = (name: string) => isXmpPlace(name) || name === 'Orientation'
+
+const XMP_ELEMENT = /<([\w-]+:(\w+))\b[^>]*>/g
+const XMP_ATTRIBUTE = /\s[\w-]+:(\w+)="[^"]*"/g
+
+/** Whether XMP still holds a property `which` takes, as an element or an attribute. */
+const holds = (xml: string, which: (name: string) => boolean): boolean =>
+  [...xml.matchAll(XMP_ELEMENT)].some((m) => which(m[2]!)) || [...xml.matchAll(XMP_ATTRIBUTE)].some((m) => which(m[1]!))
+
+/**
+ * XMP without where its picture was taken, nor its orientation: each such property, as an element with all it holds
+ * or as an attribute of an rdf:Description. What else it holds stays: an AI label, its creator, its licence.
+ */
 export const stripLocationFromXmp = (xmp: Buffer): Buffer => {
-  const cleaned = xmp
-    .toString('utf-8')
-    .replace(/<[\w-]+:(?:GPS\w*|Orientation)\b[^>]*\/>/g, '')
-    .replace(/<[\w-]+:(?:GPS\w*|Orientation)\b[^>]*>[^<]*<\/[\w-]+:(?:GPS\w*|Orientation)>/g, '')
-    .replace(/\s[\w-]+:(?:GPS\w*|Orientation)="[^"]*"/g, '')
-  return Buffer.from(cleaned)
+  const xml = xmp.toString('utf-8')
+  let kept = ''
+  let at = 0
+  for (const m of xml.matchAll(XMP_ELEMENT)) {
+    // inside an element already taken out, or one that stays
+    if (m.index < at || !goes(m[2]!)) continue
+    const close = `</${m[1]}>`
+    const end = m[0].endsWith('/>') ? m.index + m[0].length : xml.indexOf(close, m.index) + close.length
+    // an element that is not closed stays, and so the packet is published without its XMP (publishedXmp)
+    if (end < m.index + m[0].length) continue
+    kept += xml.slice(at, m.index)
+    at = end
+  }
+  kept += xml.slice(at)
+  return Buffer.from(kept.replace(XMP_ATTRIBUTE, (whole, name: string) => (goes(name) ? '' : whole)))
 }
 
-// A location the filter leaves: a property with a structure of its own (exif:GPSAreaInformation as an rdf:Alt)
-const XMP_LOCATION_LEFT = /:GPS|:Orientation/
+/** Whether XMP says where its picture was taken. */
+const xmpLocated = (xmp: Buffer | undefined): boolean => xmp !== undefined && holds(xmp.toString('utf-8'), isXmpPlace)
 
 /**
  * The XMP a published image keeps of its source's: never a location, nor an AI image's prompt; null for none, also
@@ -114,7 +151,7 @@ const XMP_LOCATION_LEFT = /:GPS|:Orientation/
 export const publishedXmp = (xmp: Buffer | undefined): Buffer | null => {
   if (!xmp) return null
   const cleaned = stripLocationFromXmp(isAiXmp(xmp) ? stripAiPromptFromXmp(xmp) : xmp)
-  return XMP_LOCATION_LEFT.test(cleaned.toString('utf-8')) ? null : cleaned
+  return holds(cleaned.toString('utf-8'), goes) ? null : cleaned
 }
 
 /** Whether XMP labels its image as made by a trained model (IPTC Digital Source Type). */
@@ -180,9 +217,96 @@ export const exifRights = (exif: Buffer | undefined): Rights => {
   return rights
 }
 
-/** Whether an image's metadata, as sharp reads it, says where it was taken: in its EXIF or its XMP. */
-export const located = (meta: { exif?: Buffer | undefined; xmp?: Buffer | undefined }): boolean =>
-  exifLocated(meta.exif) || /:GPS(?:Latitude|Longitude)\b/.test(meta.xmp?.toString('utf-8') ?? '')
+/** Whether an image's metadata, as sharp reads it, says where it was taken: in its EXIF, its XMP or its IPTC. */
+export const located = (meta: { exif?: Buffer | undefined; xmp?: Buffer | undefined; iptc?: Buffer | undefined }) =>
+  exifLocated(meta.exif) || xmpLocated(meta.xmp) || iimLocated(meta.iptc)
+
+// IPTC IIM, as a JPEG holds it: a Photoshop resource (0x0404) in its APP13 segment, beside a digest of it (0x0425)
+const APP13 = 0xed
+const PHOTOSHOP_NS = Buffer.from('Photoshop 3.0\0')
+const IIM_RESOURCE = 0x0404
+const IIM_DIGEST = 0x0425
+// the datasets of record 2 that name a place (IIM 4.2): content location code and name, city, sub-location, province
+// or state, country code and name; decided with the XMP_PLACES
+const IIM_PLACES = new Set([26, 27, 90, 92, 95, 100, 101])
+
+type Resource = { id: number; head: Buffer; data: Buffer }
+
+/** The resources of an APP13 body ("Photoshop 3.0\0" and 8BIM blocks); undefined for one it cannot read. */
+const photoshopResources = (body: Buffer): Resource[] | undefined => {
+  if (!startsWith(body, PHOTOSHOP_NS)) return undefined
+  const resources: Resource[] = []
+  let off = PHOTOSHOP_NS.length
+  while (off < body.length) {
+    if (off + 12 > body.length || body.toString('latin1', off, off + 4) !== '8BIM') return undefined
+    // its name a Pascal string, padded to an even length; its data too
+    const sizeAt = off + 6 + ((body[off + 6]! + 2) & ~1)
+    if (sizeAt + 4 > body.length) return undefined
+    const size = body.readUInt32BE(sizeAt)
+    if (sizeAt + 4 + size > body.length) return undefined
+    resources.push({
+      id: body.readUInt16BE(off + 4),
+      head: body.subarray(off, sizeAt),
+      data: body.subarray(sizeAt + 4, sizeAt + 4 + size),
+    })
+    off = sizeAt + 4 + size + (size % 2)
+  }
+  return resources
+}
+
+type Dataset = { record: number; dataset: number; bytes: Buffer }
+
+/** The datasets of IIM; undefined for IIM it cannot read. Zeros after the last one are padding. */
+const iimDatasets = (iim: Buffer): Dataset[] | undefined => {
+  const datasets: Dataset[] = []
+  let off = 0
+  while (off < iim.length && iim[off] !== 0) {
+    if (iim[off] !== 0x1c || off + 5 > iim.length) return undefined
+    let length = iim.readUInt16BE(off + 3)
+    let head = 5
+    // an extended dataset: the low bits say how many bytes its length takes
+    if (length & 0x8000) {
+      const bytes = length & 0x7fff
+      if (bytes < 1 || bytes > 4 || off + 5 + bytes > iim.length) return undefined
+      length = iim.readUIntBE(off + 5, bytes)
+      head += bytes
+    }
+    if (off + head + length > iim.length) return undefined
+    datasets.push({ record: iim[off + 1]!, dataset: iim[off + 2]!, bytes: iim.subarray(off, off + head + length) })
+    off += head + length
+  }
+  return datasets
+}
+
+const isIimPlace = ({ record, dataset }: Dataset) => record === 2 && IIM_PLACES.has(dataset)
+
+/** Whether IPTC IIM, as sharp gives it (an APP13 body), names where its picture was taken. */
+const iimLocated = (iptc: Buffer | undefined): boolean => {
+  const iim = iptc && photoshopResources(iptc)?.find(({ id }) => id === IIM_RESOURCE)
+  return iim !== undefined && (iimDatasets(iim.data)?.some(isIimPlace) ?? false)
+}
+
+/**
+ * An APP13 body without the places its IIM names, and without the digest of the IIM that no longer fits it; null for
+ * one hadley cannot read, which then goes as a whole.
+ */
+const withoutIimPlaces = (body: Buffer): Buffer | null => {
+  const resources = photoshopResources(body)
+  const iim = resources?.find(({ id }) => id === IIM_RESOURCE)
+  const datasets = iim && iimDatasets(iim.data)
+  if (!resources || (iim && !datasets)) return null
+  if (!datasets?.some(isIimPlace)) return body
+  const out: Buffer[] = [PHOTOSHOP_NS]
+  for (const resource of resources) {
+    if (resource.id === IIM_DIGEST) continue
+    const data =
+      resource === iim ? Buffer.concat(datasets.filter((d) => !isIimPlace(d)).map((d) => d.bytes)) : resource.data
+    const size = Buffer.alloc(4)
+    size.writeUInt32BE(data.length, 0)
+    out.push(resource.head, size, data, Buffer.alloc(data.length % 2))
+  }
+  return Buffer.concat(out)
+}
 
 /** An image's size as it stands upright: an EXIF orientation of 5 to 8 turns it by a quarter. */
 export const uprightSize = (meta: Metadata): { width: number; height: number } => {
@@ -242,6 +366,8 @@ const PNG_XMP_PREFIX = Buffer.from('XML:com.adobe.xmp\0\0\0\0\0')
 // the text chunks in which tools wrote a PNG's EXIF and XMP before it had an eXIf chunk (ImageMagick)
 const PNG_RAW_EXIF = /^Raw profile type (?:exif|APP1)\x00/
 const PNG_RAW_XMP = /^Raw profile type xmp\x00/
+// its IPTC, hex in text, which hadley does not read: it goes as a whole
+const PNG_RAW_IPTC = /^Raw profile type (?:iptc|8bim)\x00/
 
 /**
  * A PNG with its chunks edited, as editJpeg edits a JPEG's segments: `edit` gives what stands in a chunk's place, or
@@ -318,8 +444,8 @@ export const keptExif = (meta: { exif?: Buffer | undefined; orientation?: number
 
 /**
  * A JPEG or PNG as it is published without its EXIF: in place of that `exif` (keptExif: its orientation, so that it
- * still stands as its camera meant, and its rights), and in place of its XMP `xmp`, or none for null; its pixels and
- * every other segment or chunk as they are. Anything else comes back as it is.
+ * still stands as its camera meant, and its rights), in place of its XMP `xmp`, or none for null, and its IPTC without
+ * the places it names; its pixels and every other segment or chunk as they are. Anything else comes back as it is.
  */
 export const publishedCopy = (bytes: Buffer, xmp: Buffer | null, kept: Buffer | null): Buffer => {
   let written = kept === null
@@ -337,13 +463,19 @@ export const publishedCopy = (bytes: Buffer, xmp: Buffer | null, kept: Buffer | 
     if (startsWith(body, JPEG_XMP_EXTENSION_NS)) return []
     return undefined
   })
-  return editPng(jpeg, (type, data) => {
+  // the IIM without the places it names
+  const iim = editJpeg(jpeg, (marker, body) => {
+    if (marker !== APP13 || !startsWith(body, PHOTOSHOP_NS)) return undefined
+    const cleaned = withoutIimPlaces(body)
+    return cleaned === body ? undefined : cleaned ? jpegSegment(APP13, cleaned) : []
+  })
+  return editPng(iim, (type, data) => {
     if (type === 'eXIf') return exif((tiff) => pngChunk('eXIf', tiff))
     if (isPngXmp(type, data)) return xmp ? pngChunk('iTXt', Buffer.concat([PNG_XMP_PREFIX, xmp])) : []
     if (type !== 'tEXt' && type !== 'zTXt' && type !== 'iTXt') return undefined
     const keyword = data.toString('latin1', 0, 32)
     if (PNG_RAW_EXIF.test(keyword)) return exif((tiff) => pngChunk('eXIf', tiff))
-    return PNG_RAW_XMP.test(keyword) ? [] : undefined
+    return PNG_RAW_XMP.test(keyword) || PNG_RAW_IPTC.test(keyword) ? [] : undefined
   })
 }
 
