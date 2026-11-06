@@ -18,6 +18,7 @@ import {
   oneAtATime,
   readBody,
   bundleFileNames,
+  bundleFiles,
   serveBundleFile,
 } from '../plugin.ts'
 import { registerPageBlocks } from '../renderer.ts'
@@ -1280,25 +1281,60 @@ describe('the head of a page', () => {
 })
 
 describe('the files of a bundle', () => {
+  // a page of a bundle, as the build finds its files (lookupDirs)
+  let bundle: string
+  let page: string
+  beforeEach(async () => {
+    bundle = join(tmpDir, '[b]')
+    page = join(bundle, 'b.md')
+    await mkdir(bundle)
+    await writeFile(page, 'Text.\n', 'utf-8')
+  })
+
   it('lists plain files beside the page, but no Markdown, nothing hidden or private, no other bundle and no link', async () => {
-    await writeFile(tmpFile, 'Text.\n', 'utf-8')
     for (const name of ['photo.jpg', 'paper.pdf', '_private.txt', '.hidden.png', 'other.md'])
-      await writeFile(join(tmpDir, name), 'x')
-    await mkdir(join(tmpDir, 'images', 'deep', 'deeper'), { recursive: true })
-    await writeFile(join(tmpDir, 'images', 'a.png'), 'x')
-    await writeFile(join(tmpDir, 'images', 'deep', 'b.png'), 'x')
-    await writeFile(join(tmpDir, 'images', 'deep', 'deeper', 'c.png'), 'x')
-    await mkdir(join(tmpDir, '[sub]'))
-    await writeFile(join(tmpDir, '[sub]', 'own.jpg'), 'x')
-    await symlink(tmpFile, join(tmpDir, 'link.jpg'))
-    assert.deepEqual(await bundleFileNames(tmpFile), ['images/a.png', 'images/deep/b.png', 'paper.pdf', 'photo.jpg'])
+      await writeFile(join(bundle, name), 'x')
+    await mkdir(join(bundle, 'images', 'deep', 'deeper'), { recursive: true })
+    await writeFile(join(bundle, 'images', 'a.png'), 'x')
+    await writeFile(join(bundle, 'images', 'deep', 'b.png'), 'x')
+    await writeFile(join(bundle, 'images', 'deep', 'deeper', 'c.png'), 'x')
+    await mkdir(join(bundle, '[sub]'))
+    await writeFile(join(bundle, '[sub]', 'own.jpg'), 'x')
+    await symlink(page, join(bundle, 'link.jpg'))
+    assert.deepEqual(await bundleFileNames(page), ['images/a.png', 'images/deep/b.png', 'paper.pdf', 'photo.jpg'])
+  })
+
+  // review 2026-11-06: the list showed what the build refuses, and left out what it finds
+  it("lists a page in a language directory its own files, then the bundle's, but no other language's", async () => {
+    for (const dir of ['en', 'fr']) {
+      await mkdir(join(bundle, dir))
+      await writeFile(join(bundle, dir, 'b.md'), 'Text.\n')
+    }
+    await writeFile(join(bundle, 'en', 'chart.png'), 'en')
+    await writeFile(join(bundle, 'en', 'photo.jpg'), 'en')
+    await writeFile(join(bundle, 'fr', 'graphique.png'), 'fr')
+    await writeFile(join(bundle, 'photo.jpg'), 'shared')
+    await writeFile(join(bundle, 'map.png'), 'shared')
+    // a folder whose Markdown is no page stays one of files
+    await mkdir(join(bundle, 'notes'))
+    await writeFile(join(bundle, 'notes', 'README.md'), 'x')
+    await writeFile(join(bundle, 'notes', 'sketch.png'), 'x')
+    const files = await bundleFiles(join(bundle, 'en', 'b.md'))
+    assert.deepEqual([...files.keys()], ['chart.png', 'photo.jpg', 'map.png', 'notes/sketch.png'])
+    // a name of both is the language's, as the build takes it
+    assert.equal(files.get('photo.jpg'), join(bundle, 'en', 'photo.jpg'))
+    assert.deepEqual(await bundleFileNames(page), ['map.png', 'notes/sketch.png', 'photo.jpg'])
+  })
+
+  it('lists none for a page that is one Markdown file, which has no bundle', async () => {
+    await writeFile(join(tmpDir, 'photo.jpg'), 'x')
+    assert.deepEqual(await bundleFileNames(tmpFile), [])
   })
 
   it('serves an image the list holds, and nothing else', async () => {
-    await writeFile(tmpFile, 'Text.\n', 'utf-8')
-    await writeFile(join(tmpDir, 'photo.jpg'), 'jpeg')
-    await writeFile(join(tmpDir, 'paper.pdf'), 'pdf')
-    blockIdMap.set('files-block', { filePath: tmpFile, start: 0, end: 5, fileHashAtRender: '' })
+    await writeFile(join(bundle, 'photo.jpg'), 'jpeg')
+    await writeFile(join(bundle, 'paper.pdf'), 'pdf')
+    blockIdMap.set('files-block', { filePath: page, start: 0, end: 5, fileHashAtRender: '' })
     const list = mockRes()
     await serveBundleFile(list, '/__hadley/files/files-block', 'en')
     assert.equal(list.statusCode, 200)
@@ -1311,8 +1347,8 @@ describe('the files of a bundle', () => {
     assert.equal(image.statusCode, 200)
     for (const url of [
       '/__hadley/files/files-block/paper.pdf',
-      '/__hadley/files/files-block/test.md',
-      '/__hadley/files/files-block/..%2Ftest.md',
+      '/__hadley/files/files-block/b.md',
+      '/__hadley/files/files-block/..%2Fb.md',
       '/__hadley/files/files-block/%2E%2E/photo.jpg',
       '/__hadley/files/files-block/%E0%A4%A',
       '/__hadley/files/unknown/photo.jpg',
@@ -1321,6 +1357,17 @@ describe('the files of a bundle', () => {
       await serveBundleFile(res, url, 'en')
       assert.notEqual(res.statusCode, 200, url)
     }
+  })
+
+  it('takes no file as an image for a name Object knows (review 2026-11-05)', async () => {
+    await writeFile(join(bundle, 'plain.constructor'), 'x')
+    blockIdMap.set('files-block', { filePath: page, start: 0, end: 5, fileHashAtRender: '' })
+    const list = mockRes()
+    await serveBundleFile(list, '/__hadley/files/files-block', 'en')
+    assert.deepEqual(JSON.parse(list.body).files, [{ name: 'plain.constructor', image: false }])
+    const file = mockRes()
+    await serveBundleFile(file, '/__hadley/files/files-block/plain.constructor', 'en')
+    assert.equal(file.statusCode, 404)
   })
 })
 
@@ -1346,17 +1393,5 @@ describe('a new block below another', () => {
       await handlePatch(post(body), refused)
       assert.equal(refused.statusCode, 400)
     }
-  })
-
-  it('takes no file as an image for a name Object knows (review 2026-11-05)', async () => {
-    await writeFile(tmpFile, 'Text.\n', 'utf-8')
-    await writeFile(join(tmpDir, 'plain.constructor'), 'x')
-    blockIdMap.set('files-block', { filePath: tmpFile, start: 0, end: 5, fileHashAtRender: '' })
-    const list = mockRes()
-    await serveBundleFile(list, '/__hadley/files/files-block', 'en')
-    assert.deepEqual(JSON.parse(list.body).files, [{ name: 'plain.constructor', image: false }])
-    const file = mockRes()
-    await serveBundleFile(file, '/__hadley/files/files-block/plain.constructor', 'en')
-    assert.equal(file.statusCode, 404)
   })
 })

@@ -28,6 +28,9 @@ export const _isSolitaire = (stem: string): boolean =>
   !(/[a-zA-Z]/.test(stem) && stem === stem.toUpperCase()) && !stem.startsWith('_')
 
 const allCapitals = (stem: string) => /[a-zA-Z]/.test(stem) && stem === stem.toUpperCase()
+
+/** Whether a file of a bundle, by its name, is a page: Markdown whose name is not all capitals. */
+export const isPageName = (name: string): boolean => name.endsWith('.md') && !allCapitals(name.slice(0, -'.md'.length))
 /** The id of a whole bracketed bundle directory name, shared with file lookup. */
 export const bundleIdOf = (name: string): string | null => /^\[([^\[\]]+)\]$/.exec(name)?.[1] ?? null
 
@@ -91,13 +94,12 @@ export async function pageFiles(contentDir: string, root: string, defaultLanguag
       continue
     }
     for (const entry of await entriesOf(bundleDir)) {
-      const isPage = (name: string) => name.endsWith('.md') && !allCapitals(name.slice(0, -'.md'.length))
-      if (entry.isFile() && isPage(entry.name)) add(joinPath(bundleDir, entry.name), entry.name, defaultLanguage)
+      if (entry.isFile() && isPageName(entry.name)) add(joinPath(bundleDir, entry.name), entry.name, defaultLanguage)
       else if (entry.isDirectory() && !entry.name.startsWith('.') && !entry.name.startsWith('@')) {
         // a language directory
         const langDir = joinPath(bundleDir, entry.name)
         for (const inner of await entriesOf(langDir)) {
-          if (inner.isFile() && isPage(inner.name)) add(joinPath(langDir, inner.name), inner.name, entry.name)
+          if (inner.isFile() && isPageName(inner.name)) add(joinPath(langDir, inner.name), inner.name, entry.name)
         }
       }
     }

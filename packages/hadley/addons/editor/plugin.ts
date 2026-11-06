@@ -5,7 +5,9 @@ import { createHash } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseDocument, checkOnlyEditedBlockChanged } from '../../case/index.ts'
-import { lf } from '../../lib/platform.ts'
+import { isPageName } from '../../lib/bundles.ts'
+import { isSystemFile, lf } from '../../lib/platform.ts'
+import { lookupDirs } from '../../lib/site-paths.ts'
 import { resolveLang, t, type Lang } from './i18n.ts'
 
 const assetsDir = join(fileURLToPath(new URL('.', import.meta.url)), 'assets')
@@ -169,11 +171,13 @@ const imageType = (name: string): string | undefined =>
   Object.hasOwn(IMAGE_TYPES, extension(name)) ? IMAGE_TYPES[extension(name)] : undefined
 
 /**
- * The files beside a page's Markdown, by their path in its bundle: plain files only (no link, no Markdown, nothing
- * hidden or private, no other bundle's folder), at most two folders deep and 200 of them.
+ * The files of a page's bundle, each by the name its content gives it and where it lies, as the build finds them
+ * (lookupDirs): beside its Markdown, then, for a page in a language directory, in the bundle above. Plain files only
+ * (no link, no Markdown, nothing hidden or private, no other bundle's folder and no other language's), at most two
+ * folders deep and 200 of them. A page that is one `.md` file has no bundle, and so none.
  */
-export async function bundleFileNames(filePath: string): Promise<string[]> {
-  const names: string[] = []
+export async function bundleFiles(filePath: string): Promise<Map<string, string>> {
+  const files = new Map<string, string>()
   const walk = async (dir: string, prefix: string, depth: number): Promise<void> => {
     let entries
     try {
@@ -182,27 +186,40 @@ export async function bundleFileNames(filePath: string): Promise<string[]> {
       return
     }
     for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-      if (names.length >= 200) return
+      if (files.size >= 200) return
       const name = entry.name
-      if (name.startsWith('.') || name.startsWith('_')) continue
+      const path = join(dir, name)
+      if (name.startsWith('.') || name.startsWith('_') || isSystemFile(name)) continue
       if (entry.isDirectory()) {
-        // a folder in brackets is a bundle of its own
-        if (depth < 2 && !name.startsWith('[')) await walk(join(dir, name), `${prefix}${name}/`, depth + 1)
-      } else if (entry.isFile() && extension(name) !== 'md') names.push(prefix + name)
+        // a folder in brackets is a bundle of its own, one with a page a language's
+        if (depth < 2 && !name.startsWith('[') && !(await holdsPage(path)))
+          await walk(path, `${prefix}${name}/`, depth + 1)
+      } else if (entry.isFile() && extension(name) !== 'md' && !files.has(prefix + name)) files.set(prefix + name, path)
     }
   }
-  await walk(dirname(filePath), '', 0)
-  return names
+  for (const dir of lookupDirs(filePath)) await walk(dir, '', 0)
+  return files
 }
+
+const holdsPage = async (dir: string): Promise<boolean> => {
+  try {
+    return (await readdir(dir, { withFileTypes: true })).some((entry) => entry.isFile() && isPageName(entry.name))
+  } catch {
+    return false
+  }
+}
+
+/** The names of a page's bundle files, in their order (bundleFiles). */
+export const bundleFileNames = async (filePath: string): Promise<string[]> => [...(await bundleFiles(filePath)).keys()]
 
 /** The list of a block's bundle files, or one of its images, which a name may only take from that list. */
 export async function serveBundleFile(res: ServerResponse, url: string, lang: Lang): Promise<void> {
   const [blockId = '', ...rest] = url.slice('/__hadley/files/'.length).split('?')[0]!.split('/')
   const entry = blockIdMap.get(blockId)
   if (!entry) return send(res, 404, { error: t(lang, 'blockNotFound') })
-  const names = await bundleFileNames(entry.filePath)
+  const files = await bundleFiles(entry.filePath)
   if (rest.length === 0)
-    return send(res, 200, { files: names.map((name) => ({ name, image: imageType(name) !== undefined })) })
+    return send(res, 200, { files: [...files.keys()].map((name) => ({ name, image: imageType(name) !== undefined })) })
   let name: string
   try {
     name = decodeURIComponent(rest.join('/'))
@@ -210,9 +227,10 @@ export async function serveBundleFile(res: ServerResponse, url: string, lang: La
     return send(res, 400, { error: t(lang, 'assetNotFound') })
   }
   const type = imageType(name)
-  if (!type || !names.includes(name)) return send(res, 404, { error: `${t(lang, 'assetNotFound')}: ${name}` })
+  const path = files.get(name)
+  if (!type || !path) return send(res, 404, { error: `${t(lang, 'assetNotFound')}: ${name}` })
   try {
-    const content = await readFile(join(dirname(entry.filePath), ...name.split('/')))
+    const content = await readFile(path)
     res.statusCode = 200
     res.setHeader('Content-Type', type)
     res.setHeader('Cache-Control', 'no-store')
