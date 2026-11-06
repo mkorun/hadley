@@ -8,6 +8,8 @@ import {
   replaceJpegXmp,
   replacePngXmp,
   stripAiPromptFromXmp,
+  stripLocationFromXmp,
+  processImage,
   extractXmpText,
   aiToolOf,
   buildCover,
@@ -139,7 +141,7 @@ const taggedPng = async (path: string) => {
 }
 
 // review 2026-10-24 (follow-up): these wrote beside the test file, and failed in a read-only checkout
-describe('withMetadata XMP preservation', () => {
+describe('XMP preservation', () => {
   let dir: string
   const at = (name: string) => join(dir, name)
 
@@ -151,17 +153,115 @@ describe('withMetadata XMP preservation', () => {
     await rm(dir, { recursive: true, force: true })
   })
 
-  test('XMP survives sharp resize + format conversion', async () => {
+  test('XMP survives sharp resize + format conversion with keepXmp', async () => {
     assert.equal(await taggedPng(at('with.png')), 0)
-    await sharp(at('with.png')).resize(5).toFormat('webp', { quality: 80 }).withMetadata().toFile(at('with.webp'))
+    await sharp(at('with.png')).resize(5).toFormat('webp', { quality: 80 }).keepXmp().toFile(at('with.webp'))
     const meta = await sharp(at('with.webp')).metadata()
     assert.match(meta.xmp?.toString('utf-8') ?? '', /xmp-survives-test/)
   })
 
-  test('without withMetadata the XMP is lost (control test)', async () => {
+  test('without keepXmp the XMP is lost (control test)', async () => {
     assert.equal(await taggedPng(at('without.png')), 0)
     await sharp(at('without.png')).resize(5).toFormat('webp', { quality: 80 }).toFile(at('without.webp'))
     assert.equal((await sharp(at('without.webp')).metadata()).xmp, undefined)
+  })
+})
+
+// Privacy by default (2026-11-06): a derivative says nothing of where a photo was taken
+const LOCATED_XMP = `<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+<rdf:Description rdf:about="" xmlns:exif="http://ns.adobe.com/exif/1.0/" xmlns:tiff="http://ns.adobe.com/tiff/1.0/"
+ xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:Iptc4xmpExt="http://iptc.org/std/Iptc4xmpExt/2008-02-29/"
+ exif:GPSLongitude="7,24.0E" tiff:Orientation="6"
+ Iptc4xmpExt:DigitalSourceType="http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia">
+<exif:GPSLatitude>51,30.0N</exif:GPSLatitude><exif:GPSVersionID/><dc:creator>Jane Doe</dc:creator>
+</rdf:Description></rdf:RDF></x:xmpmeta>`
+
+describe('the location in an image', () => {
+  test('stripLocationFromXmp takes out every GPS property and the orientation, element or attribute, and keeps the rest', () => {
+    const cleaned = stripLocationFromXmp(Buffer.from(LOCATED_XMP)).toString('utf-8')
+    assert.doesNotMatch(cleaned, /GPS|Orientation/)
+    assert.match(cleaned, /<dc:creator>Jane Doe<\/dc:creator>/)
+    assert.match(cleaned, /trainedAlgorithmicMedia/)
+  })
+
+  test('a location the filter cannot take out leaves the derivative without XMP', async (t) => {
+    const dir = await mkdtemp(join(tmpdir(), 'hadley-location-test-'))
+    t.after(() => rm(dir, { recursive: true, force: true }))
+    const nested = LOCATED_XMP.replace(
+      '<dc:creator>',
+      '<exif:GPSAreaInformation><rdf:Alt><rdf:li xml:lang="x-default">Dortmund</rdf:li></rdf:Alt></exif:GPSAreaInformation><dc:creator>',
+    )
+    assert.match(stripLocationFromXmp(Buffer.from(nested)).toString('utf-8'), /Dortmund/)
+    const base = await sharp({ create: { width: 40, height: 20, channels: 3, background: '#888' } })
+      .jpeg()
+      .toBuffer()
+    await writeFile(join(dir, 'photo.jpg'), injectJpegXmp(base, nested))
+    const config = { widths: [20], formats: ['webp'], sizes: '100vw', quality: 80 }
+    const result = await processImage(
+      join(dir, 'photo.jpg'),
+      'photo',
+      'photo.jpg',
+      (name) => join(dir, `out-${name}`),
+      config,
+      {},
+      'test',
+      join(dir, 'store'),
+    )
+    await result.written
+    assert.equal((await sharp(join(dir, 'out-photo-20w.webp')).metadata()).xmp, undefined)
+  })
+
+  test('a derivative keeps no EXIF and no location, stands upright, and keeps the rest of its XMP', async (t) => {
+    const dir = await mkdtemp(join(tmpdir(), 'hadley-location-test-'))
+    t.after(() => rm(dir, { recursive: true, force: true }))
+    const at = (name: string) => join(dir, name)
+    // a photo 40 x 20, turned a quarter by its EXIF, which also says where it was taken, as its XMP does
+    const base = await sharp({ create: { width: 40, height: 20, channels: 3, background: '#888' } })
+      .jpeg()
+      .toBuffer()
+    await writeFile(at('photo.jpg'), injectJpegXmp(base, LOCATED_XMP))
+    const exiftool = spawnSync(
+      'exiftool',
+      [
+        '-q',
+        '-overwrite_original',
+        '-EXIF:Orientation#=6',
+        '-EXIF:GPSLatitude=51.5',
+        '-EXIF:GPSLatitudeRef=N',
+        at('photo.jpg'),
+      ],
+      { timeout: 30_000 },
+    )
+    assert.equal(exiftool.status, 0)
+    assert.ok((await sharp(at('photo.jpg')).metadata()).exif, 'the source has EXIF')
+    const config = { widths: [20], formats: ['webp', 'jpeg'], sizes: '100vw', quality: 80 }
+    const outputs: string[] = []
+    const result = await processImage(
+      at('photo.jpg'),
+      'photo',
+      'photo.jpg',
+      (name) => {
+        outputs.push(at(`out-${name}`))
+        return outputs.at(-1)!
+      },
+      config,
+      {},
+      'test',
+      at('store'),
+    )
+    await result.written
+    // the size as it stands upright
+    assert.deepEqual([result.naturalWidth, result.naturalHeight], [20, 40])
+    assert.equal(outputs.length, 2)
+    for (const output of outputs) {
+      const meta = await sharp(output).metadata()
+      assert.equal(meta.exif, undefined, output)
+      assert.ok((meta.orientation ?? 1) === 1, output)
+      assert.ok((meta.height ?? 0) > (meta.width ?? 0), `${output} stands upright`)
+      const xmp = meta.xmp?.toString('utf-8') ?? ''
+      assert.doesNotMatch(xmp, /GPS|Orientation/, output)
+      assert.match(xmp, /Jane Doe/, output)
+    }
   })
 })
 

@@ -91,9 +91,20 @@ export const stripAiPromptFromXmp = (xmp: Buffer): Buffer => {
   return Buffer.from(cleaned)
 }
 
-// Sharp copies XMP from source at libvips level regardless of withMetadata() options.
-// Strategy: patch XMP in the source buffer BEFORE passing to sharp, so all output
-// formats (WebP, JPEG, AVIF, …) automatically receive the cleaned XMP via withMetadata().
+// An XMP packet can say where a photo was taken too (exif:GPSLatitude and the rest, under any prefix), as an element
+// or as an attribute of its rdf:Description; and its tiff:Orientation would turn again what the derivatives have
+// already turned upright. Both go; what else it holds stays: an AI label, its creator, its licence.
+export const stripLocationFromXmp = (xmp: Buffer): Buffer => {
+  const cleaned = xmp
+    .toString('utf-8')
+    .replace(/<[\w-]+:(?:GPS\w*|Orientation)\b[^>]*\/>/g, '')
+    .replace(/<[\w-]+:(?:GPS\w*|Orientation)\b[^>]*>[^<]*<\/[\w-]+:(?:GPS\w*|Orientation)>/g, '')
+    .replace(/\s[\w-]+:(?:GPS\w*|Orientation)="[^"]*"/g, '')
+  return Buffer.from(cleaned)
+}
+
+// Sharp copies XMP from source at libvips level. Strategy: patch XMP in the source buffer BEFORE passing it to sharp,
+// so that every output format (WebP, JPEG, AVIF, …) receives the cleaned XMP that keepXmp() keeps.
 
 const JPEG_XMP_NS = Buffer.from('http://ns.adobe.com/xap/1.0/\0')
 
@@ -239,6 +250,10 @@ const handled = <T>(work: Promise<T>): Promise<T> => {
   return work
 }
 
+// What a derivative holds besides its pixels: privacy by default since 2026-11-06 (EXIF and the location gone, the
+// orientation applied); a change here makes every derivative again.
+const DERIVATIVE_METADATA = 'icc+xmp, no exif, no location'
+
 /**
  * The derivatives of an image in the widths and formats of its config: copied from the store when the cache has them,
  * else made there and copied. Every name is claimed (`place`) before it returns; `written` is the work that is still
@@ -272,7 +287,8 @@ export const processImage = async (
   // Cache hit: source and config unchanged — but only trust it once every expected derivate
   // file actually exists (not just mtime/configHash), else a partially cleaned output dir
   // would silently serve missing images.
-  if (cached && cached.sourceChanged === sourceChanged && cached.configHash === configHash) {
+  const derivativeKey = `${configHash} ${DERIVATIVE_METADATA}`
+  if (cached && cached.sourceChanged === sourceChanged && cached.configHash === derivativeKey) {
     const expectedFiles = imageConfig.formats.flatMap((format) =>
       cached.validWidths.map((w) => derivativeName(rel, w, format)),
     )
@@ -303,24 +319,30 @@ export const processImage = async (
   try {
     const source = await pictureBytes(sourceFile)
     const meta = await sharp(source).metadata()
-    const naturalWidth = meta.width ?? 0
-    const naturalHeight = meta.height ?? 0
+    // the size as it stands upright: an EXIF orientation of 5 to 8 turns the picture by a quarter
+    const turned = (meta.orientation ?? 1) >= 5
+    const naturalWidth = (turned ? meta.height : meta.width) ?? 0
+    const naturalHeight = (turned ? meta.width : meta.height) ?? 0
     const validWidths = imageConfig.widths.filter((w) => w <= naturalWidth)
     if (validWidths.length === 0 && naturalWidth > 0) validWidths.push(naturalWidth)
 
     const isAi = meta.xmp !== undefined && /trainedAlgorithmicMedia/i.test(meta.xmp.toString('utf-8'))
     const aiTool = aiToolOf(meta.xmp)
 
-    // For AI images: patch aiPrompt out of the source buffer before handing to sharp.
-    // libvips copies XMP from source at decode time regardless of withMetadata() options,
-    // so cleaning it at the source works for every output format (WebP, JPEG, AVIF, …).
+    // The XMP the derivatives keep, patched in the source buffer before sharp reads it: never a location, and for an AI
+    // image no prompt. A source whose XMP cannot be patched in place (neither JPEG nor PNG) keeps none.
     let sharpInput = source
-    if (isAi && meta.xmp) {
-      const cleanXmp = stripAiPromptFromXmp(meta.xmp)
+    let keepXmp = false
+    if (meta.xmp) {
+      const cleanXmp = stripLocationFromXmp(isAi ? stripAiPromptFromXmp(meta.xmp) : meta.xmp)
       const ext = extname(sourceFile).toLowerCase()
       if (ext === '.jpg' || ext === '.jpeg') sharpInput = replaceJpegXmp(source, cleanXmp)
       else if (ext === '.png') sharpInput = replacePngXmp(source, cleanXmp)
-      // SVG: no binary XMP chunk; AI-tagged SVGs not expected in this pipeline
+      // kept only when the patched source now holds exactly the cleaned packet, and none at all when a location is
+      // left that the filter could not take out (a property with a structure of its own)
+      keepXmp =
+        !/:GPS|:Orientation/.test(cleanXmp.toString('utf-8')) &&
+        ((await sharp(sharpInput).metadata()).xmp?.equals(cleanXmp) ?? false)
     }
 
     // every name claimed before any is made: a conflict stops at the first, whatever the cache holds
@@ -330,18 +352,21 @@ export const processImage = async (
       names.map(async ({ w, format }, i) => {
         const name = derivativeName(rel, w, format)
         await mkdir(dirname(kept(name)), { recursive: true })
-        await sharp(sharpInput)
+        // upright, in its own colours, with the cleaned XMP; no EXIF, so no location, camera or serial number
+        let derivative = sharp(sharpInput)
           .timeout({ seconds: IMAGE_SECONDS })
+          .autoOrient()
           .resize(w)
           .toFormat(format as any, { quality: imageConfig.quality })
-          .withMetadata()
-          .toFile(kept(name))
+          .keepIccProfile()
+        if (keepXmp) derivative = derivative.keepXmp()
+        await derivative.toFile(kept(name))
         await copyInto(kept(name), targets[i]!)
       }),
     ).then(() => {
       cache[cacheKey] = {
         sourceChanged,
-        configHash,
+        configHash: derivativeKey,
         naturalWidth,
         naturalHeight,
         validWidths,
