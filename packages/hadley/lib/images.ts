@@ -123,25 +123,61 @@ export const isAiXmp = (xmp: Buffer | undefined): boolean =>
 
 const GPS_IFD = 0x8825
 const GPS_LATITUDE = 0x0002
+const ORIENTATION = 0x0112
+const ASCII = 2
+const SHORT = 3
+// who made a picture and who holds its rights, as EXIF names them: they go with it wherever it is published
+const RIGHTS = { Artist: 0x013b, Copyright: 0x8298 } as const
 
-/** Whether EXIF, as sharp gives it ("Exif\0\0" and a TIFF structure), says where its picture was taken. */
-export const exifLocated = (exif: Buffer | undefined): boolean => {
-  if (!exif) return false
-  const tiff = startsWith(exif, JPEG_EXIF_NS) ? exif.subarray(JPEG_EXIF_NS.length) : exif
-  const order = tiff.toString('latin1', 0, 2)
-  if (tiff.length < 8 || (order !== 'MM' && order !== 'II')) return false
+type Rights = Partial<Record<keyof typeof RIGHTS, string>>
+
+/**
+ * The TIFF structure of EXIF as sharp gives it ("Exif\0\0" first), read: an IFD's tags, each with its type, count and
+ * value field (a value of up to 4 bytes, else where the value is), and the first IFD. Undefined for none.
+ */
+const readExif = (exif: Buffer | undefined) => {
+  const tiff = exif && startsWith(exif, JPEG_EXIF_NS) ? exif.subarray(JPEG_EXIF_NS.length) : exif
+  const order = tiff?.toString('latin1', 0, 2)
+  if (!tiff || tiff.length < 8 || (order !== 'MM' && order !== 'II')) return undefined
   const u16 = (at: number) => (order === 'MM' ? tiff.readUInt16BE(at) : tiff.readUInt16LE(at))
   const u32 = (at: number) => (order === 'MM' ? tiff.readUInt32BE(at) : tiff.readUInt32LE(at))
-  // the tags of the IFD at `at`, each with its value field: for the GPS IFD's tag, where that IFD is
-  const tags = (at: number): Map<number, number> => {
-    const found = new Map<number, number>()
+  const ifd = (at: number) => {
+    const tags = new Map<number, { type: number; count: number; field: number }>()
     const count = at + 2 <= tiff.length ? u16(at) : 0
     for (let entry = at + 2; entry < at + 2 + 12 * count && entry + 12 <= tiff.length; entry += 12)
-      found.set(u16(entry), u32(entry + 8))
-    return found
+      tags.set(u16(entry), { type: u16(entry + 2), count: u32(entry + 4), field: entry + 8 })
+    return tags
   }
-  const gps = tags(u32(4)).get(GPS_IFD)
-  return gps !== undefined && tags(gps).has(GPS_LATITUDE)
+  // an ASCII value, without the NUL that ends it; NULs within it (a photographer's and an editor's copyright) as " / "
+  const text = ({ type, count, field }: { type: number; count: number; field: number }): string | undefined => {
+    const at = count <= 4 ? field : u32(field)
+    if (type !== ASCII || at + count > tiff.length) return undefined
+    const parts = tiff
+      .toString('utf-8', at, at + count)
+      .split('\0')
+      .map((part) => part.trim())
+    return parts.filter(Boolean).join(' / ') || undefined
+  }
+  return { ifd, text, first: ifd(u32(4)), offset: u32 }
+}
+
+/** Whether EXIF, as sharp gives it, says where its picture was taken. */
+export const exifLocated = (exif: Buffer | undefined): boolean => {
+  const read = readExif(exif)
+  const gps = read?.first.get(GPS_IFD)
+  return read !== undefined && gps !== undefined && read.ifd(read.offset(gps.field)).has(GPS_LATITUDE)
+}
+
+/** The artist and copyright EXIF names, if it names them. */
+export const exifRights = (exif: Buffer | undefined): Rights => {
+  const read = readExif(exif)
+  const rights: Rights = {}
+  for (const [name, tag] of Object.entries(RIGHTS) as [keyof typeof RIGHTS, number][]) {
+    const entry = read?.first.get(tag)
+    const value = entry && read!.text(entry)
+    if (value) rights[name] = value
+  }
+  return rights
 }
 
 /** Whether an image's metadata, as sharp reads it, says where it was taken: in its EXIF or its XMP. */
@@ -243,32 +279,55 @@ export const replacePngXmp = (pngBuf: Buffer, cleanXmp: Buffer): Buffer =>
     isPngXmp(type, data) ? pngChunk('iTXt', Buffer.concat([PNG_XMP_PREFIX, cleanXmp])) : undefined,
   )
 
-/** EXIF that says nothing but how its picture is turned: a TIFF structure of one IFD with one entry, Orientation. */
-const orientationExif = (orientation: number): Buffer => {
-  const tiff = Buffer.alloc(26)
-  tiff.write('MM', 0, 'latin1')
-  tiff.writeUInt16BE(42, 2)
-  tiff.writeUInt32BE(8, 4) // its IFD, right after the header
-  tiff.writeUInt16BE(1, 8) // of one entry
-  tiff.writeUInt16BE(0x0112, 10) // Orientation
-  tiff.writeUInt16BE(3, 12) // a SHORT
-  tiff.writeUInt32BE(1, 14) // one of it
-  tiff.writeUInt16BE(orientation, 18) // and no IFD after it: 22 to 25 stay 0
-  return tiff
+/**
+ * The EXIF a picture keeps of its own when it is published without it: how it is turned, who made it and who holds its
+ * rights, as a TIFF structure of one IFD; null when it has none of them.
+ */
+export const keptExif = (meta: { exif?: Buffer | undefined; orientation?: number | undefined }): Buffer | null => {
+  const entries: { tag: number; type: number; value: Buffer }[] = []
+  const orientation = meta.orientation ?? 1
+  if (orientation !== 1) entries.push({ tag: ORIENTATION, type: SHORT, value: Buffer.from([0, orientation, 0, 0]) })
+  for (const [name, value] of Object.entries(exifRights(meta.exif)) as [keyof typeof RIGHTS, string][])
+    entries.push({ tag: RIGHTS[name], type: ASCII, value: Buffer.from(`${value}\0`) })
+  if (entries.length === 0) return null
+  // big-endian: the header, the IFD (its count, its entries, no next IFD), then each value its field cannot hold
+  const ifdEnd = 8 + 2 + 12 * entries.length + 4
+  const head = Buffer.alloc(ifdEnd)
+  head.write('MM', 0, 'latin1')
+  head.writeUInt16BE(42, 2)
+  head.writeUInt32BE(8, 4)
+  head.writeUInt16BE(entries.length, 8)
+  const values: Buffer[] = []
+  let at = ifdEnd
+  entries.forEach(({ tag, type, value }, i) => {
+    const entry = 10 + 12 * i
+    head.writeUInt16BE(tag, entry)
+    head.writeUInt16BE(type, entry + 2)
+    head.writeUInt32BE(type === SHORT ? 1 : value.length, entry + 4)
+    if (type === SHORT || value.length <= 4) value.copy(head, entry + 8)
+    else {
+      head.writeUInt32BE(at, entry + 8)
+      // each value on a word boundary
+      const padded = value.length % 2 ? Buffer.concat([value, Buffer.alloc(1)]) : value
+      values.push(padded)
+      at += padded.length
+    }
+  })
+  return Buffer.concat([head, ...values])
 }
 
 /**
- * A JPEG or PNG as it is published without its EXIF: of that only its orientation, so that it still stands as its
- * camera meant, and in place of its XMP `xmp`, or none for null; its pixels and every other segment or chunk as they
- * are. Anything else comes back as it is.
+ * A JPEG or PNG as it is published without its EXIF: in place of that `exif` (keptExif: its orientation, so that it
+ * still stands as its camera meant, and its rights), and in place of its XMP `xmp`, or none for null; its pixels and
+ * every other segment or chunk as they are. Anything else comes back as it is.
  */
-export const publishedCopy = (bytes: Buffer, xmp: Buffer | null, orientation: number): Buffer => {
-  let turned = orientation === 1
-  // in place of the first EXIF its orientation alone, if it has one; any other EXIF goes
+export const publishedCopy = (bytes: Buffer, xmp: Buffer | null, kept: Buffer | null): Buffer => {
+  let written = kept === null
+  // in place of the first EXIF what it keeps; any other EXIF goes
   const exif = (write: (tiff: Buffer) => Buffer[]): Buffer[] => {
-    if (turned) return []
-    turned = true
-    return write(orientationExif(orientation))
+    if (written) return []
+    written = true
+    return write(kept!)
   }
   const jpeg = editJpeg(bytes, (marker, body) => {
     if (marker !== APP1) return undefined
@@ -363,7 +422,7 @@ const handled = <T>(work: Promise<T>): Promise<T> => {
 
 // What a derivative holds besides its pixels, by default and where the content keeps the EXIF: privacy by default
 // since 2026-11-06 (EXIF and the location gone, the orientation applied); a change here makes every derivative again.
-const DERIVATIVE_METADATA = { clean: 'icc+xmp, no exif, no location', keep: 'all but a prompt, upright' }
+const DERIVATIVE_METADATA = { clean: 'icc+xmp+rights, no location', keep: 'all but a prompt, upright' }
 
 /**
  * The derivatives of an image in the widths and formats of its config: copied from the store when the cache has them,
@@ -441,6 +500,7 @@ export const processImage = async (
     const aiTool = aiToolOf(meta.xmp)
     const keep = exif === 'keep'
     const leftOut = !keep && located(meta)
+    const rights = exifRights(meta.exif)
 
     // The XMP the derivatives keep, patched in the source buffer before sharp reads it: never a location (unless the
     // content keeps it), and for an AI image no prompt. A source whose XMP cannot be patched in place (neither JPEG nor
@@ -463,8 +523,8 @@ export const processImage = async (
       names.map(async ({ w, format }, i) => {
         const name = derivativeName(rel, w, format)
         await mkdir(dirname(kept(name)), { recursive: true })
-        // upright, in its own colours, with the cleaned XMP; no EXIF, so no location, camera or serial number. Kept,
-        // it has all its source had but a prompt, its orientation set to upright.
+        // upright, in its own colours, with the cleaned XMP; of its EXIF only its artist and copyright, so no
+        // location, camera or serial number. Kept, it has all its source had but a prompt, its orientation upright.
         let derivative = sharp(sharpInput)
           .timeout({ seconds: IMAGE_SECONDS })
           .autoOrient()
@@ -473,6 +533,8 @@ export const processImage = async (
         if (keep) derivative = derivative.keepMetadata()
         else {
           derivative = derivative.keepIccProfile()
+          // libvips writes them as ASCII, as EXIF has it ("Jürgen" as "Jurgen"); the XMP keeps them as they are
+          if (Object.keys(rights).length) derivative = derivative.withExif({ IFD0: rights })
           if (keepXmp) derivative = derivative.keepXmp()
         }
         await derivative.toFile(kept(name))

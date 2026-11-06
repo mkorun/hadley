@@ -11,6 +11,8 @@ import {
   stripLocationFromXmp,
   processImage,
   exifLocated,
+  exifRights,
+  keptExif,
   publishedCopy,
   publishedXmp,
   extractXmpText,
@@ -298,12 +300,14 @@ describe('what is published of a photo', () => {
       assert.match(exifOf(source), /GPSLatitude: 51\.5/)
       const bytes = await readFile(source)
       const meta = await sharp(bytes).metadata()
-      await writeFile(at(`out.${format}`), publishedCopy(bytes, publishedXmp(meta.xmp), meta.orientation ?? 1))
+      await writeFile(at(`out.${format}`), publishedCopy(bytes, publishedXmp(meta.xmp), keptExif(meta)))
       const published = await readFile(at(`out.${format}`))
       assert.ok((await pixels(published)).equals(await pixels(bytes)))
       const tags = exifOf(at(`out.${format}`))
       assert.doesNotMatch(tags, /GPS|Model|SerialNumber/)
       assert.match(tags, /Orientation: 6/)
+      assert.match(tags, /Artist: Jane Doe\n/)
+      assert.match(tags, /Copyright: \(c\) 2026 Jane Doe\n/)
       const xmp = (await sharp(published).metadata()).xmp?.toString('utf-8') ?? ''
       assert.match(xmp, /Jane Doe/)
       assert.match(xmp, /trainedAlgorithmicMedia/)
@@ -311,18 +315,45 @@ describe('what is published of a photo', () => {
   }
 
   test('upright, a photo keeps no EXIF at all, and without an XMP to keep none of that either', async () => {
-    await locatedPhoto(at('photo.png'), 'png', 1)
+    await locatedPhoto(at('photo.png'), 'png', 1, false)
     const bytes = await readFile(at('photo.png'))
     const meta = await sharp(bytes).metadata()
     assert.ok(meta.exif && meta.xmp)
-    const published = await sharp(publishedCopy(bytes, null, 1)).metadata()
+    const published = await sharp(publishedCopy(bytes, null, keptExif({}))).metadata()
     assert.equal(published.exif, undefined)
     assert.equal(published.xmp, undefined)
   })
 
+  test('exifRights reads the artist and each copyright EXIF names, and keptExif writes them back', async () => {
+    // a TIFF of one IFD (8 to 37) with an Artist and a Copyright of a photographer and an editor (EXIF 2.32, 4.6.5)
+    const tiff = Buffer.alloc(80)
+    tiff.write('II*\0\x08\0\0\0', 0, 'latin1')
+    tiff.writeUInt16LE(2, 8)
+    const artist = Buffer.from('Zoë 山田\0')
+    const copyright = Buffer.from('Photo Ann\0Edit Bob\0')
+    for (const [i, [tag, value, at]] of (
+      [
+        [0x013b, artist, 40],
+        [0x8298, copyright, 54],
+      ] as const
+    ).entries()) {
+      tiff.writeUInt16LE(tag, 10 + 12 * i)
+      tiff.writeUInt16LE(2, 12 + 12 * i)
+      tiff.writeUInt32LE(value.length, 14 + 12 * i)
+      tiff.writeUInt32LE(at, 18 + 12 * i)
+      value.copy(tiff, at)
+    }
+    const exif = Buffer.concat([Buffer.from('Exif\0\0', 'latin1'), tiff])
+    const rights = { Artist: 'Zoë 山田', Copyright: 'Photo Ann / Edit Bob' }
+    assert.deepEqual(exifRights(exif), rights)
+    assert.deepEqual(exifRights(keptExif({ exif, orientation: 1 })!), rights)
+    assert.equal(keptExif({ orientation: 1 }), null)
+    assert.deepEqual(exifRights(undefined), {})
+  })
+
   test('anything but a JPEG or PNG comes back as it is', () => {
     const pdf = Buffer.from('%PDF-1.7 Exif')
-    assert.equal(publishedCopy(pdf, null, 6), pdf)
+    assert.equal(publishedCopy(pdf, null, keptExif({ orientation: 6 })), pdf)
   })
 
   test('a derivative the content keeps the EXIF of has it all, stands upright and says it was turned no more', async () => {
@@ -343,17 +374,20 @@ describe('what is published of a photo', () => {
     )
     await kept.written
     assert.equal(kept.located, false)
-    const tags = exifOf(at('out-photo-10w.webp'))
-    assert.match(tags, /GPSLatitude/)
-    assert.match(tags, /Model: TestCam/)
-    assert.match(tags, /Orientation: 1/)
+    const keptTags = exifOf(at('out-photo-10w.webp'))
+    assert.match(keptTags, /GPSLatitude/)
+    assert.match(keptTags, /Model: TestCam/)
+    assert.match(keptTags, /Orientation: 1/)
     assert.deepEqual([kept.naturalWidth, kept.naturalHeight], [20, 40])
     // made again without it, from the same cache: what it keeps is part of the cache key
     const clean = await processImage(at('photo.jpg'), 'photo', 'photo.jpg', place, config, cache, 'test', at('store'))
     await clean.written
     assert.equal(clean.fromCache, false)
     assert.equal(clean.located, true)
-    assert.doesNotMatch(exifOf(at('out-photo-10w.webp')), /GPS|Model/)
+    const tags = exifOf(at('out-photo-10w.webp'))
+    assert.doesNotMatch(tags, /GPS|Model/)
+    assert.match(tags, /Artist: Jane Doe\n/)
+    assert.match(tags, /Copyright: \(c\) 2026 Jane Doe\n/)
   })
 })
 

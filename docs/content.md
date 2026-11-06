@@ -108,13 +108,14 @@ build. `<m …>` around a picture sets how it is shown:
 
 A picture labelled as AI-generated in its metadata (XMP) carries the theme's label and an alt text that says so.
 
-The pictures hadley publishes say nothing of where they were taken. One made in widths keeps its colour profile and XMP
-but no EXIF: no location, camera or serial number, and the XMP loses its location too; it stands upright, as its camera
-meant. A JPEG or PNG copied as it is (`native`, linked, or sized in the text) loses the same, its pixels as they are and
-of its EXIF only the orientation. Another kind of picture that carries EXIF or a location fails the build, since hadley
-cannot take them out of it. `<m data-exif=keep>` around a picture publishes all of it, location included, where that is
-wanted, as for a photo with its camera settings. The build says how many pictures it published without their location;
-the file in the bundle stays as it is.
+The pictures hadley publishes say nothing of where they were taken. One made in widths keeps its colour profile, its XMP
+and, of its EXIF, who made it and who holds its rights: no location, camera or serial number, and the XMP loses its
+location too; it stands upright, as its camera meant. A JPEG or PNG copied as it is (`native`, linked, or sized in the
+text) loses the same, its pixels as they are and of its EXIF only the orientation and the rights. Another kind of
+picture, a WebP or AVIF say, that carries EXIF or a location fails the build, since hadley cannot take them out of it.
+`<m data-exif=keep>` around a picture publishes all of it, location included, where that is wanted, as for a photo with
+its camera settings. The build says how many pictures it published without their location; the file in the bundle stays
+as it is.
 
 **Drawings.** `<m data-svg=inline>![Right answers by method](accuracy.svg)</m>` writes an SVG of the bundle into the
 page instead of an `<img>`, so that it takes its colours from the theme ([themes.md](themes.md), "Drawings"). A

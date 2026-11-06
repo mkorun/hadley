@@ -12,6 +12,7 @@ import {
   copyInto,
   derivativeOwner,
   isAiXmp,
+  keptExif,
   located,
   pictureBytes,
   pictureOf,
@@ -349,9 +350,9 @@ export const frontMatterFiles = async (
 
 /**
  * A picture of the bundle as it is copied into the site (a native-size image, a linked or sized one): a JPEG or PNG
- * without its EXIF but for its orientation, its XMP without a location (publishedCopy); kept, it loses only an AI
- * image's prompt, as its derivatives do. Any other picture goes as it is, unless it says where it was taken or carries
- * EXIF, which hadley cannot take out of it: then why it is not published.
+ * without its EXIF but for its orientation and rights, its XMP without a location (publishedCopy); kept, it loses only
+ * an AI image's prompt, as its derivatives do. Any other picture goes as it is, unless it says where it was taken or
+ * carries EXIF, which hadley cannot take out of it: then why it is not published.
  */
 function publishedPicture(bytes: Buffer, meta: Metadata, keep: boolean): Buffer | string {
   const jpegOrPng = meta.format === 'jpeg' || meta.format === 'png'
@@ -360,7 +361,8 @@ function publishedPicture(bytes: Buffer, meta: Metadata, keep: boolean): Buffer 
     const xmp = stripAiPromptFromXmp(meta.xmp)
     return meta.format === 'jpeg' ? replaceJpegXmp(bytes, xmp) : replacePngXmp(bytes, xmp)
   }
-  if (jpegOrPng) return publishedCopy(bytes, publishedXmp(meta.xmp), meta.orientation ?? 1)
+  if (jpegOrPng) return publishedCopy(bytes, publishedXmp(meta.xmp), keptExif(meta))
   if (!meta.exif && !located(meta)) return bytes
-  return `carries EXIF or says where it was taken, which hadley takes out of a JPEG or PNG only: save it without, or as one of those, or keep it with <m data-exif=keep> (docs/content.md, "Pictures")`
+  const why = 'carries EXIF or says where it was taken, which hadley takes out of a JPEG or PNG only'
+  return `${why}: save it without, or as one of those, or keep it with <m data-exif=keep> (docs/content.md, "Pictures")`
 }

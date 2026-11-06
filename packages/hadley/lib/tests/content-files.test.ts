@@ -437,6 +437,9 @@ describe('the location of a photo the content names', () => {
     for (const file of ['photo.jpg', 'photo-4w.webp']) assert.doesNotMatch(exifOf(out(file)), /GPS|Model|Serial/, file)
     // the copy still turned as its camera meant, so its size is the upright one
     assert.match(exifOf(out('photo.jpg')), /Orientation: 6/)
+    // who made it and who holds its rights go with it, in the copy and in its derivatives
+    for (const file of ['photo.jpg', 'photo-4w.webp'])
+      assert.match(exifOf(out(file)), /Copyright: \(c\) 2026 Jane Doe/, file)
     assert.match(html, /<img src="photo.jpg" alt="x" width="20" height="40" data-size="native"/)
     assert.equal(images.located, 1)
   })

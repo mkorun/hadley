@@ -4,10 +4,16 @@ import sharp from 'sharp'
 
 /**
  * A photo 40 × 20 at `path` as a camera with a GPS receiver leaves it: EXIF with where it was taken, the camera and how
- * it is turned (6: a quarter to the right), and XMP with the location again, its creator and an AI label. exiftool
- * writes the metadata, as the tests of images.ts do; CI installs it on each system.
+ * it is turned (6: a quarter to the right), with its artist and copyright unless `rights` is false, and XMP with the
+ * location again, its creator and an AI label. exiftool writes the metadata, as the tests of images.ts do; CI installs
+ * it on each system.
  */
-export const locatedPhoto = async (path: string, format: 'jpeg' | 'png' | 'webp', orientation = 6): Promise<void> => {
+export const locatedPhoto = async (
+  path: string,
+  format: 'jpeg' | 'png' | 'webp',
+  orientation = 6,
+  rights = true,
+): Promise<void> => {
   await sharp({ create: { width: 40, height: 20, channels: 3, background: '#886644' } })
     .toFormat(format)
     .toFile(path)
@@ -23,14 +29,19 @@ export const locatedPhoto = async (path: string, format: 'jpeg' | 'png' | 'webp'
     '-XMP-exif:GPSLongitude=7.4 E',
     '-XMP-dc:Creator=Jane Doe',
     '-XMP-iptcExt:DigitalSourceType=http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia',
+    ...(rights ? ['-EXIF:Artist=Jane Doe', '-EXIF:Copyright=(c) 2026 Jane Doe'] : []),
   ]
   const exiftool = spawnSync('exiftool', ['-q', '-overwrite_original', ...tags, path], { timeout: 30_000 })
   assert.equal(exiftool.status, 0, String(exiftool.stderr))
 }
 
-/** What exiftool reads of a file's location, camera and orientation, `Tag: value` per line; none for a tag it lacks. */
+/**
+ * What exiftool reads of a file's location, camera, orientation and rights, `Tag: value` per line; none for a tag it
+ * lacks.
+ */
 export const exifOf = (path: string): string => {
   const tags = ['-s', '-s', '-GPS:all', '-XMP-exif:GPSLatitude', '-Model', '-SerialNumber', '-Orientation', '-n']
+  tags.push('-EXIF:Artist', '-EXIF:Copyright')
   const exiftool = spawnSync('exiftool', [...tags, path], { encoding: 'utf8', timeout: 30_000 })
   assert.equal(exiftool.status, 0, exiftool.stderr)
   return exiftool.stdout
