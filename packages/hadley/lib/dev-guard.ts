@@ -3,12 +3,17 @@
  * editor and the comments proxy among them: a path that names nothing above the output directory, a Host it serves,
  * a write of the editor (`POST /__hadley/…`) only from this machine and from the page's own origin, and a read of a
  * block's source or of its bundle's files (`GET /__hadley/block/…`, `/__hadley/files/…`) only from this machine and
- * never for another origin; both under the dev
- * server's own host, so not through a tunnel, which arrives from this machine. Vite's `/__open-in-editor` is refused:
- * any page a browser shows could call it.
+ * never for another origin; both under the dev server's own host and never forwarded by a proxy, so not through a
+ * tunnel, which arrives from this machine and may give the dev server's own host. Vite's `/__open-in-editor` is
+ * refused: any page a browser shows could call it.
  */
 import { isIP } from 'node:net'
 import { timingSafeEqual } from 'node:crypto'
+
+// The headers a proxy or tunnel adds to what it forwards (cloudflared, ngrok, Tailscale, VS Code's port forwarding):
+// one that rewrites the Host to the dev server's own would otherwise pass for a request of this machine (review
+// 2026-11-06)
+const FORWARDED = ['forwarded', 'x-forwarded-for', 'x-forwarded-host', 'x-real-ip', 'via', 'cf-connecting-ip']
 
 /** Why a request is refused, with its status, or undefined. */
 export function refusal(
@@ -56,11 +61,13 @@ export function refusal(
   if (path.startsWith('/__open-in-editor')) return { status: 404, reason: 'a path for no one' }
 
   const loopback = remoteAddress === '127.0.0.1' || remoteAddress === '::1' || remoteAddress === '::ffff:127.0.0.1'
+  const forwarded = FORWARDED.some((name) => request.headers[name] !== undefined)
   if (path === '/__hadley/channel' || path.startsWith('/__hadley/channel/')) {
     const token = request.headers['x-hadley-token']
     const expected = allowed.channelToken
     if (
       !loopback ||
+      forwarded ||
       request.headers.origin !== undefined ||
       !expected ||
       typeof token !== 'string' ||
@@ -72,7 +79,7 @@ export function refusal(
   }
   const ownHost = host === new URL(allowed.origin).host
   if (request.method === 'POST' && path.startsWith('/__hadley/')) {
-    if (!loopback || !ownHost || request.headers.origin !== allowed.origin)
+    if (!loopback || forwarded || !ownHost || request.headers.origin !== allowed.origin)
       return { status: 403, reason: 'an editor write from another machine or origin' }
   }
   // a browser sends no Origin with a GET of its own origin, but one, and Sec-Fetch-Site, with a request of another
@@ -84,6 +91,7 @@ export function refusal(
     const site = request.headers['sec-fetch-site']
     if (
       !loopback ||
+      forwarded ||
       !ownHost ||
       (origin !== undefined && origin !== allowed.origin) ||
       (site !== undefined && site !== 'same-origin')

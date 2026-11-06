@@ -101,6 +101,34 @@ describe('what the dev server keeps to itself', () => {
     assert.equal(write('x.trycloudflare.com')?.status, 403)
     assert.equal(get('/__hadley/block/1', 'x.trycloudflare.com')?.status, 403)
   })
+
+  // review 2026-11-06: a tunnel that gives the dev server's own host passed for this machine
+  it('answers no request a proxy forwarded, even under its own host and origin', () => {
+    const local = { host: 'localhost:8000', origin: allowed.origin }
+    for (const header of ['forwarded', 'x-forwarded-for', 'x-forwarded-host', 'x-real-ip', 'via', 'cf-connecting-ip'])
+      for (const [method, url] of [
+        ['POST', '/__hadley/upload'],
+        ['POST', '/__hadley/patch'],
+        ['GET', '/__hadley/block/1'],
+        ['GET', '/__hadley/files/1'],
+        ['GET', '/__hadley/chat/events'],
+      ] as const) {
+        const headers = { ...local, [header]: '203.0.113.7' }
+        assert.equal(refusal({ method, url, headers }, '127.0.0.1', allowed)?.status, 403, `${header} ${url}`)
+      }
+    // the channel of a local process, with its token and without an Origin, neither
+    const channel = { ...allowed, channelToken: 'token' }
+    const token = { host: 'localhost:8000', 'x-hadley-token': 'token' }
+    const ask = (headers: Record<string, string>) =>
+      refusal({ method: 'GET', url: '/__hadley/channel/events', headers }, '127.0.0.1', channel)
+    assert.equal(ask(token), undefined)
+    assert.equal(ask({ ...token, 'x-forwarded-for': '203.0.113.7' })?.status, 403)
+    // the site's own pages it still shows through a tunnel
+    assert.equal(
+      refusal({ method: 'GET', url: '/', headers: { ...local, via: '1.1 tunnel' } }, '127.0.0.1', allowed),
+      undefined,
+    )
+  })
 })
 
 it('guards chat reads and writes exactly as editor source and writes', () => {
