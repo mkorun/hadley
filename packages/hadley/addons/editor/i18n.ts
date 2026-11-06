@@ -44,6 +44,12 @@ type Key =
   | 'requestBodyTooLarge'
   | 'requestBodyTooSlow'
   | 'requestBodyInvalidUtf8'
+  | 'noBundle'
+  | 'pictureNameInvalid'
+  | 'pictureTypeMismatch'
+  | 'notThisPicture'
+  | 'pictureExists'
+  | 'pictureNotPlain'
 
 const MESSAGES: Record<Lang, Record<Key, string>> = {
   de: {
@@ -76,6 +82,13 @@ const MESSAGES: Record<Lang, Record<Key, string>> = {
     requestBodyTooLarge: 'Anfrage zu groß',
     requestBodyTooSlow: 'Anfrage kam nicht rechtzeitig an',
     requestBodyInvalidUtf8: 'Anfrage enthält kein gültiges UTF-8',
+    noBundle: 'Diese Seite ist eine einzelne Markdown-Datei und hat kein Bundle für Dateien',
+    pictureNameInvalid:
+      'Ein Bildname besteht aus Buchstaben, Ziffern, -, _ und ., beginnt mit einem Buchstaben oder einer Ziffer und endet auf .png, .jpg oder .jpeg (höchstens 100 Zeichen)',
+    pictureTypeMismatch: 'Die Endung des Namens passt nicht zur Art des Bildes',
+    notThisPicture: 'Die Datei ist kein lesbares Bild der Art, die ihr Name sagt (PNG oder JPEG)',
+    pictureExists: 'Im Bundle gibt es schon eine Datei dieses Namens',
+    pictureNotPlain: 'Unter diesem Namen liegt keine einfache Datei; der Editor ersetzt sie nicht',
   },
   en: {
     assetNotFound: 'Asset not found',
@@ -107,6 +120,13 @@ const MESSAGES: Record<Lang, Record<Key, string>> = {
     requestBodyTooLarge: 'request body too large',
     requestBodyTooSlow: 'request body did not arrive in time',
     requestBodyInvalidUtf8: 'request body is not valid UTF-8',
+    noBundle: 'This page is a single Markdown file and has no bundle for files',
+    pictureNameInvalid:
+      'A picture name is letters, digits, -, _ and ., starts with a letter or digit and ends in .png, .jpg or .jpeg (at most 100 characters)',
+    pictureTypeMismatch: "The name's extension does not match the kind of picture",
+    notThisPicture: 'The file is no readable picture of the kind its name says (PNG or JPEG)',
+    pictureExists: 'The bundle already has a file of this name',
+    pictureNotPlain: 'What lies under this name is no plain file; the editor does not replace it',
   },
 }
 

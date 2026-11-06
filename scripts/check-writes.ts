@@ -45,7 +45,8 @@ export const WRITERS: Record<string, string> = {
   'packages/hadley/hadley.ts': "the command line's config, a site's dist link, and what `hadley clean` empties",
   'packages/hadley/lib/init.ts': 'a new site, in a directory that was empty or did not exist (hadley init)',
   'packages/hadley/lib/sources.ts': 'the bundles of the sources and their fetched clones, in .hadley/cache/sources/',
-  'packages/hadley/addons/editor/plugin.ts': 'the content file whose block the editor changes',
+  'packages/hadley/addons/editor/plugin.ts':
+    "the content file whose block the editor changes, and a picture it adds to the page's bundle",
 }
 
 const WRITE =

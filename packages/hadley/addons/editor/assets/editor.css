@@ -544,6 +544,84 @@ body.hadley-editing .hadley-trigger {
   white-space: nowrap;
 }
 
+/* ─── A picture added to the bundle (editor.js, addPicture) ─────────────────────── */
+
+.hadley-textarea.hadley-drop {
+  outline: 2px dashed var(--he-accent);
+  outline-offset: -4px;
+}
+
+.hadley-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--he-bg-deep);
+  border-top: 1px solid var(--he-border);
+  font:
+    0.8125rem/1.3 ui-sans-serif,
+    system-ui,
+    sans-serif;
+  color: var(--he-text);
+}
+
+.hadley-add img {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--he-bg);
+}
+
+.hadley-add label {
+  display: inline-flex;
+  flex: 1 1 12rem;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--he-muted);
+}
+
+.hadley-add input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.3rem 0.5rem;
+  font:
+    0.8125rem/1.3 ui-monospace,
+    monospace;
+  color: var(--he-text);
+  background: var(--he-bg-raised);
+  border: 1px solid var(--he-border);
+  border-radius: 4px;
+}
+
+.hadley-add input:focus-visible {
+  outline: 2px solid var(--he-accent-focus);
+  outline-offset: 1px;
+}
+
+.hadley-add-message:empty {
+  display: none;
+}
+
+.hadley-add-message,
+.hadley-add-note {
+  flex-basis: 100%;
+  margin: 0;
+  font:
+    0.75rem/1.4 ui-sans-serif,
+    system-ui,
+    sans-serif;
+  color: var(--he-warn);
+}
+
+.hadley-add-note {
+  padding: 0.4rem 0.75rem;
+  background: var(--he-bg-deep);
+  border-top: 1px solid var(--he-border);
+}
+
 /* ─── The front matter as a table (editor.js, limaTable) ──────────────────────── */
 
 /* The layer under the textarea draws the same text at the same place: the same font, padding, wrapping and gutter.
@@ -855,6 +933,8 @@ body.hadley-edit-mode .hadley-front-matter-badge.is-compact {
 }
 
 .hadley-files,
+.hadley-add,
+.hadley-add-note,
 .hadley-fm-status,
 body.hadley-edit-mode .hadley-front-matter-badge {
   animation: hadley-fade 0.2s ease-out;

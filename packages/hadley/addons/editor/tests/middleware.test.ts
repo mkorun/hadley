@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createHash } from 'node:crypto'
@@ -20,21 +20,30 @@ import {
   bundleFileNames,
   bundleFiles,
   serveBundleFile,
+  handleUpload,
+  pictureName,
 } from '../plugin.ts'
 import { registerPageBlocks } from '../renderer.ts'
 import { parseDocument, type BlockToken } from '../../../case/index.ts'
+import { locatedPhoto } from '../../../lib/tests/located-photo.ts'
+import sharp from 'sharp'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const hash = (s: string) => createHash('sha256').update(s).digest('hex')
 
-function mockReq(method: string, url: string, body = '', headers: Record<string, string> = {}): IncomingMessage {
+function mockReq(
+  method: string,
+  url: string,
+  body: string | Buffer = '',
+  headers: Record<string, string> = {},
+): IncomingMessage {
   const r = new Readable({ read() {} }) as unknown as IncomingMessage
   ;(r as any).method = method
   ;(r as any).url = url
   ;(r as any).headers = { ...headers }
   process.nextTick(() => {
-    ;(r as any).emit('data', Buffer.from(body, 'utf-8'))
+    ;(r as any).emit('data', typeof body === 'string' ? Buffer.from(body, 'utf-8') : body)
     ;(r as any).emit('end')
   })
   return r
@@ -1368,6 +1377,123 @@ describe('the files of a bundle', () => {
     const file = mockRes()
     await serveBundleFile(file, '/__hadley/files/files-block/plain.constructor', 'en')
     assert.equal(file.statusCode, 404)
+  })
+})
+
+describe('a picture added to a bundle', () => {
+  let bundle: string
+  let png: Buffer
+  beforeEach(async () => {
+    bundle = join(tmpDir, '[b]')
+    await mkdir(bundle)
+    await writeFile(join(bundle, 'b.md'), 'Text.\n', 'utf-8')
+    blockIdMap.set('upload-block', { filePath: join(bundle, 'b.md'), start: 0, end: 5, fileHashAtRender: '' })
+    png = await sharp({ create: { width: 4, height: 4, channels: 3, background: '#468' } })
+      .png()
+      .toBuffer()
+  })
+  const upload = async (query: string, body: Buffer, type = 'image/png') => {
+    const res = mockRes()
+    await handleUpload(
+      mockReq('POST', `/__hadley/upload?block=upload-block&${query}`, body, { 'content-type': type }),
+      res,
+    )
+    return { status: res.statusCode, body: JSON.parse(res.body) }
+  }
+  // nothing half-written stays behind, whatever the answer
+  afterEach(async () => {
+    for (const dir of [bundle, join(bundle, 'en')])
+      assert.deepEqual(
+        (await readdir(dir).catch(() => [])).filter((name) => name.startsWith('.hadley-upload')),
+        [],
+      )
+  })
+
+  it('is saved as it is, under the name the editor gives it', async () => {
+    assert.deepEqual(await upload('name=karte.png', png), { status: 200, body: { name: 'karte.png', located: false } })
+    assert.ok((await readFile(join(bundle, 'karte.png'))).equals(png))
+  })
+
+  it('goes into the bundle, shared by its languages, from a page in a language directory', async () => {
+    await mkdir(join(bundle, 'en'))
+    await writeFile(join(bundle, 'en', 'b.md'), 'Text.\n')
+    blockIdMap.set('upload-block', { filePath: join(bundle, 'en', 'b.md'), start: 0, end: 5, fileHashAtRender: '' })
+    assert.equal((await upload('name=map.png', png)).status, 200)
+    assert.ok((await readFile(join(bundle, 'map.png'))).equals(png))
+  })
+
+  it('says that a photo holds where it was taken, and keeps that in the file', async () => {
+    await locatedPhoto(join(tmpDir, 'photo.jpg'), 'jpeg')
+    const photo = await readFile(join(tmpDir, 'photo.jpg'))
+    const answer = await upload('name=foto.jpg', photo, 'image/jpeg')
+    assert.deepEqual(answer, { status: 200, body: { name: 'foto.jpg', located: true } })
+    assert.ok((await readFile(join(bundle, 'foto.jpg'))).equals(photo))
+  })
+
+  it('takes names of letters, digits, -, _ and . that end in .png, .jpg or .jpeg, and no other', () => {
+    for (const name of ['karte.png', 'Übersicht_2026-11.jpeg', '東京.jpg', 'a.b.png'])
+      assert.ok(pictureName(name), name)
+    const nfd = 'Übersicht.png'.normalize('NFD')
+    for (const name of [
+      '.x.png',
+      '_x.png',
+      '-x.png',
+      'a/b.png',
+      '../a.png',
+      'a\\b.png',
+      'a b.png',
+      'a.gif',
+      'a.png.svg',
+      'con.png',
+      'LPT1.jpg',
+      `${'x'.repeat(97)}.png`,
+      nfd,
+      '',
+    ])
+      assert.equal(pictureName(name), false, name)
+  })
+
+  it('is refused for a page without a bundle, a name or kind that does not fit, and a body too large', async () => {
+    const jpeg = await sharp(png).jpeg().toBuffer()
+    for (const [query, body, type, status] of [
+      ['name=../x.png', png, 'image/png', 400],
+      ['name=x.png&replace=yes', png, 'image/png', 400],
+      ['name=x.png', png, 'image/jpeg', 415],
+      ['name=x.png', jpeg, 'image/png', 415],
+      ['name=x.jpg', Buffer.from('<svg/>'), 'image/jpeg', 415],
+      ['name=x.png', Buffer.alloc(25 * 1024 * 1024 + 1), 'image/png', 413],
+    ] as const) {
+      const answer = await upload(query, body, type)
+      assert.equal(answer.status, status, query)
+    }
+    assert.deepEqual(await readdir(bundle), ['b.md'])
+    blockIdMap.set('upload-block', { filePath: tmpFile, start: 0, end: 5, fileHashAtRender: '' })
+    assert.equal((await upload('name=x.png', png)).status, 400)
+    assert.deepEqual((await readdir(tmpDir)).sort(), ['[b]'])
+  })
+
+  it('asks before it replaces a file, whatever the case of its name, and replaces it only by its own name', async () => {
+    await writeFile(join(bundle, 'Karte.png'), 'old')
+    assert.deepEqual(await upload('name=karte.png', png), {
+      status: 409,
+      body: { error: 'The bundle already has a file of this name', exists: 'Karte.png' },
+    })
+    assert.equal((await upload('name=karte.png&replace=1', png)).status, 409)
+    assert.equal(await readFile(join(bundle, 'Karte.png'), 'utf8'), 'old')
+    assert.equal((await upload('name=Karte.png&replace=1', png)).status, 200)
+    assert.ok((await readFile(join(bundle, 'Karte.png'))).equals(png))
+    assert.deepEqual((await readdir(bundle)).sort(), ['Karte.png', 'b.md'])
+  })
+
+  it('never writes through a link, nor over a folder', async () => {
+    await writeFile(join(tmpDir, 'outside.png'), 'outside')
+    await symlink(join(tmpDir, 'outside.png'), join(bundle, 'link.png'))
+    await mkdir(join(bundle, 'folder.png'))
+    for (const name of ['link.png', 'folder.png']) {
+      const answer = await upload(`name=${name}&replace=1`, png)
+      assert.equal(answer.status, 409, name)
+    }
+    assert.equal(await readFile(join(tmpDir, 'outside.png'), 'utf8'), 'outside')
   })
 })
 

@@ -45,14 +45,18 @@ dev:
 With it, every page loads the editor: a right click on a block of its Markdown edits it, and the menu beside the block
 adds a new block below it, moves, merges and deletes blocks. Under the field the files of the page's bundle wait (not
 its Markdown, nothing hidden, no other bundle): a click puts one in at the caret, an image as `![](name)` with the caret
-in its alt text. A right click on the page's title or subtitle, where the theme marks it (themes.md, "Editor"), edits
-its text, while its `#` or `__` stays as it is, or the front matter where that gives it; they are never moved, merged or
-deleted. In edit mode a badge above the title opens the page's front matter, which Lima must read when it is saved; its
-lines are striped, its keys and comments marked where Lima finds them, and a line Lima refuses is marked as it is typed,
-with Lima's message below. Each change is saved to the page's Markdown file, and the page reloads; a file that changed
-since the page was built is not edited, the page reloads first. The editor is the author's tool, not part of the page:
-it speaks the first of the browser's languages it knows (German, English), else English, and the language button in its
-control at the bottom right switches to the other for the site. `hadley deploy` serves no editor.
+in its alt text. A PNG or JPEG dropped on the field, or pasted into it, is added to the page's bundle: the editor asks
+for its name first, and before it replaces a file of that name, then puts it in at the caret. The file is saved as it
+is; one that says where it was taken is marked, and the site publishes it without that (content.md, "Pictures"). A page
+that is one `.md` file has no bundle, and so no files. A right click on the page's title or subtitle, where the theme
+marks it (themes.md, "Editor"), edits its text, while its `#` or `__` stays as it is, or the front matter where that
+gives it; they are never moved, merged or deleted. In edit mode a badge above the title opens the page's front matter,
+which Lima must read when it is saved; its lines are striped, its keys and comments marked where Lima finds them, and a
+line Lima refuses is marked as it is typed, with Lima's message below. Each change is saved to the page's Markdown file,
+and the page reloads; a file that changed since the page was built is not edited, the page reloads first. The editor is
+the author's tool, not part of the page: it speaks the first of the browser's languages it knows (German, English), else
+English, and the language button in its control at the bottom right switches to the other for the site. `hadley deploy`
+serves no editor.
 
 ## Chat
 

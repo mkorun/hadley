@@ -57,6 +57,15 @@ const T = {
     addBelowLabel: 'Neuer Block darunter',
     filesLabel: 'Dateien im Bundle',
     insertFile: (name) => `${name} einfügen`,
+    addPictureLabel: 'Bild ins Bundle legen',
+    pictureName: 'Name',
+    addPicture: 'Hinzufügen',
+    replacePicture: 'Ersetzen',
+    pictureExists: (name) => `${name} gibt es schon im Bundle.`,
+    onlyPngJpeg: 'Nur PNG- und JPEG-Bilder lassen sich ins Bundle legen.',
+    pictureLocated: (name) =>
+      `${name} enthält, wo es aufgenommen wurde. Die Datei behält das; die Site veröffentlicht es ohne.`,
+    pastedName: 'bild',
     fileChangedReload: 'Die Datei wurde extern geändert.\nSeite wird neu geladen.',
     mergeError: (status, msg) => `Fehler beim Zusammenziehen (${status}):\n${msg}`,
     moveError: (status, msg) => `Fehler beim Verschieben (${status}):\n${msg}`,
@@ -97,6 +106,14 @@ const T = {
     addBelowLabel: 'New block below',
     filesLabel: 'Files in the bundle',
     insertFile: (name) => `Insert ${name}`,
+    addPictureLabel: 'Add a picture to the bundle',
+    pictureName: 'Name',
+    addPicture: 'Add',
+    replacePicture: 'Replace',
+    pictureExists: (name) => `${name} is already in the bundle.`,
+    onlyPngJpeg: 'Only PNG and JPEG pictures can be added to the bundle.',
+    pictureLocated: (name) => `${name} says where it was taken. The file keeps that; the site publishes it without.`,
+    pastedName: 'picture',
     fileChangedReload: 'The file was changed externally.\nReloading page.',
     mergeError: (status, msg) => `Error merging (${status}):\n${msg}`,
     moveError: (status, msg) => `Error moving (${status}):\n${msg}`,
@@ -1137,7 +1154,10 @@ function openEditor(blockId, blockEl, text, { after = null, place } = {}) {
   // after the block, or where the caller puts it (the front matter's badge)
   if (place) place(wrapper)
   else blockEl.insertAdjacentElement('afterend', wrapper)
-  if (!frontMatter) void bundleFiles(blockId, textarea, editorToolbar)
+  if (!frontMatter) {
+    void bundleFiles(blockId, textarea, editorToolbar)
+    acceptPictures(blockId, textarea, editorToolbar)
+  }
 
   activeWrapper = wrapper
   activeTextarea = textarea
@@ -1228,7 +1248,169 @@ async function bundleFiles(blockId, textarea, toolbar) {
     })
     strip.append(button)
   }
+  // in place of the one it shows anew, after a picture was added
+  toolbar.parentElement?.querySelector('.hadley-files')?.remove()
   toolbar.before(strip)
+}
+
+// ─── A picture added to the bundle ──────────────────────────────────────────────
+//
+// A PNG or JPEG dropped on the field, or pasted into it, goes into the page's bundle (plugin.ts, handleUpload) under
+// the name the author gives it in a small form above the files, and then in at the caret, as a click on a file puts it
+// in. A name the bundle has already asks whether to replace that file. A paste that holds text is text: an office
+// program puts a picture of what was copied beside it.
+
+const PICTURE_TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg' }
+
+function acceptPictures(blockId, textarea, toolbar) {
+  const take = (event, files, pasted) => {
+    if (!files || files.length === 0) return
+    event.preventDefault()
+    const file = [...files].find((each) => Object.hasOwn(PICTURE_TYPES, each.type))
+    if (file) addPicture(blockId, textarea, toolbar, file, pasted)
+    else note(toolbar, T.onlyPngJpeg)
+  }
+  textarea.addEventListener('dragover', (e) => {
+    if (!e.dataTransfer?.types.includes('Files')) return
+    e.preventDefault()
+    textarea.classList.add('hadley-drop')
+  })
+  textarea.addEventListener('dragleave', () => textarea.classList.remove('hadley-drop'))
+  textarea.addEventListener('drop', (e) => {
+    textarea.classList.remove('hadley-drop')
+    take(e, e.dataTransfer?.files, false)
+  })
+  textarea.addEventListener('paste', (e) => {
+    if (!e.clipboardData?.types.includes('text/plain')) take(e, e.clipboardData?.files, true)
+  })
+}
+
+/** A name for a picture from its file's: lower case, its words joined by `-`; a pasted one named by its time. */
+function suggestedName(file, pasted) {
+  const ext = file.type === 'image/jpeg' && /\.jpeg$/i.test(file.name) ? 'jpeg' : PICTURE_TYPES[file.type]
+  // 2026-11-06-1430, in the author's own time
+  const now = new Date(Date.now() - new Date().getTimezoneOffset() * 60_000)
+  const stamp = now.toISOString().slice(0, 16).replace('T', '-').replace(':', '')
+  const base = pasted ? `${T.pastedName}-${stamp}` : file.name.replace(/\.[^.]*$/, '')
+  const clean = base
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}._-]+/gu, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^[._-]+|[._-]+$/g, '')
+    .slice(0, 90)
+  return `${clean || `${T.pastedName}-${stamp}`}.${ext}`
+}
+
+/** A line above the files that says something, for a while. */
+function note(toolbar, text) {
+  const line = document.createElement('p')
+  line.className = 'hadley-add-note'
+  line.setAttribute('role', 'status')
+  line.textContent = text
+  toolbar.parentElement?.querySelector('.hadley-add-note')?.remove()
+  ;(toolbar.parentElement?.querySelector('.hadley-files') ?? toolbar).before(line)
+  setTimeout(() => line.remove(), 8000)
+}
+
+function addPicture(blockId, textarea, toolbar, file, pasted) {
+  const wrapper = toolbar.parentElement
+  wrapper?.querySelector('.hadley-add')?.remove()
+  // where it goes in, as the caret was when it came
+  const caret = [textarea.selectionStart, textarea.selectionEnd]
+  const preview = URL.createObjectURL(file)
+
+  const form = document.createElement('form')
+  form.className = 'hadley-add'
+  form.setAttribute('aria-label', T.addPictureLabel)
+  const img = document.createElement('img')
+  img.src = preview
+  img.alt = ''
+  const label = document.createElement('label')
+  label.textContent = T.pictureName
+  const input = document.createElement('input')
+  input.type = 'text'
+  input.value = suggestedName(file, pasted)
+  input.spellcheck = false
+  input.maxLength = 100
+  label.append(input)
+  const button = (text, className, type = 'button') => {
+    const b = document.createElement('button')
+    b.type = type
+    b.className = className
+    b.textContent = text
+    return b
+  }
+  const add = button(T.addPicture, 'hadley-save-btn', 'submit')
+  const replace = button(T.replacePicture, 'hadley-cancel-btn')
+  replace.hidden = true
+  const cancel = button(T.cancel, 'hadley-cancel-btn')
+  const message = document.createElement('p')
+  message.className = 'hadley-add-message'
+  message.setAttribute('role', 'status')
+  form.append(img, label, add, replace, cancel, message)
+
+  const close = () => {
+    URL.revokeObjectURL(preview)
+    form.remove()
+    if (activeTextarea === textarea) textarea.focus()
+  }
+  const send = async (name, replacing) => {
+    add.disabled = replace.disabled = true
+    message.textContent = ''
+    try {
+      const replaces = replacing ? '&replace=1' : ''
+      const query = `block=${encodeURIComponent(blockId)}&name=${encodeURIComponent(name)}${replaces}`
+      const res = await fetch(withLang(`/__hadley/upload?${query}`), {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        close()
+        if (activeTextarea !== textarea) return
+        textarea.setSelectionRange(caret[0], caret[1])
+        document.execCommand('insertText', false, `![](${data.name})`)
+        // the caret in its alt text, as a click on the file leaves it
+        textarea.setSelectionRange(caret[0] + 2, caret[0] + 2)
+        resizeTextarea(textarea)
+        void bundleFiles(blockId, textarea, toolbar)
+        if (data.located) note(toolbar, T.pictureLocated(data.name))
+        return
+      }
+      if (res.status === 409 && typeof data.exists === 'string') {
+        message.textContent = T.pictureExists(data.exists)
+        replace.hidden = false
+        replace.onclick = () => void send(data.exists, true)
+        return
+      }
+      message.textContent = data.error ?? T.unknownError
+    } catch {
+      message.textContent = T.connectionFailedRetry
+    } finally {
+      add.disabled = replace.disabled = false
+    }
+  }
+  form.addEventListener('submit', (e) => {
+    e.preventDefault()
+    replace.hidden = true
+    void send(input.value.trim(), false)
+  })
+  cancel.addEventListener('click', close)
+  // Esc closes the form, not the editor around it
+  form.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return
+    e.stopPropagation()
+    close()
+  })
+  input.addEventListener('input', () => {
+    replace.hidden = true
+    message.textContent = ''
+  })
+  ;(wrapper?.querySelector('.hadley-files') ?? toolbar).before(form)
+  input.focus()
+  input.setSelectionRange(0, input.value.lastIndexOf('.'))
 }
 
 // ─── The front matter as a table ────────────────────────────────────────────────
