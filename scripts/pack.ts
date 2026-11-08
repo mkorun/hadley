@@ -22,7 +22,7 @@ export const DIST = join(repo, 'dist')
 const ENTRIES = ['hadley.ts', 'index.ts']
 
 /** Files read at run time beside the sources, by their path in the package (lib/init.ts, editor, chat). */
-export const FILES = ['addons/editor/assets', 'addons/chat/assets', 'starters', 'themes']
+export const FILES = ['addons/editor/assets', 'addons/editor/browser', 'addons/chat/assets', 'starters', 'themes']
 
 /** The files of the repository the package carries, by their path in both. */
 const REPOSITORY_FILES = ['LICENSE']

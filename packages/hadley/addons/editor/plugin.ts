@@ -11,6 +11,7 @@ import { isPageName } from '../../lib/bundles.ts'
 import { IMAGE_SECONDS, located, pngUnpacksWithin } from '../../lib/images.ts'
 import { isSystemFile, lf } from '../../lib/platform.ts'
 import { lookupDirs } from '../../lib/site-paths.ts'
+import { browserFile } from './browser-files.ts'
 import { resolveLang, t, type Lang } from './i18n.ts'
 
 const assetsDir = join(fileURLToPath(new URL('.', import.meta.url)), 'assets')
@@ -160,6 +161,16 @@ async function serveAsset(res: ServerResponse, filename: string, contentType: st
   } catch {
     send(res, 404, { error: `${t(lang, 'assetNotFound')}: ${filename}` })
   }
+}
+
+/** The editor's browser code (browser-files.ts). */
+async function serveBrowserFile(res: ServerResponse, path: string, lang: Lang): Promise<void> {
+  const file = await browserFile(path)
+  if (!file) return send(res, 404, { error: `${t(lang, 'assetNotFound')}: ${path}` })
+  res.statusCode = 200
+  res.setHeader('Content-Type', file.type)
+  res.setHeader('Cache-Control', 'no-store')
+  res.end(file.body)
 }
 
 // ─── The files of a page's bundle, which the editor offers to put in (editor.js, bundleFiles) ─────────────────────
@@ -781,6 +792,8 @@ export function blockEditorPlugin(): Plugin {
           handler = serveAsset(res, 'editor.js', 'application/javascript; charset=utf-8', lang)
         } else if (method === 'GET' && url === '/__hadley/editor.css') {
           handler = serveAsset(res, 'editor.css', 'text/css; charset=utf-8', lang)
+        } else if (method === 'GET' && url.startsWith('/__hadley/editor/')) {
+          handler = serveBrowserFile(res, url.split('?')[0]!, lang)
         } else if (method === 'GET' && url.startsWith('/__hadley/files/')) {
           handler = serveBundleFile(res, url, lang)
         } else if (method === 'GET' && LIMA_MODULE.test(url)) {

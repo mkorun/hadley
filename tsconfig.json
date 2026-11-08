@@ -22,5 +22,5 @@
   },
 
   "include": ["packages/**/*.ts", "scripts/**/*.ts", "e2e/**/*.ts", "playwright.config.ts"],
-  "exclude": ["**/node_modules/**", "packages/hadley/themes/**"]
+  "exclude": ["**/node_modules/**", "packages/hadley/themes/**", "packages/hadley/addons/*/browser/**"]
 }

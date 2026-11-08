@@ -24,6 +24,8 @@ else
 fi
 
 "$bin/tsc" --noEmit -p .
+# The editor's browser code, with the DOM's types instead of Bun's (addons/editor/browser-files.ts).
+"$bin/tsc" --noEmit -p packages/hadley/addons/editor/browser
 
 # oxlint finds tsgolint only in the project's own node_modules (ADR 0003).
 "$bin/oxlint" --type-aware --deny-warnings
