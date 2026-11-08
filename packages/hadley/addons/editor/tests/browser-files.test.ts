@@ -1,6 +1,6 @@
 import { describe, it, beforeEach, afterEach } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { browserFile, STYLESHEET } from '../browser-files.ts'
@@ -60,7 +60,9 @@ describe('the browser code of the editor', () => {
 
   it('serves its own entry', async () => {
     const file = await browserFile('/__hadley/editor/main.ts')
-    assert.match(file?.body ?? '', /\/__hadley\/editor\/editor\.css/)
-    assert.equal((await browserFile(STYLESHEET))?.type, 'text/css; charset=utf-8')
+    assert.match(file?.body ?? '', /import \{ bar \} from "\.\/features\/bar\.ts";/)
+    // until the old editor goes, its stylesheet and the new one are the same, byte for byte
+    const old = await readFile(join(import.meta.dirname, '..', 'assets', 'editor.css'), 'utf-8')
+    assert.equal((await browserFile(STYLESHEET))?.body, old)
   })
 })

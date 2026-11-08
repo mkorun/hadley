@@ -3,9 +3,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 const screenshots = resolve('node_modules/.cache/chat-panel/screenshots')
-// the editor being rebuilt (HADLEY_EDITOR=next) loads the chat itself, by the module its script names
-const next = process.env['HADLEY_EDITOR'] === 'next'
-const editorEntry = next ? '/__hadley/editor/main.ts' : '/__hadley/editor.js'
+// the editor being rebuilt (HADLEY_EDITOR=next) stands where the old one does
+const editorEntry = process.env['HADLEY_EDITOR'] === 'next' ? '/__hadley/editor/main.ts' : '/__hadley/editor.js'
 
 test('opens, closes, preserves the draft and stays usable without a session or storage', async ({
   page,
@@ -302,8 +301,7 @@ test('includes assets after the editor only when chat is enabled', async ({ page
     await page
       .locator('head script[src^="/__hadley/"]')
       .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('src'))),
-  ).toEqual(next ? [editorEntry] : [editorEntry, '/__hadley/chat.js'])
-  if (next) await expect(page.locator('script[data-hadley-chat="/__hadley/chat.js"]')).toHaveCount(1)
+  ).toEqual([editorEntry, '/__hadley/chat.js'])
   for (const [file, type] of [
     ['chat.js', 'application/javascript'],
     ['chat.css', 'text/css'],
@@ -319,9 +317,7 @@ test('includes assets after the editor only when chat is enabled', async ({ page
   })
   await page.goto(dev.origin + '/panel/')
   await expect(
-    page.locator(
-      'script[src="/__hadley/chat.js"], script[data-hadley-chat], link[href="/__hadley/chat.css"], #hadley-chat',
-    ),
+    page.locator('script[src="/__hadley/chat.js"], link[href="/__hadley/chat.css"], #hadley-chat'),
   ).toHaveCount(0)
   await page.locator('[data-hadley-id]').first().click({ button: 'right' })
   await expect(page.locator('.hadley-rewrite')).toHaveCount(0)

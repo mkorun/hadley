@@ -1,0 +1,103 @@
+/* ─── Dev bar: dev-overlay + edit toggle, together bottom right ────────────── */
+
+#hadley-dev-bar {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 9998;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+#hadley-dev-bar > * {
+  pointer-events: auto;
+}
+
+/* dev-overlay: static inside the bar instead of fixed */
+#hadley-dev-bar .dev-overlay {
+  position: static;
+  inset: auto;
+}
+
+/* One control: a pill of two tones, edit mode at its left, the chat's half (addons/chat) at its right */
+.hadley-pill {
+  display: flex;
+  overflow: hidden;
+  background: var(--he-bg);
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 1px var(--he-tone-light),
+    0 0 0 2px var(--he-tone-dark),
+    0 6px 18px var(--he-shadow);
+}
+
+.hadley-pill > button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.85rem;
+  font:
+    500 0.8125rem/1 ui-sans-serif,
+    system-ui,
+    sans-serif;
+  color: var(--he-text);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.hadley-pill > button + button {
+  border-left: 1px solid var(--he-border);
+}
+
+.hadley-pill > button:hover {
+  background: var(--he-bg-hover);
+}
+
+.hadley-pill > button:focus-visible {
+  outline: 2px solid var(--he-accent-focus);
+  outline-offset: -3px;
+}
+
+.hadley-pill > button:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.hadley-pill svg {
+  flex: none;
+}
+
+/* the language switch shows in edit mode only, small, between edit mode and the chat */
+#hadley-lang-toggle {
+  display: none;
+  font-size: 0.6875rem;
+  letter-spacing: 0.05em;
+  padding-inline: 0.6rem;
+  color: var(--he-muted);
+}
+
+body.hadley-edit-mode #hadley-lang-toggle {
+  display: inline-flex;
+}
+
+#hadley-edit-toggle[aria-pressed='true'] {
+  color: var(--he-on-accent);
+  background: var(--he-accent);
+}
+
+#hadley-edit-toggle[aria-pressed='true']:hover {
+  background: var(--he-accent-deep);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hadley-pill > button {
+    transition: none;
+  }
+}

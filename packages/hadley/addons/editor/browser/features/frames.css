@@ -1,0 +1,106 @@
+/* ─── Block affordance in edit mode ────────────────────────────────────────── */
+
+/* The frames are drawn in their own layer (editor.js, "Frames"); a hovered or open block is tinted behind its text,
+   as far as its frame. */
+body.hadley-edit-mode [data-hadley-id],
+body.hadley-edit-mode [data-hadley-head-editable] {
+  position: relative;
+  cursor: default;
+  transition:
+    background-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+body.hadley-edit-mode [data-hadley-id]:hover,
+body.hadley-edit-mode [data-hadley-id].hadley-block-active,
+body.hadley-edit-mode [data-hadley-head-editable]:hover,
+body.hadley-edit-mode [data-hadley-head-editable].hadley-block-active {
+  background-color: var(--he-block-bg);
+  box-shadow: 0 0 0 var(--he-frame-gap) var(--he-block-bg);
+}
+
+#hadley-frames {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+#hadley-frames[hidden],
+.hadley-frame[hidden],
+body.hadley-edit-mode .hadley-front-matter-badge[hidden] {
+  display: none;
+}
+
+/* subtle while the page is in edit mode: a dark dashed line between two light ones */
+/* At rest: one line of 1px, its dashes dark and light in turn, so that half of them stand out from any ground and
+   none doubles it (four gradients, one for each edge). Under the pointer and while open: the accent inside it, 2px. */
+.hadley-frame {
+  --ants-h: repeating-linear-gradient(90deg, var(--he-tone-dark) 0 5px, var(--he-tone-light) 5px 10px);
+  --ants-v: repeating-linear-gradient(180deg, var(--he-tone-dark) 0 5px, var(--he-tone-light) 5px 10px);
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 3px;
+  background:
+    var(--ants-h) top / 100% 1px no-repeat,
+    var(--ants-h) bottom / 100% 1px no-repeat,
+    var(--ants-v) left / 1px 100% no-repeat,
+    var(--ants-v) right / 1px 100% no-repeat;
+  outline: 2px solid transparent;
+  outline-offset: -3px;
+  transition: outline-color 0.2s ease;
+}
+
+.hadley-frame.is-hover,
+.hadley-frame.is-active {
+  outline-color: var(--he-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hadley-frame {
+    transition: none;
+  }
+}
+
+/* Markanto comments do not exist in the published DOM. In the editor they need
+   a visible block handle, clearly marked as not published. The ::before line
+   says so explicitly; the dashed outline, the muted colour and the diagonal
+   hatching underline "not live". */
+.hadley-editor-comment {
+  display: block;
+  margin-block: 1rem;
+  padding: 0.55rem 1rem 0.75rem;
+  border: 1px dashed var(--he-muted);
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(135deg, transparent 0 7px, color-mix(in srgb, var(--he-muted) 7%, transparent) 7px 8px),
+    color-mix(in srgb, var(--he-bg) 10%, transparent);
+  color: color-mix(in srgb, var(--he-muted) 80%, transparent);
+  font:
+    0.8125rem/1.5 ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    monospace;
+  white-space: pre-wrap;
+}
+
+.hadley-editor-comment::before {
+  /* The editor's UI texts come from the `T` table in editor.js (German and English, by the
+       page's <html lang>), server messages from i18n.ts. This label is CSS's own: English, German
+       on a German page (below), and a site can set its own through the CSS variable. */
+  content: var(--he-comment-label, '⊘ Comment · not in the output');
+  display: block;
+  margin-block-end: 0.45rem;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: normal;
+  color: var(--he-muted);
+}
+
+[data-hadley-lang='de'] .hadley-editor-comment::before {
+  content: var(--he-comment-label, '⊘ Kommentar · nicht im Output');
+}

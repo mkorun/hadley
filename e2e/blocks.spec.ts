@@ -9,8 +9,10 @@ const FIRST = 'First words of the attached block.'
 const SECOND = 'Second block.'
 
 const editMode = async (page: Page) => {
-  if ((await page.locator('body.hadley-edit-mode').count()) === 0)
-    await page.getByRole('button', { name: 'Toggle edit mode', exact: true }).click()
+  // the editor first: it turns edit mode back on after a reload, and a click before that would turn it off
+  const toggle = page.getByRole('button', { name: 'Toggle edit mode', exact: true })
+  await toggle.waitFor()
+  if ((await page.locator('body.hadley-edit-mode').count()) === 0) await toggle.click()
   await expect(page.locator('body.hadley-edit-mode')).toHaveCount(1)
 }
 

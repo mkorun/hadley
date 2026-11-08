@@ -1,0 +1,63 @@
+/* ─── Trigger button (⋯) ────────────────────────────────────────────────────── */
+
+.hadley-trigger {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: var(--he-trigger-bg);
+  color: var(--he-trigger-text);
+  /* a ring of both tones, as the frames have */
+  box-shadow:
+    0 0 0 1px var(--he-tone-light),
+    0 0 0 2px var(--he-tone-dark);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+  transition:
+    opacity 0.2s ease,
+    background 0.15s ease;
+  padding: 0;
+}
+
+/* Non-void: controlled by CSS — in sync with the block hover.
+   Descendant combinator (not only a direct child), because for <details> blocks the trigger sits
+   in <summary> (otherwise the shadow tree hides every child except summary while closed) */
+body.hadley-edit-mode [data-hadley-id]:hover .hadley-trigger {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Void trigger (hr, appended to body): JS sets is-visible */
+.hadley-trigger.is-visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Hover on the trigger itself */
+.hadley-trigger:hover {
+  background: var(--he-accent);
+  color: var(--he-on-accent);
+}
+
+/* Active (menu open) — stays visible, left side square (joins the menu) */
+.hadley-trigger.is-active {
+  opacity: 1 !important;
+  pointer-events: all;
+  background: var(--he-accent-deep);
+  color: var(--he-on-accent);
+  border-radius: 0 4px 4px 0;
+}
+
+/* While the editor is open: disable all triggers */
+body.hadley-editing .hadley-trigger {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

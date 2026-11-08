@@ -1,0 +1,41 @@
+/* ─── Theme variables ──────────────────────────────────────────────────────── */
+/* One editor for light and dark pages: each colour is light-dark(), after the page's color-scheme, and the accent is the
+   theme's --editor-accent, plain CSS, so it follows a theme that changes it (a colour picker). @layer: a site's own
+   :root overrides win, whatever the load order. */
+@layer hadley-editor-defaults {
+  :root {
+    --he-accent: var(--editor-accent, #2563eb);
+    --he-accent-deep: color-mix(in oklab, var(--he-accent) 80%, black);
+    --he-accent-focus: color-mix(in oklab, var(--he-accent) 60%, white);
+    --he-on-accent: #fff;
+    --he-bg: light-dark(#f8f9fb, #1e293b);
+    --he-bg-deep: light-dark(#eef1f5, #0f172a);
+    --he-bg-raised: light-dark(#ffffff, #263344);
+    --he-bg-hover: light-dark(#e3e8ef, #334155);
+    --he-bg-cancel-hv: light-dark(#dde3eb, #2d3f55);
+    --he-border: light-dark(#cbd3de, #334155);
+    --he-text: light-dark(#1e293b, #e2e8f0);
+    --he-muted: light-dark(#556070, #94a3b8);
+    --he-sep: light-dark(rgb(30 41 59 / 0.15), rgb(148 163 184 / 0.2));
+    --he-danger: light-dark(#c62828, #dc2626);
+    --he-danger-deep: light-dark(#a11d1d, #b91c1c);
+    --he-success: light-dark(#15803d, #22c55e);
+    --he-warn: light-dark(#b45309, #f59e0b);
+    --he-overlay-bg: light-dark(rgb(248 249 251 / 0.55), rgb(15 23 42 / 0.42));
+    --he-shadow: light-dark(rgb(0 0 0 / 0.14), rgb(0 0 0 / 0.4));
+    --he-block-bg: color-mix(in srgb, var(--he-accent) 7%, transparent);
+    --he-trigger-bg: color-mix(in srgb, var(--he-accent) 85%, black);
+    --he-trigger-text: #fff;
+    --he-danger-icon: color-mix(in srgb, var(--he-danger) 10%, transparent);
+    --he-danger-hv: color-mix(in srgb, var(--he-danger) 18%, transparent);
+    /* the two tones of a frame and of a badge's ring: one of them stands out from any ground */
+    --he-tone-dark: rgb(15 23 42 / 0.6);
+    --he-tone-light: rgb(255 255 255 / 0.75);
+    /* how far a frame stands off its block, and its tint reaches */
+    --he-frame-gap: 10px;
+    /* the front matter as a table: every other line, and its keys */
+    --he-stripe: color-mix(in srgb, var(--he-text) 6%, transparent);
+    --he-key: light-dark(var(--he-accent), var(--he-accent-focus));
+    --he-key-bg: color-mix(in srgb, var(--he-accent) 12%, transparent);
+  }
+}

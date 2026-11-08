@@ -1,0 +1,90 @@
+/* ─── Slide-out block menu ──────────────────────────────────────────────────── */
+
+/* display: flex NOT in the base selector — it would override [hidden] */
+#hadley-block-menu {
+  position: absolute;
+  z-index: 9999;
+  top: -9999px; /* off-screen until the first positioning (prevents a flash) */
+  left: -9999px;
+  gap: 2px;
+  background: var(--he-bg);
+  border: 1px solid var(--he-bg);
+  border-right: 2px solid var(--he-bg);
+  border-radius: 6px 0 0 6px;
+  overflow: hidden;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.2),
+    0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+#hadley-block-menu:not([hidden]) {
+  display: flex;
+  flex-direction: row;
+  animation: hadley-menu-in 0.14s ease;
+}
+
+@keyframes hadley-menu-in {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+#hadley-block-menu button {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: var(--he-bg-raised);
+  cursor: pointer;
+  transition: background 0.12s ease;
+  padding: 0;
+}
+
+#hadley-block-menu button:focus-visible {
+  outline: 2px solid var(--he-accent-focus);
+  outline-offset: -2px;
+  position: relative;
+  z-index: 1;
+}
+
+#hadley-block-menu svg {
+  display: block;
+  pointer-events: none;
+}
+
+.hadley-menu-merge {
+  color: var(--he-muted);
+}
+#hadley-block-menu .hadley-menu-merge:hover {
+  background: var(--he-bg-hover);
+}
+
+.hadley-menu-move {
+  color: var(--he-muted);
+}
+#hadley-block-menu .hadley-menu-move:hover {
+  background: var(--he-bg-hover);
+}
+
+.hadley-menu-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--he-sep);
+  align-self: center;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.hadley-menu-delete {
+  color: var(--he-danger);
+}
+#hadley-block-menu .hadley-menu-delete:hover {
+  background: var(--he-danger-hv);
+}

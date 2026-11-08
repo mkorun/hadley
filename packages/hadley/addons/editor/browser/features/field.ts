@@ -1,0 +1,229 @@
+// The field a block is edited in: loaded from the server (plugin.ts), in the page's flow after the block (ADR-10), and
+// saved back to the page's file, which reloads the page (ADR-3). Ctrl+S (Cmd+S on a Mac) saves it, Escape (main.ts)
+// closes it. The chat (addons/chat) hears of it by `hadley:editor-open` and `hadley:editor-close`.
+import { el, fitTextarea } from '../core/dom.ts'
+import { answer, post, serverError } from '../core/request.ts'
+import { state, clearHash, failAction } from '../core/state.ts'
+import { T, withLang } from '../core/texts.ts'
+
+export interface OpenOptions {
+  /** a new block below the one given */
+  below?: boolean
+  /** where the field goes, else right after the block */
+  place?: ((wrapper: HTMLElement) => void) | undefined
+}
+
+export interface Field {
+  open(blockId: string, blockEl: HTMLElement, options?: OpenOptions): Promise<void>
+  close(): void
+}
+
+/** What a field shows beside its text: the front matter's table, the bundle's files, and pictures added to it. */
+export interface Parts {
+  closeMenu(): void
+  table(textarea: HTMLTextAreaElement): HTMLElement
+  files(blockId: string, textarea: HTMLTextAreaElement, toolbar: HTMLElement): void
+  pictures(blockId: string, textarea: HTMLTextAreaElement, toolbar: HTMLElement): void
+}
+
+// On 422, plugin.ts also sends `errors` (Diagnostic.range, markanto-js ≥0.1.1), each with `local`: does the error
+// overlap the block being edited? plugin.ts refuses an edit only for a `local` error; an integrity check makes sure
+// no other block changed meaning. The message tells "you broke this" apart from "the error already exists elsewhere
+// in the document". Without `errors` (an older server, or a refusal by the integrity check) it falls back to the
+// old message that makes no such distinction.
+function buildParseErrorMessage(data: Record<string, unknown>): string {
+  const errors = Array.isArray(data['errors']) ? (data['errors'] as { local?: unknown; message?: unknown }[]) : null
+  if (!errors || errors.length === 0) return T.parseError(typeof data['error'] === 'string' ? data['error'] : '')
+
+  const local = errors.filter((e) => e.local).map((e) => e.message)
+  const elsewhere = errors.filter((e) => !e.local).map((e) => e.message)
+
+  const parts = []
+  if (local.length) parts.push(T.parseError(local.join('; ')))
+  if (elsewhere.length) parts.push(T.parseErrorElsewhere(elsewhere.join('; ')))
+  return parts.join('\n\n')
+}
+
+export function field(parts: Parts): Field {
+  function close() {
+    document.dispatchEvent(new CustomEvent('hadley:editor-close'))
+    state.wrapper?.remove()
+    state.wrapper = null
+    state.textarea = null
+    state.block = null
+    state.after = null
+    document.body.classList.remove('hadley-editing')
+  }
+
+  function openEditor(
+    blockId: string,
+    blockEl: HTMLElement,
+    text: string,
+    { after = null, place }: { after?: string | null; place?: ((wrapper: HTMLElement) => void) | undefined } = {},
+  ) {
+    state.block = blockId
+    state.after = after
+    document.body.classList.add('hadley-editing')
+
+    const wrapper = el('div', 'hadley-editor')
+
+    const textarea = el('textarea', 'hadley-textarea')
+    textarea.value = text
+    textarea.setAttribute('aria-label', T.editAriaLabel)
+    textarea.setAttribute('spellcheck', 'true')
+
+    const editorToolbar = el('div', 'hadley-editor-toolbar')
+
+    const saveBtn = el('button', 'hadley-save-btn')
+    saveBtn.type = 'button'
+    saveBtn.textContent = T.save
+
+    const cancelBtn = el('button', 'hadley-cancel-btn')
+    cancelBtn.type = 'button'
+    cancelBtn.textContent = T.cancel
+    cancelBtn.title = T.escToCancel
+    saveBtn.title = T.saveShortcut
+
+    editorToolbar.append(saveBtn, cancelBtn)
+    const frontMatter = blockEl.dataset['hadleyFrontMatter'] !== undefined
+    wrapper.append(frontMatter ? parts.table(textarea) : textarea, editorToolbar)
+    // after the block, or where the caller puts it (the front matter's badge)
+    if (place) place(wrapper)
+    else blockEl.insertAdjacentElement('afterend', wrapper)
+    if (!frontMatter) {
+      parts.files(blockId, textarea, editorToolbar)
+      parts.pictures(blockId, textarea, editorToolbar)
+    }
+
+    state.wrapper = wrapper
+    state.textarea = textarea
+
+    textarea.focus()
+    textarea.selectionStart = textarea.selectionEnd = textarea.value.length
+
+    textarea.addEventListener('input', () => fitTextarea(textarea))
+    fitTextarea(textarea)
+
+    saveBtn.addEventListener('click', () => void save(blockId, saveBtn))
+    cancelBtn.addEventListener('click', close)
+    document.dispatchEvent(
+      new CustomEvent('hadley:editor-open', {
+        detail: {
+          block: blockId,
+          // the front matter is Lima, which the chat does not rewrite
+          frontMatter,
+          textarea,
+          wrapper,
+          insert(start: number, end: number, replacement: string) {
+            if (state.textarea !== textarea) return false
+            textarea.focus()
+            textarea.setSelectionRange(start, end)
+            // insertText participates in the browser's native undo history; assigning value does not.
+            const inserted = document.execCommand('insertText', false, replacement)
+            // what came in stays selected, so that it shows, and the next action rewrites it again
+            if (inserted) textarea.setSelectionRange(start, start + replacement.length)
+            fitTextarea(textarea)
+            return inserted
+          },
+        },
+      }),
+    )
+  }
+
+  async function open(blockId: string, blockEl: HTMLElement, { below = false, place }: OpenOptions = {}) {
+    if (state.block) return
+    parts.closeMenu()
+
+    let text: string
+    try {
+      const res = await fetch(withLang(`/__hadley/block/${blockId}`))
+      if (!res.ok) {
+        // 409: the file changed since the page was rendered, and its blocks moved
+        if (res.status === 404 || res.status === 409) {
+          alert(T.blockGoneReload)
+          clearHash()
+          location.reload()
+          return
+        }
+        alert(T.loadBlockError(res.status))
+        return
+      }
+      const data = (await res.json()) as { text: string }
+      text = data.text
+    } catch {
+      alert(T.connectionFailedDev)
+      return
+    }
+
+    try {
+      // a new block below is an edit of the block above: its text, a blank line, and what is written in the empty
+      // field; the server checks it as any edit (hash, Markanto, nothing else changed)
+      if (below) openEditor(blockId, blockEl, '', { after: text })
+      else openEditor(blockId, blockEl, text, { place })
+    } catch (error) {
+      // openEditor sets the open block first; without this reset no block could be edited any more.
+      close()
+      failAction(error)
+    }
+  }
+
+  async function save(blockId: string, saveBtn: HTMLButtonElement) {
+    const written = state.textarea?.value
+    if (written === undefined) return
+    // an empty new block is no edit
+    if (state.after !== null && !written.trim()) {
+      close()
+      return
+    }
+    // a new block goes to the server alone, which writes it after the block (plugin.ts, handlePatch: below)
+    const below = state.after !== null
+
+    saveBtn.disabled = true
+    try {
+      clearHash()
+    } catch (error) {
+      failAction(error)
+      saveBtn.disabled = false
+      return
+    }
+
+    try {
+      const res = await post('/__hadley/patch', { blockId, newText: written, ...(below ? { below: true } : {}) })
+
+      if (res.ok) {
+        close()
+        return
+      }
+
+      const data = await answer(res)
+
+      if (res.status === 409) {
+        alert(T.fileChangedReload)
+        location.reload()
+        return
+      }
+
+      if (res.status === 422) {
+        alert(buildParseErrorMessage(data))
+        saveBtn.disabled = false
+        state.textarea?.focus()
+        return
+      }
+
+      alert(T.saveError(res.status, serverError(data)))
+      saveBtn.disabled = false
+    } catch {
+      alert(T.connectionFailedRetry)
+      saveBtn.disabled = false
+    }
+  }
+
+  // Ctrl+S (Cmd+S on a Mac) saves the open block, not the page
+  document.addEventListener('keydown', (e) => {
+    if (!state.block || !(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 's') return
+    e.preventDefault()
+    state.wrapper?.querySelector<HTMLElement>('.hadley-save-btn')?.click()
+  })
+
+  return { open, close }
+}

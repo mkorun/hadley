@@ -1,0 +1,91 @@
+/* ─── The front matter as a table (editor.js, limaTable) ──────────────────────── */
+
+/* The layer under the textarea draws the same text at the same place: the same font, padding, wrapping and gutter.
+   The textarea's own text is transparent; its caret and selection stay. */
+.hadley-fm-box {
+  position: relative;
+  background: var(--he-bg);
+}
+
+.hadley-fm-layer,
+.hadley-fm .hadley-textarea {
+  font-family: ui-monospace, 'Cascadia Code', 'Fira Mono', monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  scrollbar-gutter: stable;
+}
+
+.hadley-fm-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  padding-block: 0.75rem;
+  color: var(--he-text);
+  pointer-events: none;
+}
+
+.hadley-fm-line {
+  min-height: 1lh;
+  padding-inline: 0.75rem;
+}
+
+.hadley-fm-line:nth-child(even) {
+  background: var(--he-stripe);
+}
+
+.hadley-fm-line.is-error {
+  background: color-mix(in srgb, var(--he-danger) 14%, transparent);
+  box-shadow: inset 3px 0 0 var(--he-danger);
+}
+
+/* a key: bold in its colour, where the monospace font keeps bold letters as wide (editor.js measures it); else on a
+   tint, which changes no width, so that the caret never stands beside its letter */
+.hadley-fm-key {
+  color: var(--he-key);
+}
+
+.hadley-fm[data-bold-keys] .hadley-fm-key {
+  font-weight: 700;
+}
+
+.hadley-fm:not([data-bold-keys]) .hadley-fm-key {
+  background: var(--he-key-bg);
+  box-shadow: 0 0 0 2px var(--he-key-bg);
+  border-radius: 2px;
+}
+
+.hadley-fm-comment {
+  color: var(--he-muted);
+}
+
+.hadley-fm .hadley-textarea,
+.hadley-fm .hadley-textarea:focus {
+  position: relative;
+  color: transparent;
+  caret-color: var(--he-text);
+  background: transparent;
+}
+
+.hadley-fm .hadley-textarea::selection {
+  color: transparent;
+  background: color-mix(in srgb, var(--he-accent) 30%, transparent);
+}
+
+.hadley-fm-status {
+  margin: 0;
+  padding: 0.35rem 0.75rem;
+  font:
+    0.8125rem/1.5 ui-sans-serif,
+    system-ui,
+    sans-serif;
+  color: var(--he-text);
+  background: var(--he-bg);
+  border-top: 1px solid var(--he-border);
+  box-shadow: inset 3px 0 0 var(--he-danger);
+}
+
+.hadley-fm-status[hidden] {
+  display: none;
+}

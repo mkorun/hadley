@@ -11,8 +11,20 @@ import { fileURLToPath } from 'node:url'
 
 export const browserDir = join(fileURLToPath(new URL('.', import.meta.url)), 'browser')
 
-/** The stylesheet's files in browser/, in the order of its cascade. */
-export const STYLES: readonly string[] = []
+/** The stylesheet's files in browser/, in the order of its cascade: together, the old editor.css, byte for byte. */
+export const STYLES: readonly string[] = [
+  'tokens.css',
+  'features/bar.css',
+  'features/frames.css',
+  'features/menu-trigger.css',
+  'features/menu.css',
+  'features/field.css',
+  'features/files.css',
+  'features/pictures.css',
+  'features/front-matter.css',
+  'features/dialog.css',
+  'motion.css',
+]
 
 export const STYLESHEET = '/__hadley/editor/editor.css'
 const MODULE = /^\/__hadley\/editor\/((?:[a-z0-9-]+\/)*[a-z0-9-]+\.ts)$/

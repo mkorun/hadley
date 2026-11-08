@@ -93,7 +93,7 @@ export async function startDevServer({
   const hasComments = forms !== undefined
   // the block editor, loaded only when config.lima turns it on, and only for `hadley dev`
   const editor = outputMode === 'dev' && siteEditor(siteConfig) ? await import('../addons/editor/index.ts') : undefined
-  // HADLEY_EDITOR=next: the editor being rebuilt (addons/editor/browser/), which loads the chat once it stands
+  // HADLEY_EDITOR=next: the editor being rebuilt (addons/editor/browser/), in place of the old one
   const editorChoice = process.env.HADLEY_EDITOR
   if (editor && editorChoice && editorChoice !== 'next')
     devWarn(`HADLEY_EDITOR is ${JSON.stringify(editorChoice)}, which hadley does not know: the editor is the old one`)
@@ -274,16 +274,17 @@ export async function startDevServer({
           // We inject /@vite/client manually for HMR WebSocket (full-reload only).
           const serveHtml = async (res: any, filePath: string, status: number) => {
             const html = await readFile(filePath, 'utf-8')
-            const chatModule = chat ? ' data-hadley-chat="/__hadley/chat.js"' : ''
+            // HADLEY_EDITOR=next: the editor being rebuilt, in the same place and order as the old one
             const editorInject = !editor
               ? ''
               : nextEditor
-                ? `<script type="module" src="/__hadley/editor/main.ts"${chatModule}></script>`
+                ? '<link rel="stylesheet" href="/__hadley/editor/editor.css">' +
+                  '<script type="module" src="/__hadley/editor/main.ts"></script>'
                 : '<link rel="stylesheet" href="/__hadley/editor.css">' +
                   '<script type="module" src="/__hadley/editor.js"></script>'
             const chatInject = chat
               ? '<link rel="stylesheet" href="/__hadley/chat.css">' +
-                (nextEditor ? '' : '<script type="module" src="/__hadley/chat.js"></script>')
+                '<script type="module" src="/__hadley/chat.js"></script>'
               : ''
             const injected = html.replace(
               '</head>',
