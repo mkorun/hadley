@@ -47,6 +47,28 @@ describe('the browser code of the editor', () => {
     assert.ok(await browserFile('/__hadley/editor/main.ts', browser))
   })
 
+  // review 2026-11-08 (Astra): one compile per state of a file, never a stale one, and no path in an error
+  it('compiles a module anew once its file changed, and again after a module that did not compile', async () => {
+    const path = '/__hadley/editor/main.ts'
+    await writeFile(join(browser, 'main.ts'), 'export const a: number = 1\n')
+    const first = await browserFile(path, browser)
+    assert.equal((await browserFile(path, browser))?.body, first?.body)
+    await writeFile(join(browser, 'main.ts'), 'export const a: number = 22\n')
+    assert.match((await browserFile(path, browser))!.body, /export const a = 22;/)
+    await writeFile(join(browser, 'main.ts'), 'export const = \n')
+    await assert.rejects(browserFile(path, browser), /Transform failed/)
+    await writeFile(join(browser, 'main.ts'), 'export const a: number = 3\n')
+    assert.match((await browserFile(path, browser))!.body, /export const a = 3;/)
+  })
+
+  it('names no path of the machine when browser/ is missing', async () => {
+    const gone = join(dir, 'gone')
+    await assert.rejects(browserFile('/__hadley/editor/main.ts', gone), (error: Error) => {
+      assert.equal(error.message, "the editor's browser code is missing")
+      return true
+    })
+  })
+
   it('makes one stylesheet of its files, in their order and unchanged', async () => {
     await writeFile(join(browser, 'tokens.css'), ':root { --a: 1 }\n')
     await writeFile(join(browser, 'bar.css'), '.bar { color: red !important }\n')
