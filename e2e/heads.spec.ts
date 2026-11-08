@@ -2,17 +2,9 @@
 // click edits their text while `#` and `__` stay the editor's; where the front matter gives them, it edits the front
 // matter. And the block menu from the keyboard. Written before the editor is rebuilt (2026-11-08), as its measure.
 import { test, expect } from './chat-fixture.ts'
+import { editMode } from './editor.ts'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import type { Page } from '@playwright/test'
-
-const editMode = async (page: Page) => {
-  // the editor first: it turns edit mode back on after a reload, and a click before that would turn it off
-  const toggle = page.getByRole('button', { name: 'Toggle edit mode', exact: true })
-  await toggle.waitFor()
-  if ((await page.locator('body.hadley-edit-mode').count()) === 0) await toggle.click()
-  await expect(page.locator('body.hadley-edit-mode')).toHaveCount(1)
-}
 
 test('a title and subtitle the text gives are edited as their text, and their syntax stays', async ({ page, dev }) => {
   const bundle = join(dirname(dirname(dev.source)), '[headed]')

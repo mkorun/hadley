@@ -23,16 +23,25 @@ async function unusedPort(): Promise<number> {
   return port
 }
 
-async function startSite() {
+async function startSite(theme: string) {
   const dir = await mkdtemp(join(tmpdir(), 'hadley-chat-e2e-'))
   const site = join(dir, 'site')
   const runtime = join(dir, 'runtime')
   const port = await unusedPort()
   const origin = `http://localhost:${port}`
   await mkdir(runtime, { mode: 0o700 })
-  await init(site, ['en', 'de'], 'hems', 'blank')
+  await init(site, ['en', 'de'], theme, 'blank')
   const config = join(site, 'config.lima')
-  await writeFile(config, (await readFile(config, 'utf8')) + '\ndev:\n  editor: true\n  chat: true\n')
+  const settings = await readFile(config, 'utf8')
+  // no search: hadley dev writes its index after the reload of a rebuild, and Vite's import analysis of the theme's
+  // search.js puts its overlay over the page while the index is missing (seen once in WebKit, 2026-11-08); no test here
+  // searches
+  const search = 'search:\n  enabled: true'
+  if (!settings.includes(search)) throw new Error('the blank starter no longer turns the search on')
+  await writeFile(
+    config,
+    settings.replace(search, 'search:\n  enabled: false') + '\ndev:\n  editor: true\n  chat: true\n',
+  )
   const bundle = join(site, 'content', 'articles', '[panel]')
   await mkdir(bundle, { recursive: true })
   await mkdir(join(bundle, 'de'))
@@ -60,7 +69,7 @@ async function startSite() {
           const build = recent.slice(start)
           return build.includes('\n  done in ') && build.endsWith('[dev]   (no keyboard: not a terminal)\n')
         },
-        { timeout: 45_000, message: 'hadley dev finishes its build and search index' },
+        { timeout: 45_000, message: 'hadley dev finishes its build' },
       )
       .toBe(true)
   }
@@ -163,9 +172,11 @@ async function startSite() {
   }
 }
 
-export const test = base.extend<{ dev: Awaited<ReturnType<typeof startSite>> }>({
-  dev: async ({}, use) => {
-    const dev = await startSite()
+export const test = base.extend<{ theme: string; dev: Awaited<ReturnType<typeof startSite>> }>({
+  // the site's theme (packages/hadley/themes/), with its blank starter
+  theme: ['hems', { option: true }],
+  dev: async ({ theme }, use) => {
+    const dev = await startSite(theme)
     try {
       await use(dev)
     } finally {

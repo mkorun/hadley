@@ -1,15 +1,30 @@
 // The front matter as a table (addons/editor/assets/editor.js, limaTable): its keys and comments where Lima's outline()
-// finds them, a line Lima refuses marked as it is typed, and the layer under the textarea as tall as its text.
+// finds them, a line Lima refuses marked as it is typed, and the layer under the textarea as tall as its text. Edited
+// and saved, with a save the server refuses; and without Lima, which the table says.
 import { test, expect } from './chat-fixture.ts'
+import { dialogs, editMode } from './editor.ts'
+import { readFile } from 'node:fs/promises'
+import type { Page } from '@playwright/test'
+
+const FRONT_MATTER = 'title: Panel\npublishFrom: 2026-01-01'
+
+// the front matter's field, from its badge
+const open = async (page: Page, origin: string) => {
+  await page.goto(origin + '/panel/')
+  await editMode(page)
+  await page.locator('.hadley-front-matter-badge').click()
+  const field = page.locator('.hadley-textarea')
+  await expect(field).toHaveValue(FRONT_MATTER)
+  return field
+}
 
 test('the front matter shows its keys, comments and errors where Lima finds them', async ({ page, dev }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(String(error)))
-  await page.goto(dev.origin + '/panel/')
-  await page.getByRole('button', { name: 'Toggle edit mode', exact: true }).click()
-  await page.locator('.hadley-front-matter-badge').click()
-  const field = page.locator('.hadley-textarea')
-  await expect(page.locator('.hadley-fm-key').first()).toBeVisible()
+  const field = await open(page, dev.origin)
+  // Lima has loaded once the first key stands in the layer; not toBeVisible: WebKit on Linux gives an inline element
+  // in a generic monospace font a box of height 0, though it draws it
+  await expect(page.locator('.hadley-fm-key').first()).toHaveText('title')
   await field.press('ControlOrMeta+End')
   await page.keyboard.type('\nAutor:in: Michael # who wrote it\nnote: |\n  foo: bar\nhalf')
   const keys = await page.locator('.hadley-fm-key').allTextContents()
@@ -35,5 +50,50 @@ test('the front matter shows its keys, comments and errors where Lima finds them
     return [height('.hadley-textarea'), height('.hadley-fm-layer')]
   })
   expect(layerHeight).toBe(textHeight)
+  expect(errors).toEqual([])
+})
+
+test('the front matter is edited and saved, and a line Lima refuses refuses the save', async ({ page, dev }) => {
+  const messages = dialogs(page)
+  const before = await readFile(dev.source, 'utf8')
+  const field = await open(page, dev.origin)
+  await field.fill('title: Panel, renamed\npublishFrom: 2026-01-01\ndescription: Edited')
+  await page.keyboard.press('Control+s')
+  await expect
+    .poll(() => readFile(dev.source, 'utf8'))
+    .toBe(before.replace(FRONT_MATTER, 'title: Panel, renamed\npublishFrom: 2026-01-01\ndescription: Edited'))
+  // the page reloads with its new title
+  await expect(page.locator('[data-hadley-head="title"]')).toHaveText('Panel, renamed')
+  await editMode(page)
+  await page.locator('.hadley-front-matter-badge').click()
+  await expect(field).toHaveValue(/^title: Panel, renamed/)
+  // a line Lima refuses: the server refuses the save with Lima's message, and the field stays as it is
+  await field.press('ControlOrMeta+End')
+  await page.keyboard.type('\nhalf')
+  await expect(page.locator('.hadley-fm-line.is-error')).toHaveText('half')
+  await page.keyboard.press('Control+s')
+  await expect.poll(() => messages).toHaveLength(1)
+  expect(messages[0]).toContain('Lima: unrecognised line: "half"')
+  await expect(field).toHaveValue('title: Panel, renamed\npublishFrom: 2026-01-01\ndescription: Edited\nhalf')
+  expect(await readFile(dev.source, 'utf8')).toContain('description: Edited\n---\n')
+})
+
+test('without Lima the table marks nothing, says so, and the front matter still saves', async ({ page, dev }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(String(error)))
+  await page.route('**/__hadley/lima/*', (route) => route.fulfill({ status: 500, body: 'no module' }))
+  const before = await readFile(dev.source, 'utf8')
+  const field = await open(page, dev.origin)
+  await expect(page.locator('.hadley-fm-status')).toHaveText(
+    'Lima could not be loaded: keys and errors show only when saving',
+  )
+  await expect(page.locator('.hadley-fm-line')).toHaveCount(2)
+  await expect(page.locator('.hadley-fm-key')).toHaveCount(0)
+  await field.press('ControlOrMeta+End')
+  await page.keyboard.type('\ndescription: Without Lima')
+  await page.keyboard.press('Control+s')
+  await expect
+    .poll(() => readFile(dev.source, 'utf8'))
+    .toBe(before.replace(FRONT_MATTER, `${FRONT_MATTER}\ndescription: Without Lima`))
   expect(errors).toEqual([])
 })

@@ -317,6 +317,8 @@ for (const lang of ['en', 'de']) {
       await select(page, 0, 5)
       await field.click({ button: 'right' })
       await expect(page.getByRole('menu')).toHaveCount(0)
+      // the right click set the caret in Chromium and WebKit, and left the selection in Firefox: the block, explicitly
+      await select(page, 0, 0)
       const row = page.locator('.hadley-rewrite')
       await row.getByRole('combobox', { name: t.direction, exact: true }).selectOption({ label: t.own })
       const custom = row.getByRole('textbox', { name: t.instruction, exact: true })
