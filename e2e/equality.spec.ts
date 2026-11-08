@@ -1,9 +1,11 @@
 // The editor being rebuilt (addons/editor/browser/) against the old one (assets/editor.js), state by state: the same
 // pixels, byte for byte, the same DOM (its elements, attributes and text, whitespace between elements aside), the same
-// focus and field. Two runs: without HADLEY_EDITOR it records the old editor, with HADLEY_EDITOR=next it compares the
-// new one with that record. Only under HADLEY_EQUALITY=1:
+// focus and field. Without HADLEY_EDITOR it records the old editor, and compares it with its record where there is
+// one: run it twice, and the second run is the control, that each state comes out the same (a first record after a
+// change to the fixture was once off by a hundred pixels). With HADLEY_EDITOR=next it compares the new one with that
+// record. Only under HADLEY_EQUALITY=1:
 //
-//   HADLEY_EQUALITY=1 bunx playwright test e2e/equality.spec.ts
+//   HADLEY_EQUALITY=1 bunx playwright test e2e/equality.spec.ts   # twice
 //   HADLEY_EQUALITY=1 HADLEY_EDITOR=next bunx playwright test e2e/equality.spec.ts
 import { test, expect } from './chat-fixture.ts'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
@@ -208,13 +210,15 @@ for (const scheme of ['light', 'dark'] as const)
         await settle(page)
         const shot = await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide' })
         const dom = await page.evaluate<string>(SNAPSHOT)
-        await writeFile(join(dir, next ? 'next' : 'old', `${name}.png`), shot)
-        await writeFile(join(dir, next ? 'next' : 'old', `${name}.txt`), dom)
-        if (!next) continue
         const old = (file: string) => readFile(join(dir, 'old', file)).catch(() => undefined)
         const [oldShot, oldDom] = await Promise.all([old(`${name}.png`), old(`${name}.txt`)])
-        if (!oldShot || !oldDom)
-          throw new Error(`no record of the old editor in ${dir}: run without HADLEY_EDITOR first`)
+        await writeFile(join(dir, next ? 'next' : 'old', `${name}.png`), shot)
+        await writeFile(join(dir, next ? 'next' : 'old', `${name}.txt`), dom)
+        // the old editor against its own record, where there is one: the control, that a state comes out the same
+        if (!oldShot || !oldDom) {
+          if (next) throw new Error(`no record of the old editor in ${dir}: run without HADLEY_EDITOR first`)
+          continue
+        }
         if (!oldShot.equals(shot)) differ.push(`${name}.png`)
         if (oldDom.toString() !== dom) differ.push(`${name}.txt`)
       }

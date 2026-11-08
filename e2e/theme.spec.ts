@@ -1,5 +1,5 @@
-// The editor on a second theme (packages/hadley/themes/punch; the fixture's site is hems'): a block is edited and saved,
-// and the front matter opens from its badge, as on hems.
+// The editor on a second theme (packages/hadley/themes/punch; the fixture's site is hems'): a block is edited and
+// saved, and the front matter opens from its badge, as on hems.
 import { test, expect } from './chat-fixture.ts'
 import { editMode, openBlock } from './editor.ts'
 import { readFile } from 'node:fs/promises'
