@@ -10,8 +10,16 @@ const ICONS = {
   dots: [dot('3.5'), dot('8'), dot('12.5')],
   up: [path('M4 10l4-4 4 4')],
   down: [path('M4 6l4 4 4-4')],
-  merge_top: [path('M3 3h10M8 13V6.5M5 9.5l3-3 3 3')],
-  merge_bot: [path('M3 13h10M8 3v6.5M5 6.5l3 3 3-3')],
+  // merged with the block above or below: the neighbour as a frame, an arrow into it (Michael, 2026-11-09: a bar
+  // over an arrow read as "to the top")
+  merge_top: [
+    ['rect', { x: '2.5', y: '2', width: '11', height: '5', rx: '1.2' }],
+    path('M8 14V9.2M5.8 11.4L8 9.2l2.2 2.2'),
+  ],
+  merge_bot: [
+    ['rect', { x: '2.5', y: '9', width: '11', height: '5', rx: '1.2' }],
+    path('M8 2v4.8M5.8 4.6L8 6.8l2.2-2.2'),
+  ],
   delete: [path('M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5M7 7v3.5M9 7v3.5')],
   add: [path('M8 3.5v9M3.5 8h9')],
   // the front matter: keys, their colons and values, as Lima writes them

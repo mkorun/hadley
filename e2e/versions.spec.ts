@@ -3,7 +3,7 @@
 // keeps the one it left, so that going forth again is as easy.
 import { test, expect } from './chat-fixture.ts'
 import { openBlock } from './editor.ts'
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 
 const FIRST = 'First words of the attached block.'
 
@@ -64,4 +64,21 @@ test('the versions button stands in the pill in edit mode only, and Escape close
   await page.keyboard.press('Escape')
   await expect(page.locator('#hadley-versions')).toBeHidden()
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+})
+
+// Michael, 2026-11-09: a change made to the file directly, by hand or by an agent, while the dev server runs
+test('a change to the file made outside the editor is a version too', async ({ page, dev }) => {
+  await page.goto(dev.origin + '/panel/')
+  const original = await readFile(dev.source, 'utf8')
+  await writeFile(dev.source, original.replace(FIRST, 'First words, from another program.'))
+  await expect(page.locator('[data-hadley-id]').filter({ hasText: 'from another program' })).toHaveCount(1, {
+    timeout: 15_000,
+  })
+  await page.getByRole('button', { name: 'Toggle edit mode', exact: true }).click()
+  await page.getByRole('button', { name: 'Versions of this page', exact: true }).click()
+  const items = page.locator('#hadley-versions .hv-item')
+  await expect(items).toHaveCount(2)
+  await expect(items.nth(0)).toContainText('Current version')
+  await items.nth(1).click()
+  await expect(page.locator('#hadley-versions .hv-del')).toHaveText('− First words, from another program.')
 })
