@@ -59,13 +59,13 @@ function suggestedName(file: File, pasted: boolean): string {
   return `${clean || `${T.pastedName}-${stamp}`}.${ext}`
 }
 
-/** A line above the files that says something, for a while. */
+/** A line above the toolbar that says something, for a while: not in the files' drawer, which may be folded. */
 function note(toolbar: HTMLElement, text: string): void {
   const line = el('p', 'hadley-add-note')
   line.setAttribute('role', 'status')
   line.textContent = text
   toolbar.parentElement?.querySelector('.hadley-add-note')?.remove()
-  ;(toolbar.parentElement?.querySelector('.hadley-files') ?? toolbar).before(line)
+  toolbar.before(line)
   setTimeout(() => line.remove(), 8000)
 }
 
@@ -169,7 +169,8 @@ function addPicture(
     replace.hidden = true
     message.textContent = ''
   })
-  ;(wrapper?.querySelector('.hadley-files') ?? toolbar).before(form)
+  // above the toolbar, in view whether the files' drawer is open or folded (Michael, 2026-11-09)
+  toolbar.before(form)
   input.focus()
   input.setSelectionRange(0, input.value.lastIndexOf('.'))
 }

@@ -3,7 +3,7 @@
 // open.
 import { test, expect } from './chat-fixture.ts'
 import { PIXEL, hand, openBlock, unfold } from './editor.ts'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { locatedPhoto } from '../packages/hadley/lib/tests/located-photo.ts'
@@ -14,10 +14,17 @@ const BLACK =
 
 test('a dropped picture goes into the bundle under the name given, and in at the caret', async ({ page, dev }) => {
   const bundle = dirname(dev.source)
+  // a bundle with a file, its drawer folded: the question shows all the same (Michael, 2026-11-09)
+  await dev.rebuild(() => writeFile(join(bundle, 'pixel.png'), Buffer.from(PIXEL, 'base64')))
   const field = await openBlock(page, dev.origin)
+  await expect(page.locator('.hadley-drawer-toggle').filter({ hasText: 'Files' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  )
   const text = await field.inputValue()
   await hand(page, 'drop', [{ name: 'Karte Ost.PNG', type: 'image/png', base64: PIXEL }])
   const name = page.getByRole('textbox', { name: 'Name', exact: true })
+  await expect(name).toBeVisible()
   await expect(name).toHaveValue('karte-ost.png')
   await name.fill('karte.png')
   await page.getByRole('button', { name: 'Add', exact: true }).click()
