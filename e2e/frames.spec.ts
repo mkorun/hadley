@@ -144,3 +144,29 @@ test('turning edit mode on moves nothing on the page', async ({ page, dev }) => 
   await expect(page.locator('.hadley-front-matter-badge')).toBeVisible()
   expect(await places()).toEqual(before)
 })
+
+// Michael, 2026-11-09: two close blocks drew two dashed lines that nearly touched, which looked uneven
+test('two close blocks share one line between their frames', async ({ page, dev }) => {
+  await page.goto(dev.origin + '/panel/')
+  // closer than two frame gaps, as a theme may set its paragraphs (mko.run: about 19 px)
+  await page.addStyleTag({ content: '[data-hadley-id] { margin-block: 6px !important; }' })
+  await page.getByRole('button', { name: 'Toggle edit mode', exact: true }).click()
+  const frames = page.locator('.hadley-frame:not([hidden])')
+  await expect(frames.first()).toBeAttached()
+  const boxes = await frames.evaluateAll((all) =>
+    all.map((frame) => {
+      const style = (frame as unknown as { style: { top: string; height: string } }).style
+      const shares = (frame as unknown as { classList: { contains(name: string): boolean } }).classList
+      return {
+        top: parseFloat(style.top),
+        bottom: parseFloat(style.top) + parseFloat(style.height),
+        shares: shares.contains('shares-top'),
+      }
+    }),
+  )
+  const sorted = boxes.sort((a, b) => a.top - b.top)
+  const sharing = sorted.filter((box) => box.shares)
+  expect(sharing.length).toBeGreaterThan(0)
+  // a frame that shares its top meets the one above it, without overlap
+  for (const box of sharing) expect(sorted.some((other) => Math.abs(other.bottom - box.top) < 0.5)).toBe(true)
+})

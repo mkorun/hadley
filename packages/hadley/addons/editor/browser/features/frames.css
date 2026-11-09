@@ -43,7 +43,7 @@ body.hadley-edit-mode .hadley-front-matter-badge[hidden] {
   box-sizing: border-box;
   border-radius: 3px;
   background:
-    var(--ants-h) top / 100% 1px no-repeat,
+    var(--ants-top, var(--ants-h)) top / 100% 1px no-repeat,
     var(--ants-h) bottom / 100% 1px no-repeat,
     var(--ants-v) left / 1px 100% no-repeat,
     var(--ants-v) right / 1px 100% no-repeat;
@@ -57,10 +57,9 @@ body.hadley-edit-mode .hadley-front-matter-badge[hidden] {
   outline-color: var(--he-accent);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .hadley-frame {
-    transition: none;
-  }
+/* a frame that meets the one above it (frames.ts) has its line: none of its own on top */
+.hadley-frame.shares-top {
+  --ants-top: linear-gradient(transparent, transparent);
 }
 
 /* Markanto comments do not exist in the published DOM. In the editor they need

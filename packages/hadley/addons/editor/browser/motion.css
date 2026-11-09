@@ -1,6 +1,8 @@
 /* ─── Motion: short and calm ─────────────────────────────────────────────────── */
 /* What opens rises or drops a few pixels into place and fades in; with reduced motion it only fades, which moves
-   nothing. The chat's panel (addons/chat) uses the same. */
+   nothing. A change of colour or opacity (a hover, the frames' accent, the pill stepping back) eases with and without
+   reduced motion, as it moves nothing either (Michael, 2026-11-09: his desktop has it, and everything snapped). The
+   chat's panel (addons/chat) uses the same. */
 
 @keyframes hadley-rise {
   from {
@@ -41,6 +43,17 @@
   animation: hadley-drop 0.16s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
+/* the frames as edit mode turns on; the version history and the language menu as they open */
+#hadley-frames:not([hidden]) {
+  animation: hadley-fade 0.2s ease-out;
+}
+
+#hadley-versions:not([hidden]),
+.hadley-lang-menu:not([hidden]) {
+  animation: hadley-rise 0.18s cubic-bezier(0.2, 0.7, 0.2, 1);
+  transform-origin: bottom right;
+}
+
 .hadley-files,
 .hadley-add,
 .hadley-add-note,
@@ -51,7 +64,9 @@ body.hadley-edit-mode .hadley-front-matter-badge {
 
 @media (prefers-reduced-motion: reduce) {
   .hadley-editor,
-  #hadley-block-menu:not([hidden]) {
+  #hadley-block-menu:not([hidden]),
+  #hadley-versions:not([hidden]),
+  .hadley-lang-menu:not([hidden]) {
     animation-name: hadley-fade;
   }
 }

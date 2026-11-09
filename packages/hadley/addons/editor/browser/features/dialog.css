@@ -156,21 +156,18 @@ body.hadley-edit-mode .hadley-front-matter-badge {
   transition: background-color 0.15s ease;
 }
 
+/* on a ground that holds its text on any page: the blocks' tint is translucent, and on a dark page the badge's text
+   went with it (Michael, 2026-11-09) */
 body.hadley-edit-mode .hadley-front-matter-badge:hover,
 body.hadley-edit-mode .hadley-front-matter-badge.hadley-block-active {
-  background: var(--he-block-bg);
+  background: var(--he-bg-hover);
 }
 
-/* while its field is open the badge says so and takes no pointer: a click would do nothing (Michael, 2026-11-09) */
+/* while its field is open the badge says so in the accent and takes no pointer: a click would do nothing */
 body.hadley-edit-mode .hadley-front-matter-badge.is-open {
-  background: var(--he-block-bg);
+  color: var(--he-on-accent);
+  background: var(--he-accent);
   pointer-events: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hadley-front-matter-badge {
-    transition: none;
-  }
 }
 
 body.hadley-edit-mode .hadley-front-matter-badge.is-compact {

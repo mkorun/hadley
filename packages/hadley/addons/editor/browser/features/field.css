@@ -1,9 +1,9 @@
 /* ─── In-flow editor ───────────────────────────────────────────────────────── */
 
-/* as wide as the frames of the blocks round it, which reach --he-frame-gap past each block (Michael, 2026-11-09: the
-   front matter's field under the title's frame was narrower) */
+/* as wide as the frames of the blocks round it, which reach --he-frame-gap past each block, and as far from them
+   (Michael, 2026-11-09: the front matter's field was narrower than the title's frame, and touched it) */
 .hadley-editor {
-  margin-block: 0.5rem;
+  margin-block: calc(var(--he-frame-gap) + 4px);
   margin-inline: calc(-1 * var(--he-frame-gap));
   border: 2px solid var(--he-accent);
   border-radius: 6px;

@@ -37,6 +37,8 @@ export function frames(): Frames {
     layer.hidden = false
     const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--he-frame-gap')) || 10
     const seen = new Set<Element>()
+    const placed: { block: Element; frame: HTMLElement; r: DOMRect; above: number; below: number; shares: boolean }[] =
+      []
     for (const block of document.querySelectorAll(FRAMED)) {
       seen.add(block)
       let frame = shown.get(block)
@@ -48,14 +50,34 @@ export function frames(): Frames {
       }
       const r = block.getBoundingClientRect()
       frame.hidden = r.width === 0 && r.height === 0
-      if (frame.hidden) continue
-      // off the block on every side by --he-frame-gap, as far as the tint of a hovered block reaches (frames.css)
+      if (!frame.hidden) placed.push({ block, frame, r, above: gap, below: gap, shares: false })
+    }
+    // off the block on every side by --he-frame-gap, as far as the tint of a hovered block reaches (frames.css); but
+    // two blocks closer than about two gaps meet in the middle of the space between them, and the lower one draws no
+    // line there: one line between them, not two that nearly touch (Michael, 2026-11-09: the lines looked uneven)
+    for (const upper of placed) {
+      let next: (typeof placed)[number] | undefined
+      for (const other of placed) {
+        const across = other.r.left < upper.r.right && upper.r.left < other.r.right
+        if (other === upper || !across || other.r.top < upper.r.bottom - 1) continue
+        if (!next || other.r.top < next.r.top) next = other
+      }
+      if (!next) continue
+      const space = next.r.top - upper.r.bottom
+      // up to a little more than two gaps too: two lines a few pixels apart look as uneven as two that touch
+      if (space < 0 || space >= 2 * gap + 8) continue
+      upper.below = space / 2
+      next.above = space / 2
+      next.shares = true
+    }
+    for (const { block, frame, r, above, below, shares } of placed) {
       Object.assign(frame.style, {
-        top: `${r.top + window.scrollY - gap}px`,
+        top: `${r.top + window.scrollY - above}px`,
         left: `${r.left + window.scrollX - gap}px`,
         width: `${r.width + 2 * gap}px`,
-        height: `${r.height + 2 * gap}px`,
+        height: `${r.height + above + below}px`,
       })
+      frame.classList.toggle('shares-top', shares)
       frame.classList.toggle('is-hover', block.matches(':hover'))
       frame.classList.toggle('is-active', block.classList.contains('hadley-block-active'))
     }

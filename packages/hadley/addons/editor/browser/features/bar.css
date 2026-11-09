@@ -170,9 +170,4 @@ body:not(.hadley-edit-mode)
   background: var(--he-accent-deep);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .hadley-pill,
-  .hadley-pill > button {
-    transition: none;
-  }
-}
+/* colour and opacity move nothing: they ease under reduced motion too (motion.css) */
