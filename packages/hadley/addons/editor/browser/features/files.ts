@@ -5,6 +5,7 @@
 // as a link. The text stays text: what it says is saved as any edit. A picture shows larger once the pointer rests on
 // it (file-preview.ts). Each file can be taken away, after a question in the drawer that says whether the page still
 // names it; it goes into the site's .hadley/trash/ (addons/editor/trash.ts), not out of the world.
+import { askInPlace } from '../core/ask.ts'
 import { el, fitTextarea } from '../core/dom.ts'
 import { icon } from '../core/icons.ts'
 import { post, answer, serverError } from '../core/request.ts'
@@ -98,43 +99,19 @@ function item(
   return box
 }
 
-/** The question before a file is taken away, at the top of the drawer; Cancel has the focus. */
+/** The question before a file is taken away, at the top of the drawer (core/ask.ts). */
 function ask(blockId: string, file: Listed, drawer: HTMLElement, again: () => Promise<void>): void {
   drawer.querySelector('.hadley-file-ask')?.remove()
-  const bar = el('div', 'hadley-file-ask')
-  bar.setAttribute('role', 'group')
-  const question = file.used ? T.deleteFileUsed(file.name) : T.deleteFileAsk(file.name)
-  bar.setAttribute('aria-label', question)
-  const text = el('span')
-  text.textContent = question
-  const yes = el('button', 'hadley-file-ask-yes')
-  yes.type = 'button'
-  yes.textContent = T.delete
-  const no = el('button', 'hadley-file-ask-no')
-  no.type = 'button'
-  no.textContent = T.cancel
-  const message = el('span', 'hadley-file-ask-message')
-  message.setAttribute('role', 'status')
-  no.addEventListener('click', () => bar.remove())
-  bar.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return
-    // the question, not the field
-    e.stopPropagation()
-    bar.remove()
-  })
-  yes.addEventListener('click', () => {
-    yes.disabled = true
-    void (async () => {
+  askInPlace({
+    place: (question) => drawer.prepend(question),
+    question: file.used ? T.deleteFileUsed(file.name) : T.deleteFileAsk(file.name),
+    yes: T.delete,
+    no: T.cancel,
+    className: 'hadley-file-ask',
+    async then() {
       const res = await post('/__hadley/trash', { block: blockId, name: file.name }).catch(() => undefined)
-      if (!res?.ok) {
-        message.textContent = res ? serverError(await answer(res)) : T.connectionFailedDev
-        yes.disabled = false
-        return
-      }
+      if (!res?.ok) return res ? serverError(await answer(res)) : T.connectionFailedDev
       await again()
-    })()
+    },
   })
-  bar.append(text, yes, no, message)
-  drawer.prepend(bar)
-  no.focus()
 }

@@ -2,12 +2,13 @@
 // card above it with the page's versions by day, newest first (list.ts). A version opens in its row (detail.ts). At
 // the foot: how many there are, and deleting every unnamed one; the limit of 100 only once it comes near. One card
 // above the pill at a time: opening it closes the chat's, and the chat's closes it (`hadley:card-open`, addons/chat).
+import { askInPlace } from '../../core/ask.ts'
 import { el } from '../../core/dom.ts'
 import { icon } from '../../core/icons.ts'
 import { state } from '../../core/state.ts'
 import { T } from '../../core/texts.ts'
 import { deleteUnnamed, listVersions, type Version } from './api.ts'
-import { ask, fill } from './detail.ts'
+import { fill } from './detail.ts'
 import { rows } from './list.ts'
 
 // the unnamed versions a page keeps (history.ts, KEEP), and from how many on the foot says so
@@ -113,13 +114,22 @@ export function versions(on: {
       const all = el('button', 'hv-delete-unnamed')
       all.type = 'button'
       all.textContent = T.deleteUnnamed
-      all.addEventListener('click', () =>
-        ask(foot, line, T.deleteUnnamedAsk(unnamed), T.deleteCount(unnamed), async () => {
-          const done = await deleteUnnamed(path)
-          if (!done.ok) return void (status.textContent = done.error)
-          await load()
-        }),
-      )
+      all.addEventListener('click', () => {
+        line.hidden = true
+        askInPlace({
+          place: (question) => foot.append(question),
+          question: T.deleteUnnamedAsk(unnamed),
+          yes: T.deleteCount(unnamed),
+          no: T.cancel,
+          className: 'hv-ask',
+          async then() {
+            const done = await deleteUnnamed(path)
+            if (!done.ok) return done.error
+            await load()
+          },
+          back: () => void (line.hidden = false),
+        })
+      })
       line.append(all)
     }
     foot.replaceChildren(line)

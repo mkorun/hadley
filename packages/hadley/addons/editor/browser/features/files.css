@@ -120,7 +120,7 @@
   border-radius: 5px;
 }
 
-.hadley-file-ask > span:first-child {
+.hadley-file-ask-text {
   margin-right: auto;
 }
 
@@ -143,8 +143,9 @@
   border: 1px solid var(--he-border);
 }
 
-.hadley-file-ask-message:empty {
-  display: none;
+.hadley-file-ask-message {
+  flex-basis: 100%;
+  color: var(--he-danger);
 }
 
 /* a picture shown larger as the pointer rests on it (file-preview.ts): faded in, never moving */

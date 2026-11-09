@@ -307,16 +307,6 @@ body:not(.hadley-edit-mode) .hadley-versions-toggle {
   background: var(--he-danger-hv);
 }
 
-#hadley-versions .hv-actions .hv-danger {
-  color: var(--he-on-accent);
-  background: var(--he-danger);
-  border-color: var(--he-danger);
-}
-
-#hadley-versions .hv-actions .hv-danger:hover {
-  background: var(--he-danger-deep);
-}
-
 #hadley-versions .hv-form input {
   width: 100%;
   margin: 0 0 0.4rem;
@@ -339,16 +329,54 @@ body:not(.hadley-edit-mode) .hadley-versions-toggle {
   color: var(--he-muted);
 }
 
-/* a question before what cannot be undone */
+/* a question before what cannot be undone (core/ask.ts) */
 #hadley-versions .hv-ask {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
   padding: 0.5rem 0.6rem;
   background: color-mix(in srgb, var(--he-danger) 7%, var(--he-bg));
   border: 1px solid color-mix(in srgb, var(--he-danger) 35%, var(--he-border));
   border-radius: 4px;
 }
 
-#hadley-versions .hv-ask p {
-  margin: 0 0 0.45rem;
+#hadley-versions .hv-ask-text {
+  flex-basis: 100%;
+}
+
+#hadley-versions .hv-ask button {
+  padding: 0.3rem 0.65rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#hadley-versions .hv-ask-yes {
+  color: var(--he-on-accent);
+  background: var(--he-danger);
+  border: 1px solid var(--he-danger);
+}
+
+#hadley-versions .hv-ask-yes:hover {
+  background: var(--he-danger-deep);
+}
+
+#hadley-versions .hv-ask-no {
+  color: var(--he-text);
+  background: var(--he-bg);
+  border: 1px solid var(--he-border);
+}
+
+#hadley-versions .hv-ask button:focus-visible {
+  outline: 2px solid var(--he-accent-focus);
+  outline-offset: 1px;
+}
+
+#hadley-versions .hv-ask-message {
+  flex-basis: 100%;
+  color: var(--he-danger);
 }
 
 #hadley-versions .hv-foot {

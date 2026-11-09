@@ -61,3 +61,22 @@ test('a file is taken away after a question, into the trash; one the page names 
   expect(await page.evaluate('window.__mark === 1')).toBe(true)
   await expect(field).toHaveValue('First words, not saved yet.')
 })
+
+test('a file the server would not take away: the question says why, and may be asked again', async ({ page, dev }) => {
+  await files(dev)
+  await openBlock(page, dev.origin)
+  await unfold(page, 'Files (2)')
+  await page.route('**/__hadley/trash*', (route) =>
+    route.fulfill({ status: 500, json: { error: 'Could not write file' } }),
+  )
+  await page.getByRole('button', { name: 'Insert spare.png', exact: true }).hover()
+  await page.getByRole('button', { name: 'Delete spare.png', exact: true }).click()
+  const ask = page.getByRole('group', { name: 'Delete spare.png?' })
+  await ask.getByRole('button', { name: 'Delete', exact: true }).click()
+  await expect(ask.getByRole('status')).toHaveText('Could not write file')
+  await expect(ask.getByRole('button', { name: 'Delete', exact: true })).toBeEnabled()
+  // Escape takes the question back, not the field
+  await page.keyboard.press('Escape')
+  await expect(ask).toHaveCount(0)
+  await expect(page.locator('.hadley-textarea')).toBeVisible()
+})

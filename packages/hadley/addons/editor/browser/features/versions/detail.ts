@@ -1,6 +1,7 @@
 // A version opened in its row: what restoring it would change, line by line and word by word, and what can be done
 // with it. Restoring is the main action and asks first (dialog.ts); keeping it under a name and deleting it happen in
 // the row itself, deleting only after a question there. The page as it is can only be kept.
+import { askInPlace } from '../../core/ask.ts'
 import { el } from '../../core/dom.ts'
 import { icon } from '../../core/icons.ts'
 import { T } from '../../core/texts.ts'
@@ -60,13 +61,23 @@ export async function fill(detail: HTMLElement, version: Version, context: Conte
   const restore = button('hv-restore', T.restoreThis)
   restore.addEventListener('click', () => void restoreTo(version, restore, context))
   const remove = button('hv-delete', T.delete, 'delete')
-  remove.addEventListener('click', () =>
-    ask(detail, actions, T.deleteVersion, T.delete, async () => {
-      const done = await deleteVersion(context.path, version)
-      if (!done.ok) return context.say(done.error)
-      await context.reload()
-    }),
-  )
+  remove.addEventListener('click', () => {
+    // in the row itself, before what cannot be undone (core/ask.ts)
+    actions.hidden = true
+    askInPlace({
+      place: (question) => detail.append(question),
+      question: T.deleteVersion,
+      yes: T.delete,
+      no: T.cancel,
+      className: 'hv-ask',
+      async then() {
+        const done = await deleteVersion(context.path, version)
+        if (!done.ok) return done.error
+        await context.reload()
+      },
+      back: () => void (actions.hidden = false),
+    })
+  })
   actions.append(restore, keepButton(detail, actions, version, context))
   if (context.deletable) actions.append(remove)
   detail.replaceChildren(diff, actions)
@@ -128,39 +139,6 @@ function keepButton(detail: HTMLElement, actions: HTMLElement, version: Version,
     input.focus()
   })
   return open
-}
-
-/** A question in the row before something that cannot be undone; Cancel has the focus. */
-export function ask(
-  detail: HTMLElement,
-  actions: HTMLElement,
-  question: string,
-  yes: string,
-  then: () => Promise<void>,
-): void {
-  const box = el('div', 'hv-ask')
-  box.setAttribute('role', 'group')
-  const text = el('p')
-  text.textContent = question
-  const confirm = button('hv-danger', yes)
-  const cancel = button('hv-cancel', T.cancel)
-  const buttons = el('div', 'hv-actions')
-  buttons.append(confirm, cancel)
-  box.append(text, buttons)
-  box.setAttribute('aria-label', question)
-  const back = () => {
-    box.remove()
-    actions.hidden = false
-  }
-  cancel.addEventListener('click', back)
-  box.addEventListener('keydown', (event) => escape(event, back))
-  confirm.addEventListener('click', () => {
-    confirm.disabled = true
-    void then().finally(() => (confirm.disabled = false))
-  })
-  actions.hidden = true
-  detail.append(box)
-  cancel.focus()
 }
 
 /** Escape in a form or question of a row closes it, not the card. */

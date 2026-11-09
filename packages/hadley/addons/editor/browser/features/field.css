@@ -28,7 +28,7 @@
   border-top: 1px solid color-mix(in srgb, var(--he-danger) 30%, var(--he-border));
 }
 
-.hadley-discard span {
+.hadley-discard-text {
   margin-right: auto;
 }
 

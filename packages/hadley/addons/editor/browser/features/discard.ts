@@ -1,6 +1,7 @@
-// The question before an open field with changes is closed by its × or Escape (field.ts; Michael, 2026-11-09): in the
-// field, above its toolbar, not over the page. Keep editing has the focus; a second Escape keeps editing too.
-import { el } from '../core/dom.ts'
+// The question before an open field with changes is closed by Cancel or Escape (field.ts; Michael, 2026-11-09): in
+// the field, above its toolbar, not over the page (core/ask.ts). Keep editing has the focus; a second Escape, wherever
+// the focus is, keeps editing too.
+import { askInPlace } from '../core/ask.ts'
 import { T } from '../core/texts.ts'
 
 /** Asks in `wrapper`, above `toolbar`; `discard` closes the field, keeping editing gives the field its focus back. */
@@ -11,23 +12,13 @@ export function askDiscard(wrapper: HTMLElement, toolbar: HTMLElement, discard: 
     shown.remove()
     return keep()
   }
-  const bar = el('div', 'hadley-discard')
-  bar.setAttribute('role', 'group')
-  bar.setAttribute('aria-label', T.discardAsk)
-  const text = el('span')
-  text.textContent = T.discardAsk
-  const yes = el('button', 'hadley-discard-yes')
-  yes.type = 'button'
-  yes.textContent = T.discard
-  const no = el('button', 'hadley-discard-no')
-  no.type = 'button'
-  no.textContent = T.keepEditing
-  yes.addEventListener('click', discard)
-  no.addEventListener('click', () => {
-    bar.remove()
-    keep()
+  askInPlace({
+    place: (question) => toolbar.before(question),
+    question: T.discardAsk,
+    yes: T.discard,
+    no: T.keepEditing,
+    className: 'hadley-discard',
+    then: discard,
+    back: keep,
   })
-  bar.append(text, yes, no)
-  toolbar.before(bar)
-  no.focus()
 }
