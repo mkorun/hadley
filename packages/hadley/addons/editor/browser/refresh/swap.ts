@@ -130,7 +130,9 @@ export function swap(live: Document, before: Document, after: Document): Result 
   // the content, block by block; what the live page holds must be what the server sent
   const oldKids = [...oldRoot.children]
   const newKids = [...newRoot.children]
-  const liveKids = [...liveRoot.children]
+  // the field being saved stands in the content until the page shows its block anew (features/field.ts): not the
+  // server's
+  const liveKids = [...liveRoot.children].filter((kid) => !kid.classList.contains('hadley-editor'))
   if (liveKids.length !== oldKids.length || liveKids.some((kid, i) => kid.tagName !== oldKids[i]!.tagName))
     return { kind: 'reload', why: 'the live content differs' }
 

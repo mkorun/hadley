@@ -11,7 +11,9 @@ export const state: {
   after: string | null
   /** ADR-14: after a change of the editor's, until the page is up to date (features/updating.ts) */
   locked: boolean
-} = { block: null, wrapper: null, textarea: null, after: null, locked: false }
+  /** the open field is being saved: it stays, locked, until the page shows its block anew (features/field.ts) */
+  saving: boolean
+} = { block: null, wrapper: null, textarea: null, after: null, locked: false, saving: false }
 
 export const isEditMode = (): boolean => document.body.classList.contains('hadley-edit-mode')
 

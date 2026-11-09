@@ -149,3 +149,31 @@ for (const [action, item, text, done] of [
     for (let i = 1; i < sorted.length; i++) expect(sorted[i]![0]).toBeGreaterThanOrEqual(sorted[i - 1]![1] - 0.5)
   })
 }
+
+// Michael, 2026-11-09: saving can take a while; the field says so where one works, until the page shows the block
+test('a field being saved stays, locked and turning, until the page shows its block anew', async ({ page, dev }) => {
+  const field = await openBlock(page, dev.origin)
+  await mark(page)
+  let release = () => {}
+  const held = new Promise<void>((resolve) => (release = resolve))
+  await page.route('**/__hadley/patch*', async (route) => {
+    await held
+    await route.continue()
+  })
+  await field.fill('First words, saved slowly.')
+  await page.keyboard.press('Control+Enter')
+  const save = page.locator('.hadley-save-btn')
+  await expect(save).toHaveText('Saving…')
+  await expect(save).toBeDisabled()
+  await expect(field).toHaveJSProperty('readOnly', true)
+  // Escape does not take a field away that is being saved... once the server took it
+  release()
+  await expect(page.locator('.hadley-editor-toolbar .hadley-cancel-btn')).toBeDisabled()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.hadley-discard')).toHaveCount(0)
+  // the field goes once the page shows the block anew, in place
+  await expect(block(page, 'First words, saved slowly.')).toBeVisible()
+  await expect(page.locator('.hadley-textarea')).toHaveCount(0)
+  expect(await marked(page)).toBe(true)
+  await expect(page.getByRole('button', { name: 'Toggle edit mode', exact: true })).toBeEnabled()
+})

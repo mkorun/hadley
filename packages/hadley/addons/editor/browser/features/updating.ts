@@ -7,8 +7,11 @@ import { T } from '../core/texts.ts'
 const WAIT = 15_000
 
 export interface Updating {
-  /** after a change of the editor's: locked until the page is up to date; `block` dimmed meanwhile */
-  wait(block?: Element | null): void
+  /**
+   * after a change of the editor's: locked until the page is up to date, `block` dimmed meanwhile; `finish` then,
+   * or when the rebuild failed (the saved field closes)
+   */
+  wait(block?: Element | null, finish?: () => void): void
 }
 
 export function updating(on: {
@@ -22,9 +25,12 @@ export function updating(on: {
   let held = false
   let timer: ReturnType<typeof setTimeout> | undefined
   let dimmed: Element | null = null
+  let finishing: (() => void) | undefined
 
   const done = () => {
     clearTimeout(timer)
+    finishing?.()
+    finishing = undefined
     dimmed?.classList.remove('hadley-pending')
     dimmed = null
     if (!waiting) return
@@ -34,7 +40,8 @@ export function updating(on: {
 
   // a change from outside while a field is open: after the field, not under it
   document.addEventListener('hadley:refresh', (event) => {
-    if (!state.block) return
+    // a field being saved waits for this very change: it does not hold it
+    if (!state.block || state.saving) return
     event.preventDefault()
     held = true
     on.note(T.waitingForField)
@@ -57,8 +64,9 @@ export function updating(on: {
   })
 
   return {
-    wait(block) {
+    wait(block, finish) {
       waiting = true
+      finishing = finish
       on.note(null)
       on.lock()
       dimmed = block ?? null

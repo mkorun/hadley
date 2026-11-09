@@ -31,8 +31,8 @@ export interface Field {
 /** What a field shows beside its text: the front matter's table, the bundle's files, and pictures added to it. */
 export interface Parts {
   closeMenu(): void
-  /** saved: the block that changed (none for a new one), until the page shows it anew */
-  saved(block: HTMLElement | null): void
+  /** saved: the block that changed (none for a new one); `finish` closes the field once the page shows it anew */
+  saved(block: HTMLElement | null, finish: () => void): void
   table(textarea: HTMLTextAreaElement): HTMLElement
   /** the bundle's files, in their drawer (drawers.ts) */
   files(blockId: string, textarea: HTMLTextAreaElement, drawers: Drawers): void
@@ -59,9 +59,16 @@ function buildParseErrorMessage(data: Record<string, unknown>): string {
 
 export function field(parts: Parts): Field {
   // the open field's text as it opened, and where the question before discarding goes
-  let opened: { text: string; toolbar: HTMLElement; showSave(): void } | null = null
+  let opened: {
+    text: string
+    toolbar: HTMLElement
+    showSave(): void
+    saving(on: boolean): void
+  } | null = null
 
   function cancel() {
+    // saved already, the field waits only for the page
+    if (state.saving && opened?.toolbar.querySelector<HTMLButtonElement>('.hadley-cancel-btn')?.disabled) return
     const wrapper = state.wrapper
     const textarea = state.textarea
     if (!wrapper || !textarea || !opened) return
@@ -71,6 +78,7 @@ export function field(parts: Parts): Field {
 
   function close() {
     opened = null
+    state.saving = false
     document.dispatchEvent(new CustomEvent('hadley:editor-close'))
     state.wrapper?.remove()
     state.wrapper = null
@@ -145,7 +153,23 @@ export function field(parts: Parts): Field {
     fitTextarea(textarea)
 
     saveBtn.addEventListener('click', () => void save(blockId, blockEl, saveBtn))
-    opened = { text: textarea.value, toolbar: editorToolbar, showSave }
+    // while saving (Michael, 2026-11-09: saving can take a while): the field stays, its text locked, Save turns and
+    // says so, until the page shows the block anew; then it closes
+    const saving = (on: boolean) => {
+      state.saving = on
+      textarea.readOnly = on
+      wrapper.classList.toggle('is-saving', on)
+      if (!on) {
+        saveBtn.textContent = T.save
+        cancelBtn.disabled = false
+        return showSave()
+      }
+      const spinner = el('span', 'hadley-spinner')
+      spinner.setAttribute('aria-hidden', 'true')
+      saveBtn.replaceChildren(spinner, T.saving)
+      saveBtn.disabled = true
+    }
+    opened = { text: textarea.value, toolbar: editorToolbar, showSave, saving }
     cancelBtn.addEventListener('click', cancel)
     document.dispatchEvent(
       new CustomEvent('hadley:editor-open', {
@@ -222,12 +246,13 @@ export function field(parts: Parts): Field {
     // a new block goes to the server alone, which writes it after the block (plugin.ts, handlePatch: below)
     const below = state.after !== null
 
-    saveBtn.disabled = true
+    const field = opened
+    field?.saving(true)
     try {
       clearHash()
     } catch (error) {
       failAction(error)
-      opened?.showSave()
+      field?.saving(false)
       return
     }
 
@@ -235,8 +260,11 @@ export function field(parts: Parts): Field {
       const res = await post('/__hadley/patch', { blockId, newText: written, ...(below ? { below: true } : {}) })
 
       if (res.ok) {
-        close()
-        parts.saved(below ? null : blockEl)
+        // saved: nothing to cancel any more; the field closes once the page shows the block anew
+        field?.toolbar.querySelector<HTMLButtonElement>('.hadley-cancel-btn')?.setAttribute('disabled', '')
+        parts.saved(below ? null : blockEl, () => {
+          if (opened === field) close()
+        })
         return
       }
 
@@ -250,16 +278,16 @@ export function field(parts: Parts): Field {
 
       if (res.status === 422) {
         alert(buildParseErrorMessage(data))
-        opened?.showSave()
+        field?.saving(false)
         state.textarea?.focus()
         return
       }
 
       alert(T.saveError(res.status, serverError(data)))
-      opened?.showSave()
+      field?.saving(false)
     } catch {
       alert(T.connectionFailedRetry)
-      opened?.showSave()
+      field?.saving(false)
     }
   }
 
@@ -269,6 +297,7 @@ export function field(parts: Parts): Field {
     const saves = e.key.toLowerCase() === 's' || (e.key === 'Enter' && !e.shiftKey)
     if (!state.block || !(e.ctrlKey || e.metaKey) || !saves) return
     e.preventDefault()
+    if (state.saving) return
     // unchanged, Save is off: the keys only close the field
     if (state.textarea && state.textarea.value === opened?.text) return close()
     state.wrapper?.querySelector<HTMLElement>('.hadley-save-btn')?.click()

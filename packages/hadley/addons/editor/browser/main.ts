@@ -77,7 +77,7 @@ const theMenu = menu({
 })
 const theField = field({
   closeMenu: () => theMenu.close(),
-  saved: (block) => theUpdating.wait(block),
+  saved: (block, finish) => theUpdating.wait(block, finish),
   table: limaTable,
   files: (blockId, textarea, tools) => void bundleFiles(blockId, textarea, tools),
   pictures: (blockId, textarea, toolbar, tools) =>
