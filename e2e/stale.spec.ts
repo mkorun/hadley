@@ -1,4 +1,4 @@
-// A file that changed on disk after the page was rendered (addons/editor/plugin.ts, fileHashAtRender): the server
+// A file that changed on disk after the page was rendered (addons/editor/edits.ts, fileHashAtRender): the server
 // refuses to open or to save a block of it with 409, and the editor says so and reloads the page. The window is the one
 // before the dev server's rebuild registers the file anew: it waits 150 ms after the write, and then builds.
 import { test, expect } from './chat-fixture.ts'

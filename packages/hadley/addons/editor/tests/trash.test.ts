@@ -7,7 +7,8 @@ import { mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from 'node:
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { startHistory } from '../history.ts'
-import { blockIdMap, wroteItself } from '../plugin.ts'
+import { blockIdMap } from '../blocks.ts'
+import { wroteItself } from '../upload.ts'
 import { handleTrash } from '../trash.ts'
 
 let root: string

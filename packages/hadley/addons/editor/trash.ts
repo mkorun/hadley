@@ -10,13 +10,10 @@ import { copyFile, lstat, mkdir, rename, unlink } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative } from 'node:path'
 import { siteRoot } from './history.ts'
 import { t, type Lang } from './i18n.ts'
-import { blockIdMap, bundleFiles, readBody, tookAway } from './plugin.ts'
-
-function send(res: ServerResponse, status: number, body: unknown): void {
-  res.statusCode = status
-  res.setHeader('Content-Type', 'application/json')
-  res.end(JSON.stringify(body))
-}
+import { blockIdMap } from './blocks.ts'
+import { bundleFiles } from './bundle.ts'
+import { readBody, send } from './http.ts'
+import { tookAway } from './upload.ts'
 
 /** `YYYY-MM-DD-HHMMSS`, in the author's own time: the trash's folders sort as they came. */
 function stamp(now = new Date()): string {

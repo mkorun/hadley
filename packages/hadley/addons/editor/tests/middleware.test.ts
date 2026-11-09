@@ -7,25 +7,12 @@ import { deflateSync, crc32 } from 'node:zlib'
 import { createHash } from 'node:crypto'
 import { Readable } from 'node:stream'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import {
-  blockIdMap,
-  handleGet,
-  blankLinesOnce,
-  handlePatch,
-  pageHeads,
-  handleDelete,
-  handleMove,
-  handleMerge,
-  oneAtATime,
-  readBody,
-  bundleFileNames,
-  bundleFiles,
-  serveBundleFile,
-  handleUpload,
-  pictureName,
-  wroteItself,
-  addOnce,
-} from '../plugin.ts'
+import { blockIdMap, pageHeads } from '../blocks.ts'
+import { bundleFileNames, bundleFiles, serveBundleFile } from '../bundle.ts'
+import { blankLinesOnce, handleDelete, handleGet, handleMerge, handleMove, handlePatch } from '../edits.ts'
+import { readBody } from '../http.ts'
+import { oneAtATime } from '../plugin.ts'
+import { addOnce, handleUpload, pictureName, wroteItself } from '../upload.ts'
 import { registerPageBlocks } from '../renderer.ts'
 import { parseDocument, type BlockToken } from '../../../case/index.ts'
 import { locatedPhoto } from '../../../lib/tests/located-photo.ts'

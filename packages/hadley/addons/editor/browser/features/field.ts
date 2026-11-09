@@ -1,4 +1,4 @@
-// The field a block is edited in: loaded from the server (plugin.ts), in the page's flow after the block (ADR-10), and
+// The field a block is edited in: loaded from the server (edits.ts), in the page's flow after the block (ADR-10), and
 // saved back to the page's file, after which the page is brought up to date (ADR-3, ../refresh/). Save is on only
 // where the text changed (Michael, 2026-11-09). Ctrl+Enter or Ctrl+S
 // (Cmd on a Mac) saves it, Escape (main.ts) closes it; Enter is a new line, which Markdown blocks need (lists, tables,
@@ -39,8 +39,8 @@ export interface Parts {
   pictures(blockId: string, textarea: HTMLTextAreaElement, toolbar: HTMLElement, drawers: Drawers): void
 }
 
-// On 422, plugin.ts also sends `errors` (Diagnostic.range, markanto-js ≥0.1.1), each with `local`: does the error
-// overlap the block being edited? plugin.ts refuses an edit only for a `local` error; an integrity check makes sure
+// On 422, edits.ts also sends `errors` (Diagnostic.range, markanto-js ≥0.1.1), each with `local`: does the error
+// overlap the block being edited? edits.ts refuses an edit only for a `local` error; an integrity check makes sure
 // no other block changed meaning. The message tells "you broke this" apart from "the error already exists elsewhere
 // in the document". Without `errors` (an older server, or a refusal by the integrity check) it falls back to the
 // old message that makes no such distinction.
@@ -243,7 +243,7 @@ export function field(parts: Parts): Field {
       close()
       return
     }
-    // a new block goes to the server alone, which writes it after the block (plugin.ts, handlePatch: below)
+    // a new block goes to the server alone, which writes it after the block (edits.ts, handlePatch: below)
     const below = state.after !== null
 
     const field = opened

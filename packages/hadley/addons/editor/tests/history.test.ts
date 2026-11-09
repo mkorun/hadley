@@ -9,7 +9,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { history, KEEP, pruned, seen, startHistory, steps, undone, without, type Version } from '../history.ts'
 import { historyRoute } from '../history-routes.ts'
-import { pageHeads } from '../plugin.ts'
+import { pageHeads } from '../blocks.ts'
 
 let root: string
 let page: string

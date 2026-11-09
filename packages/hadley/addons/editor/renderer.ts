@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import type { BlockToken, ParsedDocument } from '../../case/index.ts'
-import { blockIdMap, pageHeads } from './plugin.ts'
+import { blockIdMap, pageHeads } from './blocks.ts'
 import { seen } from './history.ts'
 
 /**
@@ -33,7 +33,7 @@ export function registerPageBlocks(
     if (block.start === undefined || block.end === undefined) continue
     const id = crypto.randomUUID()
     startToId.set(block.start, id)
-    // the build counts in the file as it is, the editor in its text with LF (plugin.ts, readSource): with CRLF, a
+    // the build counts in the file as it is, the editor in its text with LF (source.ts, readSource): with CRLF, a
     // block moves back by the carriage returns before it, and its end, which falls between \r and \n, goes past the \n
     blockIdMap.set(id, {
       filePath,

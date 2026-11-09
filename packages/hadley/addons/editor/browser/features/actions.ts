@@ -1,5 +1,5 @@
 // What the block menu changes: merge, move and delete a block. Each animates first, then asks the server
-// (plugin.ts), which writes the page's file; the page is brought up to date with it (../refresh/), and until then
+// (edits.ts), which writes the page's file; the page is brought up to date with it (../refresh/), and until then
 // nothing else changes (ADR-14). The animation's styles stay on the blocks until then, and go as the page changes:
 // a reload took them once, the blocks that stay now keep their elements (Michael, 2026-11-09); they go too when the
 // server refuses. A deletion asks nothing: undo takes it back (undo.ts).

@@ -1,7 +1,7 @@
 // The files of the bundle.
 //
 // In a drawer under the field (drawers.ts), the files that lie beside the page's Markdown (the dev server lists them,
-// plugin.ts): a click puts one in at the caret, an image as `![](name)` with the caret in its alt text, any other file
+// bundle.ts): a click puts one in at the caret, an image as `![](name)` with the caret in its alt text, any other file
 // as a link. The text stays text: what it says is saved as any edit. A picture shows larger once the pointer rests on
 // it (file-preview.ts). Each file can be taken away, after a question in the drawer that says whether the page still
 // names it; it goes into the site's .hadley/trash/ (addons/editor/trash.ts), not out of the world.

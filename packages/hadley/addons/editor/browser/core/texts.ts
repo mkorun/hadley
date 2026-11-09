@@ -1,6 +1,6 @@
 // The editor is the author's tool, not part of the page: it speaks the first of the browser's languages it knows
 // (navigator.languages), else English, whatever the page's own language; the language switch in the control at the
-// bottom right overrides it for the site, kept in localStorage. Server-side error messages (plugin.ts) have their own
+// bottom right overrides it for the site, kept in localStorage. Server-side error messages (i18n.ts) have their own
 // mirrored table (i18n.ts); withLang() appends the same language as a query parameter. The chat (addons/chat) reads it
 // from the root element's data-hadley-lang.
 
@@ -249,5 +249,5 @@ const en: typeof de = {
 
 export const T = { de, en }[LANG]
 
-/** `url`, a /__hadley/* one, with `?lang=`, so that plugin.ts uses the same language for its messages as the UI. */
+/** `url`, a /__hadley/* one, with `?lang=`: the server's routes answer in the language of the UI. */
 export const withLang = (url: string): string => url + (url.includes('?') ? '&' : '?') + `lang=${LANG}`

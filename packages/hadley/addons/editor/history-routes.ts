@@ -11,7 +11,9 @@ import { readFile, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { siteHistory, undone, NAME_MAX, type Step } from './history.ts'
 import { t, type Lang } from './i18n.ts'
-import { oneAtATime, pageHeads, readBody } from './plugin.ts'
+import { pageHeads } from './blocks.ts'
+import { readBody, send } from './http.ts'
+import { oneAtATime } from './plugin.ts'
 
 const HASH = /^[0-9a-f]{64}$/
 const WRITES = new Set([
@@ -29,13 +31,6 @@ const summary = (step: Step | undefined) =>
     ...(step.change.what ? { what: step.change.what } : {}),
     ...(step.change.agent ? { agent: step.change.agent } : {}),
   }
-
-function send(res: ServerResponse, status: number, body: unknown): void {
-  res.statusCode = status
-  res.setHeader('Content-Type', 'application/json')
-  res.setHeader('Cache-Control', 'no-store')
-  res.end(JSON.stringify(body))
-}
 
 const fileOf = (path: unknown): string | undefined =>
   typeof path === 'string' && path.startsWith('/') ? pageHeads.get(path)?.filePath : undefined

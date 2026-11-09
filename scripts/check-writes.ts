@@ -51,8 +51,8 @@ export const WRITERS: Record<string, string> = {
     "the versions of the site's pages, each state once and a log per page, in .hadley/history/",
   'packages/hadley/addons/editor/history-routes.ts': 'the content file of a page the author restores to a version',
   'packages/hadley/addons/editor/trash.ts': "a file of a page's bundle the author takes away, into .hadley/trash/",
-  'packages/hadley/addons/editor/plugin.ts':
-    "the content file whose block the editor changes, and a picture it adds to the page's bundle",
+  'packages/hadley/addons/editor/edits.ts': 'the content file whose block the editor changes',
+  'packages/hadley/addons/editor/upload.ts': "a picture the editor adds to the page's bundle",
 }
 
 const WRITE =

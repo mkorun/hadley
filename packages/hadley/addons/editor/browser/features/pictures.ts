@@ -1,6 +1,6 @@
 // A picture added to the bundle.
 //
-// A PNG or JPEG dropped on the field, or pasted into it, goes into the page's bundle (plugin.ts, handleUpload) under
+// A PNG or JPEG dropped on the field, or pasted into it, goes into the page's bundle (upload.ts, handleUpload) under
 // the name the author gives it in a small form above the files, and then in at the caret, as a click on a file puts it
 // in. A name the bundle has already asks whether to replace that file. A paste that holds text is text: an office
 // program puts a picture of what was copied beside it.

@@ -499,7 +499,7 @@ export async function startDevServer({
         // comments.json is written per-approval during TUI — the build only reads
         // _comments.html, so skip these intermediate writes to avoid spurious rebuilds.
         if (filename.endsWith('comments.json') || isSystemFile(basename(filename))) return
-        // a picture the editor added: its reload would close the field (addons/editor/plugin.ts, wroteItself)
+        // a picture the editor added: its reload would close the field (addons/editor/upload.ts, wroteItself)
         if (editor?.wroteItself(join(dir, filename))) return
         // on Windows a file the build only read is reported too
         if (process.platform === 'win32' && !changedSince(join(dir, filename), buildStarted)) return
