@@ -83,7 +83,7 @@ The page:
 | `mainArticle` | for a variant, the id of its bundle's page |
 | `html.markup` | its text |
 | `html.cover` | its cover as a picture |
-| `html.tldr` | its `:::tldr` summary |
+| `html.tldr` | its `::: tldr` summary |
 | `html.jsonLd` | its JSON-LD, a `<script type="application/ld+json">` |
 | `html.comments` | its comments, which the comments tool writes (comments.md) |
 | `html.fields.<field>` | the HTML of a field `config.lima` gives a template (config.md) |

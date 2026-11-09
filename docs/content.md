@@ -145,11 +145,11 @@ is reported.
 **Media.** `<m video preview=poster.jpg>[The walk](walk.mp4)</m>` shows a video with its poster, `<m audio>` a
 sound with its picture; `<m embed>[Demo](https://example.com/embed)</m>` an embed over https.
 
-**Blocks.** A container names what it is: `:::loud` sets a passage apart, `:::tldr` is a summary at the top, and
-`:::nocount` holds text the reading time and the character count leave out.
+**Blocks.** A container names what it is, after its fence and a space: `::: loud` sets a passage apart, `::: tldr` is
+a summary at the top, and `::: nocount` holds text the reading time and the character count leave out.
 
 ```markdown
-:::tldr
+::: tldr
 The short version.
 :::
 ```
