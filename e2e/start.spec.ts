@@ -1,9 +1,7 @@
-// How the editor being rebuilt starts (addons/editor/browser/main.ts): where the old one stood, its stylesheet before
-// it and the chat's script after it, so that the chat finds the editor's bar however long the stylesheet takes; served
-// as JavaScript from TypeScript (browser-files.ts). Only under HADLEY_EDITOR=next, as the suite runs against it.
+// How the editor starts (addons/editor/browser/main.ts): its stylesheet before it and the chat's script after it, so
+// that the chat finds the editor's bar however long the stylesheet takes; served as JavaScript from TypeScript
+// (browser-files.ts).
 import { test, expect } from './chat-fixture.ts'
-
-test.skip(process.env['HADLEY_EDITOR'] !== 'next', 'the start of the editor being rebuilt')
 
 test("the chat finds the editor's bar, however long the stylesheet takes", async ({ page, dev }) => {
   const errors: string[] = []

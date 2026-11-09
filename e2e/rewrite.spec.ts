@@ -17,7 +17,7 @@ async function select(page: Page, start: number, end: number) {
 }
 
 for (const lang of ['en', 'de']) {
-  // the editor speaks the browser's language (editor.js, i18n)
+  // the editor speaks the browser's language (addons/editor/browser/core/texts.ts)
   test.describe(lang, () => {
     test.use({ locale: lang === 'de' ? 'de-DE' : 'en-US' })
     const t =

@@ -1,4 +1,4 @@
-// What the editor does with a block (addons/editor/assets/editor.js): edit and save it, cancel, move, merge and
+// What the editor does with a block (addons/editor/browser/): edit and save it, cancel, move, merge and
 // delete it from its menu, and refuse an edit that would change its neighbours. Written before the editor is rebuilt
 // (2026-11-08), as the measure of the new one: each must hold for both.
 import { test, expect } from './chat-fixture.ts'

@@ -1,9 +1,7 @@
 /**
- * The block editor in the browser, rebuilt from assets/editor.js as a core and its features. `hadley dev` loads it in
- * place of the old one only under HADLEY_EDITOR=next (docs/dev-server.md), until it does all the old one does. Its
- * stylesheet stands before it in the page's head, the chat's script after it (lib/dev-server.ts): a module script runs
- * once the stylesheets before it are loaded, and the module scripts in their order, so the chat finds the editor's
- * bar. So nothing here waits before the editor stands.
+ * The block editor in the browser, a core and its features. Its stylesheet stands before it in the page's head, the
+ * chat's script after it (lib/dev-server.ts): a module script runs once the stylesheets before it are loaded, and the
+ * module scripts in their order, so the chat finds the editor's bar. So nothing here waits before the editor stands.
  *
  * A feature knows the core only; what one does for another is wired here, in the open. A new feature is a module of
  * features/, its lines here, and its CSS file in STYLES (../browser-files.ts).

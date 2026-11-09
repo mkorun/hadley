@@ -1,10 +1,11 @@
 /**
- * The block editor's server texts (its error messages), in German and English. The language is the page's own
- * (`document.documentElement.lang`, which the theme's templates set with `<html lang="{ meta.lang }">`); editor.js
- * appends it as `?lang=` to every `/__hadley/*` request. Without one, or with another language, the texts are English.
+ * The block editor's server texts (its error messages), in German and English. The language is the editor's own
+ * (browser/core/texts.ts: the browser's, or the one chosen in its control), which it appends as `?lang=` to every
+ * `/__hadley/*` request. Without one, or with another language, the texts are English.
  *
- * The client's own texts (buttons, dialog, tooltips) are the `T` table at the top of assets/editor.js. The two tables
- * are kept apart on purpose (no build step joins them) and share no text: here are the server's error messages only.
+ * The client's own texts (buttons, dialog, tooltips) are the `T` table of browser/core/texts.ts. The two tables are
+ * kept apart on purpose (the browser loads no module of the server) and share no text: here are the server's error
+ * messages only.
  */
 
 export type Lang = 'de' | 'en'

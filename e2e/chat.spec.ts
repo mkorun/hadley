@@ -3,8 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 const screenshots = resolve('node_modules/.cache/chat-panel/screenshots')
-// the editor being rebuilt (HADLEY_EDITOR=next) stands where the old one does
-const editorEntry = process.env['HADLEY_EDITOR'] === 'next' ? '/__hadley/editor/main.ts' : '/__hadley/editor.js'
+const editorEntry = '/__hadley/editor/main.ts'
 
 test('opens, closes, preserves the draft and stays usable without a session or storage', async ({
   page,
@@ -255,7 +254,7 @@ test('uses both page languages and the editor colours, at desktop and 390px with
       for (const width of [1280, 390]) {
         await page.setViewportSize({ width, height: 900 })
         await page.goto(dev.origin + (lang === 'de' ? '/de/panel/' : '/panel/'))
-        // the editor's language, as its switch keeps it (editor.js, i18n)
+        // the editor's language, as its switch keeps it (addons/editor/browser/core/texts.ts)
         await page.evaluate((chosen) => globalThis.localStorage.setItem('hadley-lang', chosen), lang)
         await page.reload()
         const toggle = page.getByRole('button', { name: 'Chat', exact: true })

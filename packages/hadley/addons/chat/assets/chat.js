@@ -1,6 +1,7 @@
 /**
- * Browser panel, loaded after editor.js only in chat-enabled dev pages. Client texts live here, like editor.js.
- * The editor event's contract lives at its dispatch in editor/assets/editor.js. Imports in tests start no browser work.
+ * Browser panel, loaded after the editor only in chat-enabled dev pages. Client texts live here, like the editor's.
+ * The editor event's contract lives at its dispatch in editor/browser/features/field.ts. Imports in tests start no
+ * browser work.
  */
 export const TEXT = {
   en: {
@@ -254,7 +255,7 @@ function checkEntry(event, data, open, at = Date.now()) {
 }
 
 function startPanel() {
-  // the editor's language (editor.js, i18n): the browser's, or the one chosen in its control
+  // the editor's language (editor/browser/core/texts.ts): the browser's, or the one chosen in its control
   const lang = document.documentElement.dataset.hadleyLang === 'de' ? 'de' : 'en'
   const t = TEXT[lang]
   const storageKey = 'hadley-chat'
@@ -307,7 +308,7 @@ function startPanel() {
     node.addEventListener('click', action)
     return node
   }
-  // the chat's half of the editor's control (editor.js, "Dev bar"): a bubble and a dot that tells its state
+  // the chat's half of the editor's control (editor/browser/features/bar.ts): a bubble and a dot that tells its state
   const toggle = button('', () => setOpen(!opened))
   toggle.id = 'hadley-chat-toggle'
   toggle.setAttribute('aria-controls', 'hadley-chat')
@@ -690,7 +691,7 @@ function startPanel() {
     } else setOpen(true, false)
     localActions.delete(card.data.to)
   }
-  // One set of icons with the editor's (addons/editor/assets/editor.js): a 16 × 16 grid, lines of 1.6, round ends
+  // One set of icons with the editor's (addons/editor/browser/core/icons.ts): a 16 × 16 grid, lines of 1.6, round ends
   const icon = (d) =>
     `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`
   const ICONS = {

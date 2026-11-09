@@ -14,7 +14,6 @@ import { lookupDirs } from '../../lib/site-paths.ts'
 import { browserFile } from './browser-files.ts'
 import { resolveLang, t, type Lang } from './i18n.ts'
 
-const assetsDir = join(fileURLToPath(new URL('.', import.meta.url)), 'assets')
 // Lima's own reader, for the browser: the editor shows the front matter's keys where outline() finds them
 const limaDir = dirname(fileURLToPath(import.meta.resolve('@limaformat/lima')))
 const LIMA_MODULE = /^\/__hadley\/lima\/([a-z0-9-]+\.js)$/
@@ -151,18 +150,6 @@ function send(res: ServerResponse, status: number, body: unknown): void {
 
 // ─── Request-Handler ──────────────────────────────────────────────────────────
 
-async function serveAsset(res: ServerResponse, filename: string, contentType: string, lang: Lang): Promise<void> {
-  try {
-    const content = await readFile(join(assetsDir, filename), 'utf-8')
-    res.statusCode = 200
-    res.setHeader('Content-Type', contentType)
-    res.setHeader('Cache-Control', 'no-store')
-    res.end(content)
-  } catch {
-    send(res, 404, { error: `${t(lang, 'assetNotFound')}: ${filename}` })
-  }
-}
-
 /** The editor's browser code (browser-files.ts). */
 async function serveBrowserFile(res: ServerResponse, path: string, lang: Lang): Promise<void> {
   const file = await browserFile(path)
@@ -173,7 +160,7 @@ async function serveBrowserFile(res: ServerResponse, path: string, lang: Lang): 
   res.end(file.body)
 }
 
-// ─── The files of a page's bundle, which the editor offers to put in (editor.js, bundleFiles) ─────────────────────
+// ─── The files of a page's bundle, which the editor offers to put in (files.ts, bundleFiles) ──────────────────────
 
 const IMAGE_TYPES: Record<string, string> = {
   avif: 'image/avif',
@@ -266,7 +253,7 @@ export async function serveBundleFile(res: ServerResponse, url: string, lang: La
   }
 }
 
-// ─── A picture added to a page's bundle (editor.js, addPicture) ────────────────────────────────────────────────────
+// ─── A picture added to a page's bundle (pictures.ts, addPicture) ──────────────────────────────────────────────────
 
 /** How large a picture the editor adds may be, and how far what a PNG holds packed may unpack. */
 const PICTURE_BYTES = 25 * 1024 * 1024
@@ -788,11 +775,7 @@ export function blockEditorPlugin(): Plugin {
 
         let handler: Promise<void> | null = null
 
-        if (method === 'GET' && url === '/__hadley/editor.js') {
-          handler = serveAsset(res, 'editor.js', 'application/javascript; charset=utf-8', lang)
-        } else if (method === 'GET' && url === '/__hadley/editor.css') {
-          handler = serveAsset(res, 'editor.css', 'text/css; charset=utf-8', lang)
-        } else if (method === 'GET' && url.startsWith('/__hadley/editor/')) {
+        if (method === 'GET' && url.startsWith('/__hadley/editor/')) {
           handler = serveBrowserFile(res, url.split('?')[0]!, lang)
         } else if (method === 'GET' && url.startsWith('/__hadley/files/')) {
           handler = serveBundleFile(res, url, lang)

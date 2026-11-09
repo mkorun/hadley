@@ -1,6 +1,6 @@
 /* ─── Block affordance in edit mode ────────────────────────────────────────── */
 
-/* The frames are drawn in their own layer (editor.js, "Frames"); a hovered or open block is tinted behind its text,
+/* The frames are drawn in their own layer (frames.ts); a hovered or open block is tinted behind its text,
    as far as its frame. */
 body.hadley-edit-mode [data-hadley-id],
 body.hadley-edit-mode [data-hadley-head-editable] {
@@ -86,8 +86,8 @@ body.hadley-edit-mode .hadley-front-matter-badge[hidden] {
 }
 
 .hadley-editor-comment::before {
-  /* The editor's UI texts come from the `T` table in editor.js (German and English, by the
-       page's <html lang>), server messages from i18n.ts. This label is CSS's own: English, German
+  /* The editor's UI texts come from the `T` table in core/texts.ts (German and English, in the
+       author's language), server messages from i18n.ts. This label is CSS's own: English, German
        on a German page (below), and a site can set its own through the CSS variable. */
   content: var(--he-comment-label, '⊘ Comment · not in the output');
   display: block;

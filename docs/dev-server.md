@@ -58,10 +58,6 @@ the author's tool, not part of the page: it speaks the first of the browser's la
 English, and the language button in its control at the bottom right switches to the other for the site. `hadley deploy`
 serves no editor.
 
-While the editor is being rebuilt, `HADLEY_EDITOR=next` in the environment of `hadley dev` loads the new one
-(`addons/editor/browser/`) in place of the old; it looks and works the same, and the switch goes once the new one has
-replaced the old.
-
 ## Chat
 
 A site with the block editor can also turn on the chat: a panel in which you talk to a Claude Code session on this

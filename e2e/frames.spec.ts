@@ -1,4 +1,4 @@
-// The editor's frames (addons/editor/assets/editor.js, "Frames") stand out from any ground: a light page, a dark one, a
+// The editor's frames (addons/editor/browser/features/frames.ts) stand out from any ground: a light page, a dark one, a
 // dark area of a light page and a gradient. Measured on the pixels, as WCAG measures a control's edge: at least 3:1.
 import { test, expect } from './chat-fixture.ts'
 import type { Locator, Page } from '@playwright/test'

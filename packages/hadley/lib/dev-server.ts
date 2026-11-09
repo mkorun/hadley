@@ -93,11 +93,6 @@ export async function startDevServer({
   const hasComments = forms !== undefined
   // the block editor, loaded only when config.lima turns it on, and only for `hadley dev`
   const editor = outputMode === 'dev' && siteEditor(siteConfig) ? await import('../addons/editor/index.ts') : undefined
-  // HADLEY_EDITOR=next: the editor being rebuilt (addons/editor/browser/), in place of the old one
-  const editorChoice = process.env.HADLEY_EDITOR
-  if (editor && editorChoice && editorChoice !== 'next')
-    devWarn(`HADLEY_EDITOR is ${JSON.stringify(editorChoice)}, which hadley does not know: the editor is the old one`)
-  const nextEditor = editor !== undefined && editorChoice === 'next'
   const chat =
     outputMode === 'dev' && siteChat(siteConfig)
       ? (await import('../addons/chat/plugin.ts')).chatPlugin({
@@ -274,14 +269,12 @@ export async function startDevServer({
           // We inject /@vite/client manually for HMR WebSocket (full-reload only).
           const serveHtml = async (res: any, filePath: string, status: number) => {
             const html = await readFile(filePath, 'utf-8')
-            // HADLEY_EDITOR=next: the editor being rebuilt, in the same place and order as the old one
-            const editorInject = !editor
-              ? ''
-              : nextEditor
-                ? '<link rel="stylesheet" href="/__hadley/editor/editor.css">' +
-                  '<script type="module" src="/__hadley/editor/main.ts"></script>'
-                : '<link rel="stylesheet" href="/__hadley/editor.css">' +
-                  '<script type="module" src="/__hadley/editor.js"></script>'
+            // the stylesheet before the editor's module, which runs only once it has loaded, and the chat after it,
+            // which finds the editor's control (addons/editor/browser/main.ts)
+            const editorInject = editor
+              ? '<link rel="stylesheet" href="/__hadley/editor/editor.css">' +
+                '<script type="module" src="/__hadley/editor/main.ts"></script>'
+              : ''
             const chatInject = chat
               ? '<link rel="stylesheet" href="/__hadley/chat.css">' +
                 '<script type="module" src="/__hadley/chat.js"></script>'

@@ -1,6 +1,6 @@
-// The front matter as a table (addons/editor/assets/editor.js, limaTable): its keys and comments where Lima's outline()
-// finds them, a line Lima refuses marked as it is typed, and the layer under the textarea as tall as its text. Edited
-// and saved, with a save the server refuses; and without Lima, which the table says.
+// The front matter as a table (addons/editor/browser/features/front-matter.ts): its keys and comments where Lima's
+// outline() finds them, a line Lima refuses marked as it is typed, and the layer under the textarea as tall as its
+// text. Edited and saved, with a save the server refuses; and without Lima, which the table says.
 import { test, expect } from './chat-fixture.ts'
 import { dialogs, editMode } from './editor.ts'
 import { readFile } from 'node:fs/promises'

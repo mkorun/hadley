@@ -226,7 +226,7 @@ Plain CSS, so it follows a theme that changes it, a colour picker as well as a d
 Its own colours follow the page's `color-scheme`, light or dark. Its frames, the trigger of a block's menu and its
 badges have two tones, a dark and a light line, so they stand out from a light page, a dark one, a dark area of a light
 page and a picture alike; a browser test measures it at 3:1 at least. A theme can still set any `--he-*` colour of
-`addons/editor/assets/editor.css` on `:root`; it wins over the editor's defaults.
+`addons/editor/browser/tokens.css` on `:root`; it wins over the editor's defaults.
 
 ## Persons
 

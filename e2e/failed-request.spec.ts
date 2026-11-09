@@ -1,4 +1,4 @@
-// The server answers 500, or the connection fails (addons/editor/assets/editor.js): what the author sees when a block
+// The server answers 500, or the connection fails (addons/editor/browser/): what the author sees when a block
 // is opened, saved, moved or deleted. Each is a dialog that says what failed, the file stays as it was, and the field
 // stays open with its text. The cases marked `today:` show what the page does then, as it is.
 import { test, expect } from './chat-fixture.ts'

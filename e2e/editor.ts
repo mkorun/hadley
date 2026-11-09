@@ -1,4 +1,4 @@
-// What every test of the editor does first (addons/editor/assets/editor.js): edit mode on, a block's field open, an
+// What every test of the editor does first (addons/editor/browser/): edit mode on, a block's field open, an
 // action of a block's menu; and what a browser hands the field when a picture is dropped on it or pasted into it.
 import { expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
@@ -6,7 +6,7 @@ import type { Page } from '@playwright/test'
 /** A PNG of one grey pixel, base64. */
 export const PIXEL = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
 
-/** Edit mode on. The page may have just reloaded: the toggle says where edit mode stands once editor.js has run. */
+/** Edit mode on. The page may have just reloaded: the toggle says where edit mode stands once the editor started. */
 export const editMode = async (page: Page) => {
   const toggle = page.getByRole('button', { name: 'Toggle edit mode', exact: true })
   await expect(toggle).toBeVisible()

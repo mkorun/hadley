@@ -49,7 +49,7 @@ export function frames(): Frames {
       const r = block.getBoundingClientRect()
       frame.hidden = r.width === 0 && r.height === 0
       if (frame.hidden) continue
-      // off the block on every side by --he-frame-gap, as far as the tint of a hovered block reaches (editor.css)
+      // off the block on every side by --he-frame-gap, as far as the tint of a hovered block reaches (frames.css)
       Object.assign(frame.style, {
         top: `${r.top + window.scrollY - gap}px`,
         left: `${r.left + window.scrollX - gap}px`,

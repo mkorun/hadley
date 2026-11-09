@@ -76,7 +76,7 @@ describe('the dev server', () => {
     // the editor's script and styles are no source of a page
     assert.equal(
       refusal(
-        { method: 'GET', url: '/__hadley/editor.js', headers: { host: 'localhost:8000' } },
+        { method: 'GET', url: '/__hadley/editor/main.ts', headers: { host: 'localhost:8000' } },
         '192.168.1.30',
         allowed,
       ),

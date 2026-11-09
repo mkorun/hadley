@@ -1,4 +1,4 @@
-/* ─── The front matter as a table (editor.js, limaTable) ──────────────────────── */
+/* ─── The front matter as a table (front-matter.ts) ───────────────────────────── */
 
 /* The layer under the textarea draws the same text at the same place: the same font, padding, wrapping and gutter.
    The textarea's own text is transparent; its caret and selection stay. */
@@ -40,7 +40,7 @@
   box-shadow: inset 3px 0 0 var(--he-danger);
 }
 
-/* a key: bold in its colour, where the monospace font keeps bold letters as wide (editor.js measures it); else on a
+/* a key: bold in its colour, where the monospace font keeps bold letters as wide (the editor measures it); else on a
    tint, which changes no width, so that the caret never stands beside its letter */
 .hadley-fm-key {
   color: var(--he-key);

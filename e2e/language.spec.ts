@@ -1,4 +1,4 @@
-// The editor speaks the author's language, not the page's (addons/editor/assets/editor.js, i18n): the first of the
+// The editor speaks the author's language, not the page's (addons/editor/browser/core/texts.ts): the first of the
 // browser's languages it knows, else English; the switch in its control keeps another for the site.
 import { test, expect } from './chat-fixture.ts'
 

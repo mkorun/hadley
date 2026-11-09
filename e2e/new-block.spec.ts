@@ -1,5 +1,5 @@
 // A new block below a block, from its menu, and the files of the bundle under the field
-// (addons/editor/assets/editor.js, bundleFiles): the new text is saved after the block, an empty one is no edit, an
+// (addons/editor/browser/features/files.ts): the new text is saved after the block, an empty one is no edit, an
 // image goes in as Markdown and any other file as a link.
 import { test, expect } from './chat-fixture.ts'
 import { fromMenu, openBlock, PIXEL } from './editor.ts'

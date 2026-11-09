@@ -117,7 +117,7 @@ export const SERVED: [path: string, status: number][] = [
   ['/hello/pixel-1w.webp', 200],
   ['/missing/', 404],
   // the block editor is off without dev.editor in config.lima
-  ['/__hadley/editor.js', 404],
+  ['/__hadley/editor/main.ts', 404],
 ]
 
 type Step = { name: string; command: string; args: string[]; cwd: string; timeout: number }

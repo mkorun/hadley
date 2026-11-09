@@ -11,7 +11,7 @@
   border-radius: 6px;
 }
 
-/* the chat's half of the editor's control (.hadley-pill in editor.css) */
+/* the chat's half of the editor's control (.hadley-pill in the editor's features/bar.css) */
 #hadley-chat-toggle[aria-expanded='true'] {
   background: var(--he-bg-deep);
 }
@@ -512,7 +512,7 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
   border-radius: 4px;
 }
 
-/* opening and closing (editor.css, "Motion"): from the control at the bottom right */
+/* opening and closing (the editor's motion.css): from the control at the bottom right */
 #hadley-chat:not([hidden]) {
   transform-origin: bottom right;
   animation: hadley-rise 0.18s cubic-bezier(0.2, 0.7, 0.2, 1);

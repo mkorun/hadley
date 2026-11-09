@@ -1,5 +1,5 @@
 // A picture dropped on the field or pasted into it goes into the page's bundle under the name the form gives it
-// (addons/editor/assets/editor.js, addPicture; plugin.ts, handleUpload), and in at the caret, while the field stays
+// (addons/editor/browser/features/pictures.ts; plugin.ts, handleUpload), and in at the caret, while the field stays
 // open.
 import { test, expect } from './chat-fixture.ts'
 import { hand, openBlock, PIXEL } from './editor.ts'

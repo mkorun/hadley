@@ -1,4 +1,4 @@
-// An answer that comes after its field was closed (addons/editor/assets/editor.js, activeTextarea): the list of the
+// An answer that comes after its field was closed (addons/editor/browser/features/field.ts): the list of the
 // bundle's files is shown nowhere, and a picture that was added goes into the bundle but into no field.
 import { test, expect } from './chat-fixture.ts'
 import { block, hand, openBlock, PIXEL } from './editor.ts'

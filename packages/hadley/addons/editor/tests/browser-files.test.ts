@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { browserFile, STYLESHEET } from '../browser-files.ts'
+import { browserDir, browserFile, STYLES, STYLESHEET } from '../browser-files.ts'
 
 let dir: string
 let browser: string
@@ -80,11 +80,10 @@ describe('the browser code of the editor', () => {
     await assert.rejects(browserFile(STYLESHEET, browser, ['tokens.css', 'gone.css']), /lacks gone\.css/)
   })
 
-  it('serves its own entry', async () => {
+  it('serves its own entry and stylesheet', async () => {
     const file = await browserFile('/__hadley/editor/main.ts')
     assert.match(file?.body ?? '', /import \{ bar \} from "\.\/features\/bar\.ts";/)
-    // until the old editor goes, its stylesheet and the new one are the same, byte for byte
-    const old = await readFile(join(import.meta.dirname, '..', 'assets', 'editor.css'), 'utf-8')
-    assert.equal((await browserFile(STYLESHEET))?.body, old)
+    const styles = await Promise.all(STYLES.map((name) => readFile(join(browserDir, name), 'utf-8')))
+    assert.equal((await browserFile(STYLESHEET))?.body, styles.join('\n'))
   })
 })

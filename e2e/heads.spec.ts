@@ -1,4 +1,4 @@
-// A page's title and subtitle (addons/editor/assets/editor.js, attachHeadListeners): where the text gives them, a right
+// A page's title and subtitle (addons/editor/browser/features/heads.ts): where the text gives them, a right
 // click edits their text while `#` and `__` stay the editor's; where the front matter gives them, it edits the front
 // matter. And the block menu from the keyboard. Written before the editor is rebuilt (2026-11-08), as its measure.
 import { test, expect } from './chat-fixture.ts'

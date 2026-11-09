@@ -127,7 +127,7 @@
   display: none;
 }
 
-/* right above the title's frame, flush with its right edge, placed with the frames (editor.js): no room taken */
+/* right above the title's frame, flush with its right edge, placed with the frames (frames.ts): no room taken */
 body.hadley-edit-mode .hadley-front-matter-badge {
   position: absolute;
   z-index: 1;

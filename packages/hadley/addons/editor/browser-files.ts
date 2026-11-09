@@ -4,7 +4,7 @@
  * files of browser/ make in the order of STYLES, unchanged, so that its cascade is theirs. Only names of browser/, and
  * only files that are still inside it once their links are resolved. A module is compiled once for each state of its
  * file, and requests that come while it is compiled wait for that one (review 2026-11-08, Astra: each request cost a
- * compile). The old editor (assets/) stays until the new one does all it does (docs/dev-server.md, HADLEY_EDITOR).
+ * compile).
  */
 import { readFile, realpath, stat } from 'node:fs/promises'
 import { join, sep } from 'node:path'
@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url'
 
 export const browserDir = join(fileURLToPath(new URL('.', import.meta.url)), 'browser')
 
-/** The stylesheet's files in browser/, in the order of its cascade: together, the old editor.css, byte for byte. */
+/** The stylesheet's files in browser/, in the order of its cascade. */
 export const STYLES: readonly string[] = [
   'tokens.css',
   'features/bar.css',
