@@ -34,7 +34,8 @@ test('an edit is a version; an earlier one is compared, kept and restored, and t
   const diff = card.locator('.hv-diff')
   await expect(diff.locator('.hv-del')).toHaveText('− First words, changed.')
   await expect(diff.locator('.hv-add')).toHaveText(`+ ${FIRST}`)
-  await expect(diff.locator('del.hv-word').first()).toBeVisible()
+  // the words, not their visibility: WebKit in a VM gave the inline word of a generic font no height (2026-11-09)
+  await expect(diff.locator('del.hv-word')).toHaveText([', changed'])
   await expect(diff.locator('ins.hv-word')).toContainText(['attached'])
 
   // the page as it is: nothing to compare, nothing to restore or delete, only keeping; one row open at a time
