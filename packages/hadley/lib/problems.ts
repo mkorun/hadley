@@ -3,7 +3,8 @@
  *
  *   publish build  every fault of a step stops the build, all of them listed; a hint is a warning
  *   dev build      a fault or a hint of a page it would publish is a warning, and the page is shown as it can be
- *   draft, seed    silent in either build: it is meant to be unfinished, and shows in its page what it can
+ *   draft, seed    silent in either build: it is meant to be unfinished, and shows in its page what it can; but a
+ *                  dev build warns of text the parser could not read, which may be missing from the page
  *
  * A fault is what makes the page wrong (a file it names and does not have, a field of the wrong kind, a URL it may not
  * have); a hint is what may well be meant (an essay without a VG Wort pixel).
@@ -15,6 +16,8 @@ export interface Problem {
   message: string
   line?: number // in the page's file, when the problem has one
   hint?: true
+  // the parser could not read the text there (2026-11-09: a mistyped `:::tldr` made blocks of a draft disappear)
+  parse?: true
 }
 
 const shown = (problem: Problem) =>
@@ -22,7 +25,10 @@ const shown = (problem: Problem) =>
 
 /** The warnings of a step's problems; throws, for a publish build, with every fault among them. */
 export function settle(problems: readonly Problem[], isPublish: boolean): string[] {
-  const told = problems.filter((problem) => problem.page.state !== 'draft' && problem.page.state !== 'seed')
+  const told = problems.filter(
+    (problem) =>
+      (problem.page.state !== 'draft' && problem.page.state !== 'seed') || (!isPublish && problem.parse === true),
+  )
   const faults = isPublish ? told.filter((problem) => !problem.hint) : []
   if (faults.length > 0) throw new Error(`cannot publish:\n${faults.map(shown).join('\n')}`)
   return told.map(shown)

@@ -347,7 +347,7 @@ async function readPage(
   // what the parser found wrong, with the line it is on, before what was found here
   const parsed = (doc.parseErrors ?? []).map((error) => {
     const line = error.start === undefined ? undefined : source.slice(0, error.start).split('\n').length
-    return { message: error.message, ...(line !== undefined ? { line } : {}) }
+    return { message: error.message, ...(line !== undefined ? { line } : {}), parse: true as const }
   })
   return { page, problems: [...parsed, ...problems] }
 }

@@ -40,4 +40,11 @@ describe('settle', () => {
     assert.deepEqual(settle(problems, false), [])
     assert.deepEqual(settle(problems, true), [])
   })
+
+  it('warns in a dev build of text the parser could not read, in a draft or a seed too', () => {
+    const problems = [of('draft', 'unreadable', { line: 10, parse: true }), of('seed', 'too', { parse: true })]
+    assert.deepEqual(settle(problems, false), ['draft.md:10: unreadable', 'seed.md: too'])
+    // a draft is not published: nothing stops the publish build
+    assert.deepEqual(settle(problems, true), [])
+  })
 })
