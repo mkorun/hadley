@@ -110,3 +110,20 @@ test('the badge stays above the front matter while its field is open', async ({ 
     })
     .toBe(true)
 })
+
+// Michael, 2026-11-09: the front matter's field was narrower than the title's frame under it
+test('an open field is as wide as the frames of the blocks round it', async ({ page, dev }) => {
+  await open(page, dev.origin)
+  const field = await page.locator('.hadley-editor').boundingBox()
+  const frames = page.locator('.hadley-frame')
+  await expect(frames.first()).toBeAttached()
+  const boxes = await frames.evaluateAll((all) =>
+    all.map((frame) => {
+      const style = (frame as unknown as { style: { left: string; width: string } }).style
+      return { left: parseFloat(style.left), width: parseFloat(style.width) }
+    }),
+  )
+  const widest = boxes.reduce((a, b) => (b.width > a.width ? b : a))
+  expect(Math.abs((field?.x ?? 0) - widest.left)).toBeLessThanOrEqual(1)
+  expect(Math.abs((field?.width ?? 0) - widest.width)).toBeLessThanOrEqual(1)
+})
