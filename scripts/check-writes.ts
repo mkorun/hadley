@@ -30,6 +30,8 @@ export const WRITERS: Record<string, string> = {
   'packages/hadley/addons/chat/rendezvous.ts': 'private runtime directories and per-port chat rendezvous files',
   'packages/hadley/addons/chat/browser-key.ts':
     "a site's chat key, a private file beside the rendezvous files, replacing one that is not",
+  'packages/hadley/addons/chat/agents.ts':
+    "the id of the conversation with an agent the dev server starts, in the site's .hadley/chat/",
   'packages/hadley/index.ts': 'the site files the plan claims, meta.json, links.json and the caches in .hadley/',
   'packages/hadley/lib/build-files.ts': "the files of a page's bundle it copies, claimed as they are copied",
   'packages/hadley/lib/images.ts':

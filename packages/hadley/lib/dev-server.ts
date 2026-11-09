@@ -93,16 +93,21 @@ export async function startDevServer({
   const hasComments = forms !== undefined
   // the block editor, loaded only when config.lima turns it on, and only for `hadley dev`
   const editor = outputMode === 'dev' && siteEditor(siteConfig) ? await import('../addons/editor/index.ts') : undefined
-  const chat =
-    outputMode === 'dev' && siteChat(siteConfig)
-      ? (await import('../addons/chat/plugin.ts')).chatPlugin({
-          root: siteDir,
-          site: siteConfig?.site?.origin,
-          port: serve.port,
-          origin,
-          ...(https ? { certificate: https.cert } : {}),
-        })
-      : undefined
+  const chatAddon = outputMode === 'dev' && siteChat(siteConfig) ? await import('../addons/chat/plugin.ts') : undefined
+  // the agents the chat starts itself, where their programs are found (addons/chat/agents.ts)
+  const agents = chatAddon?.agentPrograms(userConfig.dev)
+  if (agents && Object.keys(agents).length === 0)
+    devWarn(
+      'dev.chat is true, but neither claude nor codex is on the PATH: the chat starts no agent (docs/dev-server.md)',
+    )
+  const chat = chatAddon?.chatPlugin({
+    root: siteDir,
+    site: siteConfig?.site?.origin,
+    port: serve.port,
+    origin,
+    ...(https ? { certificate: https.cert } : {}),
+    ...(agents ? { agents } : {}),
+  })
   const servicePort = commentsPort(serve.port)
   // a port taken stops before anything starts: Vite would only stop later, and a comments service could be another's
   const ports: [number, string][] = [[serve.port, 'the dev server']]
@@ -345,13 +350,14 @@ export async function startDevServer({
     bound: portInUse,
     warn: devWarn,
   }).catch((error) => {
-    chat?.close()
+    // no agent runs before the server listens: nothing to wait for
+    void chat?.close()
     throw error
   })
   try {
     chat?.start()
   } catch (error) {
-    chat?.close()
+    void chat?.close()
     await vite.close()
     throw error
   }
@@ -494,7 +500,8 @@ export async function startDevServer({
     if (buildTimer) clearTimeout(buildTimer)
     for (const w of watchers) w.close()
     commentsProcess?.kill()
-    chat?.close()
+    // the chat's agent ends with its input; it is given a moment for that
+    await Promise.race([chat?.close(), new Promise((r) => setTimeout(r, 3000))])
     try {
       await Promise.race([vite.close(), new Promise((r) => setTimeout(r, 2000))])
     } catch (err) {

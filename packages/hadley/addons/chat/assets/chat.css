@@ -109,6 +109,23 @@
   margin-left: 0.25rem;
 }
 
+/* a new conversation and stop, for the agent the dev server runs itself: a small row under the header */
+#hadley-chat .hc-agent-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--he-border);
+}
+
+#hadley-chat .hc-agent-control {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--he-muted);
+  background: transparent;
+  border-color: var(--he-border);
+}
+
 /* compact: the card keeps the talk, the permissions and the field; the dot on the control says the state, and the
    details wait for the large panel */
 #hadley-chat[data-size='compact'] .hc-details-switch,
@@ -201,16 +218,33 @@
   color: var(--he-muted);
 }
 
+/* the start buttons keep their room above a long talk */
 #hadley-chat .hc-offline {
-  padding: 0 0.75rem 0.5rem;
-  max-height: 40%;
-  overflow: auto;
+  flex: none;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--he-border);
 }
 
-#hadley-chat .hc-offline code {
-  display: block;
-  margin-bottom: 0.5rem;
-  overflow-wrap: anywhere;
+#hadley-chat .hc-offline p {
+  margin: 0 0 0.5rem;
+}
+
+#hadley-chat[data-size='large'] .hc-no-agent {
+  display: none;
+}
+
+#hadley-chat .hc-starters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* a line of the agent the dev server runs: continued, stopped, ended */
+#hadley-chat .hc-notice {
+  margin: 0.5rem 0;
+  font-size: 0.75rem;
+  color: var(--he-muted);
+  text-align: center;
 }
 
 #hadley-chat .hc-messages {

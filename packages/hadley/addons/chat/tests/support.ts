@@ -44,7 +44,7 @@ export async function closeServer(server: Pick<http.Server, 'close' | 'closeAllC
   })
 }
 
-export async function devServer(root: string) {
+export async function devServer(root: string, agents?: Parameters<typeof chatPlugin>[0]['agents']) {
   type Middleware = (req: IncomingMessage, res: ServerResponse, next: () => void) => void
   let middleware: Middleware | undefined
   let chat: ReturnType<typeof chatPlugin> | undefined
@@ -65,7 +65,7 @@ export async function devServer(root: string) {
   await once(server, 'listening')
   const port = (server.address() as AddressInfo).port
   origin = `http://localhost:${port}`
-  chat = chatPlugin({ root, site: 'https://site.example', port, origin })
+  chat = chatPlugin({ root, site: 'https://site.example', port, origin, ...(agents ? { agents } : {}) })
   chatKey = browserKey(rendezvousDirectory(), resolve(root)).key
   const configure = chat.plugin.configureServer
   assert.equal(typeof configure, 'function')
@@ -86,7 +86,7 @@ export async function devServer(root: string) {
     port,
     token: chat.token!,
     async close() {
-      chat.close()
+      await chat.close()
       chatKey = undefined
       await closeServer(server)
     },

@@ -60,8 +60,8 @@ serves no editor.
 
 ## Chat
 
-A site with the block editor can also turn on the chat: a panel in which you talk to a Claude Code session on this
-machine.
+A site with the block editor can also turn on the chat: a panel in which you talk to an agent on this machine, Claude
+Code or Codex, which the dev server starts itself, or a Claude Code session that connects through a channel.
 
 ```lima
 dev:
@@ -73,13 +73,13 @@ dev:
 halves: Edit turns edit mode on and off, the chat's half opens the panel, and its dot says the state: green connected,
 the accent a reply not seen yet, amber a permission to give, hollow no session. The panel opens as a card above the
 control, with the talk, the permissions and the field; its larger button makes it a panel beside the page, with the
-details of each request, and on a phone the whole screen. The panel names the agent as its session names itself when it
-connects (MCP's `clientInfo`: Claude Code), and the AI until one does. A message names the page it was sent from.
-Claude's answers and its requests to use a tool appear in the panel; Allow and Deny answer a request as the terminal
-would. Escape or the chat's half closes the panel. Its open state, its size and the unsent draft survive a page reload
-in this tab; what was said stays while the dev server runs. Without a connected session, the panel offers the start
-command below to copy. Each message names `root`, the absolute directory the dev server serves; `file` is relative to
-`root`. Claude works in that directory and nowhere else for that message.
+details of each request, and on a phone the whole screen. The panel names the agent, Claude Code or Codex, or as a
+channel's session names itself when it connects (MCP's `clientInfo`), and the AI until one does. A message names the
+page it was sent from. The agent's answers and its requests to use a tool appear in the panel; Allow and Deny answer a
+request. Escape or the chat's half closes the panel. Its open state, its size and the unsent draft survive a page
+reload in this tab; what was said stays while the dev server runs. Each message names `root`, the absolute directory
+the dev server serves; `file` is relative to `root`. The agent works in that directory and nowhere else for that
+message.
 
 The chat answers only a browser that holds the site's key. A page's origin, which a browser cannot fake, a program on
 the same machine can: without the key it could read the conversation, send messages and allow what the agent asks to do.
@@ -95,15 +95,37 @@ among it, which keeps the link.
 
 An open block's toolbar has, after Save (Ctrl+S) and Cancel (Esc), a way to rewrite it (Clearer, Shorter, More formal,
 More casual, Only fix errors, or Only instructions), a field for an instruction, which adds to the way and is all of
-Only instructions, and a button that asks Claude, as Ctrl+Enter in the editing field does. It rewrites the text selected
-in the editing field, or the whole block, as the button's name says; a selection also shows beside it with its length.
-While Claude works, the toolbar counts the seconds, and shows a check once the proposal is in, with Undo beside it.
-Claude answers with a proposal, not a change: it takes the place of the block's text or of the selection, selected, in
-the editing field, Ctrl+Z takes it back, and only saving writes it to the file, as any edit. If the text has changed
-while Claude was answering, or the block was closed, the proposal waits in the panel instead, to insert, copy or
-discard. Each request shows how long it has been waiting, and each answer how long it took.
+Only instructions, and a button that asks the agent, as Ctrl+Enter in the editing field does. It rewrites the text
+selected in the editing field, or the whole block, as the button's name says; a selection also shows beside it with its
+length. While the agent works, the toolbar counts the seconds, and shows a check once the proposal is in, with Undo
+beside it. The agent answers with a proposal, not a change: it takes the place of the block's text or of the selection,
+selected, in the editing field, Ctrl+Z takes it back, and only saving writes it to the file, as any edit. If the text
+has changed while the agent was answering, or the block was closed, the proposal waits in the panel instead, to insert,
+copy or discard. Each request shows how long it has been waiting, and each answer how long it took.
 
-hadley starts no agent. Claude Code starts `hadley channel` itself, from an `.mcp.json` in the directory it starts in:
+### An agent the dev server starts
+
+Without an agent, the panel offers to start one: Claude Code where `claude` is on the `PATH`, Codex where `codex` is, or
+the programs `dev.claude` and `dev.codex` of the user configuration name (below). With neither, the panel says so, and
+`hadley dev` warns as it starts. The dev server starts the program in the background, with your own login, in the
+site's directory, and gives it one message after another; a message sent while the agent works waits its turn. Stop in
+the panel ends it, as does the end of the dev server.
+
+Whatever the agent's own settings allow, everything it would do that writes, runs a command or reaches the network
+waits for Allow or Deny in the panel: Claude Code runs with the permission mode `default` and an `ask` rule for those
+tools, and without MCP servers; Codex with the approval policy `untrusted`, in a sandbox that writes only in the site.
+The agent is told not to try a denied request again, or another way. A rewrite needs no tool: the dev server denies a
+request during one itself, and the panel says so.
+
+The conversation goes on at the next start: the dev server keeps its id in `.hadley/chat/` of the site, and the panel
+says whether it could continue it. New conversation begins another. This way of starting an agent is experimental: it
+drives `claude -p` with `stream-json` and `codex app-server`, which can change with their versions.
+
+### A session through a channel
+
+A Claude Code session in a terminal can be the agent instead, through a channel; a dev server has one agent at a time,
+so a channel does not connect while one runs in the background, and the panel starts none while a channel is connected.
+Claude Code starts `hadley channel` itself, from an `.mcp.json` in the directory it starts in:
 
 ```json
 { "mcpServers": { "hadley": { "command": "hadley", "args": ["channel"] } } }
@@ -224,6 +246,8 @@ dev:
   allowedHosts: [.trycloudflare.com] # other names the dev server answers to (a tunnel's)
   open: [wslview]                   # opens the browser at start; the URL is added as the last argument
   forms: /opt/hadley/hadley-forms   # the comments service, instead of hadley-forms on the PATH
+  claude: /usr/local/bin/claude     # Claude Code for the chat, instead of claude on the PATH
+  codex: /opt/codex/bin/codex       # Codex for the chat, instead of codex on the PATH
 ```
 
 `dev.open` runs the program with its arguments, never through a shell, and leaves it running when hadley ends. A command

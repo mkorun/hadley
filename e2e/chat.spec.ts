@@ -18,7 +18,10 @@ test('opens, closes, preserves the draft and stays usable without a session or s
   await expect(panel).toBeHidden()
   await toggle.click()
   await expect(input).toBeFocused()
-  await expect(panel).toContainText('No Claude Code session connected')
+  await expect(panel).toContainText('No agent connected.')
+  // the agents the dev server can start, as the user configuration names them (chat-fixture.ts)
+  await expect(panel.getByRole('button', { name: 'Start Claude Code', exact: true })).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Start Codex', exact: true })).toBeVisible()
   await input.fill('An unsent draft')
   await expect(panel.getByRole('button', { name: 'Send', exact: true })).toBeDisabled()
   await page.reload()
@@ -30,24 +33,6 @@ test('opens, closes, preserves the draft and stays usable without a session or s
   await toggle.click()
   await toggle.click()
   await expect(panel).toBeHidden()
-  await page.evaluate(() => {
-    let copied = ''
-    Object.defineProperty(navigator, 'clipboard', {
-      value: {
-        writeText: (text: string) => {
-          copied = text
-          return Promise.resolve()
-        },
-        readText: () => Promise.resolve(copied),
-      },
-    })
-  })
-  await toggle.click()
-  await panel.getByRole('button', { name: 'Copy start command' }).click()
-  await expect(panel).toContainText('Command copied')
-  expect(await page.evaluate<string>('navigator.clipboard.readText()')).toBe(
-    'claude --dangerously-load-development-channels server:hadley',
-  )
   await page.addInitScript(() => {
     Storage.prototype.getItem = () => {
       throw new Error('storage blocked')
@@ -185,7 +170,7 @@ test('shows verdict conflicts, keeps drafts after server errors, and follows cha
     await input.fill('Keep my draft')
     await input.press('Enter')
     await expect(panel.locator('.hc-error')).toContainText(
-      status === 400 ? 'server rejected' : status === 409 ? 'Reload the page first' : 'No Claude Code session',
+      status === 400 ? 'server rejected' : status === 409 ? 'Reload the page first' : 'No agent connected',
     )
     await expect(input).toHaveValue('Keep my draft')
     await page.unroute('**/__hadley/chat?*')
@@ -402,7 +387,7 @@ test('a browser without the key gets no chat, and the link gives it the key', as
     await page.goto(dev.origin + '/panel/')
     await page.getByRole('button', { name: 'Chat', exact: true }).click()
     // the panel still holds the right key: its event stream answers, no session is connected in this test
-    await expect(page.locator('#hadley-chat .hc-status')).toHaveText('No session connected')
+    await expect(page.locator('#hadley-chat .hc-status')).toHaveText('No agent connected.')
   } finally {
     await context.close()
   }

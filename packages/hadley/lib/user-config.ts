@@ -15,6 +15,8 @@ export interface UserConfig {
     https?: { cert: string; key: string } // the certificate `hadley dev --https` serves with, relative to the file
     open?: string[] // the program and arguments that open a URL in the browser; the URL is added last
     forms?: string // the comments service hadley dev starts, instead of hadley-forms on the PATH; relative to the file
+    claude?: string // Claude Code for the chat, instead of claude on the PATH; relative to the file
+    codex?: string // Codex for the chat, instead of codex on the PATH; relative to the file
   }
 }
 
@@ -63,7 +65,7 @@ export async function readUserConfig(env: NodeJS.ProcessEnv = process.env): Prom
   const top = record(parsed, 'the file')
   known(top, '', ['dev'])
   const dev = record(top.dev, 'dev')
-  known(dev, 'dev', ['hostname', 'allowedHosts', 'https', 'open', 'forms'])
+  known(dev, 'dev', ['hostname', 'allowedHosts', 'https', 'open', 'forms', 'claude', 'codex'])
   const hostname = env.HADLEY_DEV_HOST || textOf(dev.hostname, 'dev.hostname')
   const https = dev.https === undefined ? undefined : record(dev.https, 'dev.https')
   if (https) known(https, 'dev.https', ['cert', 'key'])
@@ -72,6 +74,8 @@ export async function readUserConfig(env: NodeJS.ProcessEnv = process.env): Prom
   if (https && (!cert || !key)) fail('dev.https needs both cert and key')
   const open = textsOf(dev.open, 'dev.open')
   const forms = textOf(dev.forms, 'dev.forms')
+  const claude = textOf(dev.claude, 'dev.claude')
+  const codex = textOf(dev.codex, 'dev.codex')
   return {
     dev: {
       ...(hostname ? { hostname } : {}),
@@ -79,6 +83,8 @@ export async function readUserConfig(env: NodeJS.ProcessEnv = process.env): Prom
       ...(cert && key ? { https: { cert: resolve(dir, cert), key: resolve(dir, key) } } : {}),
       ...(open ? { open } : {}),
       ...(forms ? { forms: resolve(dir, forms) } : {}),
+      ...(claude ? { claude: resolve(dir, claude) } : {}),
+      ...(codex ? { codex: resolve(dir, codex) } : {}),
     },
   }
 }

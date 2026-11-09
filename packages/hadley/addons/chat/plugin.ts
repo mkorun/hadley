@@ -7,6 +7,9 @@ import { blockIdMap, readBody } from '../editor/plugin.ts'
 import { lf, slashed } from '../../lib/platform.ts'
 import { certificateFingerprint, createRendezvous, rendezvousDirectory } from './rendezvous.ts'
 import { browserKey, isKey } from './browser-key.ts'
+import { AGENTS, isAgentName, runAgent, type AgentName, type Notice, type Running } from './agents.ts'
+
+export { agentPrograms } from './agents.ts'
 import {
   agent,
   chatInput,
@@ -47,8 +50,17 @@ type Entry = (
   | { event: 'reply' | 'suggestion'; data: Reply }
   | { event: 'delivered'; data: { id: string } }
   | { event: 'permission'; data: Permission }
-  | { event: 'status'; data: { connected: boolean; agent?: string } }
+  | { event: 'status'; data: Status }
+  | { event: 'notice'; data: { kind: Notice; agent: string; code?: string } }
 ) & { at?: number }
+
+// whether an agent is connected, by its name; the one the dev server runs itself, and those it could start
+interface Status {
+  connected: boolean
+  agent?: string
+  background?: AgentName
+  available: AgentName[]
+}
 
 function send(res: ServerResponse, status: number, data: unknown): void {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' })
@@ -74,7 +86,11 @@ export function chatPlugin(options: {
   port: number
   origin: string
   certificate?: Buffer
+  // the agents the dev server can start itself, by their programs (agents.ts, agentPrograms)
+  agents?: Partial<Record<AgentName, string>>
 }) {
+  const programs = options.agents ?? {}
+  const available = (Object.keys(AGENTS) as AgentName[]).filter((name) => programs[name] !== undefined)
   const site = origin(options.site)
   const root = resolve(options.root)
   // Check the private directory before the server starts; publish only once it is listening.
@@ -85,6 +101,8 @@ export function chatPlugin(options: {
   let channel: ServerResponse | undefined
   // the name the channel's client gave itself (MCP initialize), shown in the panel
   let agentName: string | undefined
+  // the agent the dev server started itself (agents.ts): a dev server has one agent, this or a channel
+  let background: Running | undefined
   const browsers = new Set<ServerResponse>()
   const history: Entry[] = []
   const open = new Set<string>()
@@ -103,11 +121,56 @@ export function chatPlugin(options: {
     for (const browser of browsers) emit(browser, entry.event, entry.data, entry.at)
   }
 
+  function status(): Status {
+    if (background) return { connected: true, agent: AGENTS[background.name], background: background.name, available }
+    return { connected: channel !== undefined, ...(channel && agentName ? { agent: agentName } : {}), available }
+  }
+
   function disconnect(): void {
     channel = undefined
     agentName = undefined
     open.clear()
-    broadcast({ event: 'status', data: { connected: false } })
+    broadcast({ event: 'status', data: status() })
+  }
+
+  /** Starts an agent in the background, in place of one that runs. */
+  async function startAgent(name: AgentName, fresh: boolean): Promise<void> {
+    await background?.stop()
+    const running = runAgent(
+      { name, program: programs[name]!, root, fresh },
+      {
+        delivered(id) {
+          handed.add(id)
+          broadcast({ event: 'delivered', data: { id } })
+        },
+        answer(to, text, action) {
+          let id: string
+          do id = newId()
+          while (ids.has(id))
+          ids.set(id, 'reply')
+          // an empty answer is said as one, never as a proposal that would empty the block
+          if (action && text.trim()) {
+            answered.add(to)
+            broadcast({ event: 'suggestion', data: { id, to, text } })
+          } else broadcast({ event: 'reply', data: { id, ...(action ? {} : { to }), text: text.trim() ? text : '—' } })
+        },
+        permission(request) {
+          open.add(request.request_id)
+          broadcast({ event: 'permission', data: request })
+        },
+        notice(kind, code) {
+          broadcast({ event: 'notice', data: { kind, agent: AGENTS[name], ...(code ? { code } : {}) } })
+        },
+        ended() {
+          if (background !== running) return
+          background = undefined
+          open.clear()
+          broadcast({ event: 'status', data: status() })
+        },
+      },
+    )
+    background = running
+    broadcast({ event: 'status', data: status() })
   }
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -154,6 +217,7 @@ export function chatPlugin(options: {
       return
     }
     if (path === '/__hadley/channel/events' && req.method === 'GET') {
+      if (background) return send(res, 409, { error: 'chat: this dev server already has an agent' })
       const previous = channel
       stream(res)
       channel = res
@@ -163,7 +227,7 @@ export function chatPlugin(options: {
       res.once('close', () => {
         if (channel === res) disconnect()
       })
-      broadcast({ event: 'status', data: { connected: true } })
+      broadcast({ event: 'status', data: status() })
       return
     }
     if (path === '/__hadley/chat/events' && req.method === 'GET') {
@@ -175,7 +239,7 @@ export function chatPlugin(options: {
           entry.event === 'permission' ? { ...entry, open: open.has(entry.data.request_id) } : entry,
         ),
       )
-      emit(res, 'status', { connected: channel !== undefined, ...(agentName ? { agent: agentName } : {}) }, Date.now())
+      emit(res, 'status', status(), Date.now())
       browsers.add(res)
       res.once('close', () => browsers.delete(res))
       return
@@ -184,7 +248,7 @@ export function chatPlugin(options: {
     const body = parseJson(await readBody(req, 'en'), 'chat body')
     if (path === '/__hadley/chat') {
       const input = chatInput(body)
-      if (!channel) return send(res, 503, { error: 'chat: no channel connected' })
+      if (!channel && !background) return send(res, 503, { error: 'chat: no agent connected' })
       const attachment: { file?: string; block?: string; lines?: string } = {}
       if (input.block !== undefined) {
         const entry = blockIdMap.get(input.block)
@@ -199,7 +263,8 @@ export function chatPlugin(options: {
         const last = source.slice(0, Math.max(entry.start, entry.end - 1)).split('\n').length
         Object.assign(attachment, { file, block: input.block, lines: `${first}-${last}` })
       }
-      if (!channel) return send(res, 503, { error: 'chat: no channel connected' })
+      const agent = background ?? channel
+      if (!agent) return send(res, 503, { error: 'chat: no agent connected' })
       let id: string
       do id = newId()
       while (ids.has(id))
@@ -215,18 +280,42 @@ export function chatPlugin(options: {
       })
       ids.set(id, input.action ? 'action' : 'message')
       remember({ event: 'message', data })
-      emit(channel, 'message', data)
+      // the editor's language, which the agent answers in (agents.ts)
+      const lang = new URL(req.url ?? '/', 'http://localhost').searchParams.get('lang') === 'de' ? 'de' : 'en'
+      if ('send' in agent) agent.send(data, lang, input.action !== undefined)
+      else emit(agent, 'message', data)
       send(res, 200, { id })
       return
     }
     if (path === '/__hadley/chat/verdict') {
       const data = verdict(body)
       if (!open.has(data.request_id)) return send(res, 409, { error: 'chat: request_id is not an open request' })
-      if (!channel) return send(res, 503, { error: 'chat: no channel connected' })
+      if (background) {
+        open.delete(data.request_id)
+        if (!background.verdict(data.request_id, data.allow))
+          return send(res, 409, { error: 'chat: request_id is not an open request' })
+        return send(res, 200, {})
+      }
+      if (!channel) return send(res, 503, { error: 'chat: no agent connected' })
       open.delete(data.request_id)
       emit(channel, 'verdict', data)
       send(res, 200, {})
       return
+    }
+    // the panel starts an agent in the background, or stops it (agents.ts); only its name comes from the browser
+    if (path === '/__hadley/chat/agent') {
+      const request = object(body, ['run', 'fresh'])
+      if (request.fresh !== undefined && typeof request.fresh !== 'boolean')
+        throw new Error('fresh: expected a boolean')
+      if (request.run === null) {
+        await background?.stop()
+        return send(res, 200, {})
+      }
+      if (!isAgentName(request.run)) throw new Error('run: expected claude, codex or null')
+      if (!programs[request.run]) return send(res, 404, { error: `chat: ${AGENTS[request.run]} was not found` })
+      if (channel) return send(res, 409, { error: 'chat: a session in a terminal is connected', channel: true })
+      await startAgent(request.run, request.fresh === true)
+      return send(res, 200, {})
     }
     if (path === '/__hadley/channel') {
       if (!channel) return send(res, 409, { error: 'chat: connect the channel event stream first' })
@@ -241,7 +330,7 @@ export function chatPlugin(options: {
         const envelope = object(body, ['event', 'data'])
         if (envelope.event === 'agent') {
           agentName = agent(envelope.data).name
-          broadcast({ event: 'status', data: { connected: true, agent: agentName } })
+          broadcast({ event: 'status', data: status() })
         } else if (envelope.event === 'delivered') {
           const data = delivered(envelope.data)
           if (!['message', 'action'].includes(ids.get(data.id) ?? '') || handed.has(data.id))
@@ -311,11 +400,13 @@ export function chatPlugin(options: {
         dir,
       )
     },
-    close() {
+    /** Ends the chat's streams, and the agent in the background: its input closes, which ends it. */
+    close(): Promise<void> {
       channel?.end()
       for (const browser of browsers) browser.end()
       browsers.clear()
       rendezvous?.close()
+      return background?.stop() ?? Promise.resolve()
     },
   }
 }

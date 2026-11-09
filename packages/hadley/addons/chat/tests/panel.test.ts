@@ -1,13 +1,12 @@
 import assert from 'node:assert/strict'
 import { it } from 'node:test'
-import { inlineParts, renderReply, replyParts, selectionOf, START_COMMAND, TEXT } from '../assets/chat.js'
+import { inlineParts, renderReply, replyParts, selectionOf, TEXT } from '../assets/chat.js'
 
 it('has the same nonempty client texts in both languages', () => {
   assert.deepEqual(Object.keys(TEXT.en).sort(), Object.keys(TEXT.de).sort())
   for (const texts of [TEXT.en, TEXT.de]) {
     for (const value of Object.values(texts)) assert.ok(typeof value === 'string' && value.trim())
   }
-  assert.equal(START_COMMAND, 'claude --dangerously-load-development-channels server:hadley')
 })
 
 it('keeps HTML and unsafe, relative or malformed link destinations as text', () => {

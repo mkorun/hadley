@@ -30,6 +30,19 @@ async function startSite(theme: string) {
   const port = await unusedPort()
   const origin = `http://localhost:${port}`
   await mkdir(runtime, { mode: 0o700 })
+  // the agents the chat starts itself are stand-ins (addons/chat/tests/fake-agents), never the user's programs
+  const configHome = join(dir, 'config')
+  const bin = join(dir, 'bin')
+  await mkdir(join(configHome, 'hadley'), { recursive: true })
+  await mkdir(bin)
+  for (const name of ['claude', 'codex']) {
+    const fake = fileURLToPath(new URL(`../packages/hadley/addons/chat/tests/fake-agents/${name}.mjs`, import.meta.url))
+    await writeFile(join(bin, name), `#!/bin/sh\nexec "${process.execPath}" "${fake}" "$@"\n`, { mode: 0o755 })
+  }
+  await writeFile(
+    join(configHome, 'hadley', 'config.lima'),
+    `dev:\n  claude: ${join(bin, 'claude')}\n  codex: ${join(bin, 'codex')}\n`,
+  )
   await init(site, ['en', 'de'], theme, 'blank')
   const config = join(site, 'config.lima')
   const settings = await readFile(config, 'utf8')
@@ -77,7 +90,13 @@ async function startSite(theme: string) {
     output = ''
     child = spawn('bun', [cli, 'dev', '--port', String(port)], {
       cwd: site,
-      env: { ...process.env, XDG_RUNTIME_DIR: runtime, LOCALAPPDATA: runtime, NO_COLOR: '1' },
+      env: {
+        ...process.env,
+        XDG_RUNTIME_DIR: runtime,
+        LOCALAPPDATA: runtime,
+        XDG_CONFIG_HOME: configHome,
+        NO_COLOR: '1',
+      },
       stdio: ['ignore', 'pipe', 'pipe'],
       timeout: 120_000,
     })

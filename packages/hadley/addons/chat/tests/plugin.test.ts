@@ -138,11 +138,11 @@ it('relays replies, validates open permission verdicts, and replays only the las
         assert.equal(entries[i].event, 'reply')
         assert.equal(entries[i].data.text, String(i + 5))
       }
-      assert.deepEqual(await replay.inbox.next(), { event: 'status', data: { connected: true } })
+      assert.deepEqual(await replay.inbox.next(), { event: 'status', data: { connected: true, available: [] } })
       const disconnected = once(channel.response, 'close')
       channel.close()
       await disconnected
-      assert.deepEqual((await replay.inbox.next()).data, { connected: false })
+      assert.deepEqual((await replay.inbox.next()).data, { connected: false, available: [] })
       assert.equal((await post(dev.origin, '/__hadley/chat', { text: 'hello', page: '/' })).status, 503)
     } finally {
       replay.close()
@@ -229,7 +229,7 @@ it('accepts delivery and one proposal only for an action from this dev server', 
       ),
       {
         event: 'status',
-        data: { connected: true, agent: 'Claude Code' },
+        data: { connected: true, agent: 'Claude Code', available: [] },
       },
     )
     for (const name of ['', '<b>x</b>', 'x'.repeat(65)])

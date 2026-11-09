@@ -49,12 +49,26 @@ export const TEXT = {
     locked:
       'This browser holds no key to the chat yet: open the link hadley dev printed in its terminal once ("Chat: open …").',
     connected: '{agent} connected',
-    offline: 'No session connected',
-    disconnected: 'No Claude Code session connected. Start one in the directory with your .mcp.json:',
+    noAgent: 'No agent connected.',
+    noProgram:
+      'Neither Claude Code nor Codex found: on the PATH, or as dev.claude/dev.codex in your user configuration.',
+    start: 'Start {agent}',
+    starting: 'Starting {agent}…',
+    stop: 'Stop',
+    stopTitle: 'Stop {agent}',
+    fresh: 'New conversation',
+    freshTitle: 'Restart {agent} without the conversation so far',
+    resumed: 'Earlier conversation continued.',
+    resumeFailed: 'The earlier conversation could not be continued; a new one has begun.',
+    begun: 'New conversation begun.',
+    stopped: '{agent} stopped.',
+    crashed: '{agent} ended unexpectedly (code {code}).',
+    startFailed: '{agent} could not be started: {code}',
+    channelBusy: 'A session in a terminal is already connected.',
+    queued: 'Waiting until {agent} is done',
+    deniedInAction: 'Denied: {agent} needs no tool to rewrite.',
+    deniedOnStop: 'Denied when stopped',
     reconnecting: 'Reconnecting to the dev server…',
-    copy: 'Copy start command',
-    copied: 'Command copied',
-    copyFailed: 'Could not copy. Select and copy the command above.',
     input: 'Message to {agent}',
     send: 'Send',
     sending: 'Sending…',
@@ -122,12 +136,26 @@ export const TEXT = {
     locked:
       'Dieser Browser hat noch keinen Schlüssel zum Chat: Öffne einmal den Link, den hadley dev im Terminal ausgibt („Chat: open …“).',
     connected: '{agent} verbunden',
-    offline: 'Keine Sitzung verbunden',
-    disconnected: 'Keine Claude-Code-Sitzung verbunden. Starte eine im Verzeichnis mit deiner .mcp.json:',
+    noAgent: 'Kein Agent verbunden.',
+    noProgram:
+      'Weder Claude Code noch Codex gefunden: auf dem PATH oder als dev.claude/dev.codex in deiner Benutzer-Konfiguration.',
+    start: '{agent} starten',
+    starting: '{agent} startet …',
+    stop: 'Beenden',
+    stopTitle: '{agent} beenden',
+    fresh: 'Neues Gespräch',
+    freshTitle: '{agent} neu starten, ohne das bisherige Gespräch',
+    resumed: 'Früheres Gespräch fortgesetzt.',
+    resumeFailed: 'Das frühere Gespräch ließ sich nicht fortsetzen; ein neues hat begonnen.',
+    begun: 'Neues Gespräch begonnen.',
+    stopped: '{agent} beendet.',
+    crashed: '{agent} hat sich unerwartet beendet (Code {code}).',
+    startFailed: '{agent} ließ sich nicht starten: {code}',
+    channelBusy: 'Eine Sitzung im Terminal ist schon verbunden.',
+    queued: 'Wartet, bis {agent} fertig ist',
+    deniedInAction: 'Abgelehnt: Zum Umschreiben braucht {agent} kein Werkzeug.',
+    deniedOnStop: 'Beim Beenden abgelehnt',
     reconnecting: 'Verbindung zum Entwicklungsserver wird wiederhergestellt…',
-    copy: 'Startbefehl kopieren',
-    copied: 'Befehl kopiert',
-    copyFailed: 'Kopieren fehlgeschlagen. Bitte den Befehl oben auswählen und kopieren.',
     input: 'Nachricht an {agent}',
     send: 'Senden',
     sending: 'Wird gesendet…',
@@ -150,8 +178,6 @@ export const TEXT = {
     streamFailed: 'Der Entwicklungsserver hat ein ungültiges Chat-Ereignis gesendet. Bitte die Seite neu laden.',
   },
 }
-
-export const START_COMMAND = 'claude --dangerously-load-development-channels server:hadley'
 
 /** A deliberately small reply grammar. HTML and unsupported links remain literal text. */
 export function inlineParts(source) {
@@ -230,6 +256,11 @@ export function selectionOf(field) {
   return start === end || (start === 0 && end === value.length) ? undefined : { start, end }
 }
 
+// the agents the dev server can start itself (addons/chat/agents.ts), by name and as the panel says them
+const AGENT_NAMES = ['claude', 'codex']
+const AGENT_TITLES = { claude: 'Claude Code', codex: 'Codex' }
+const NOTICES = ['resumed', 'resumeFailed', 'begun', 'stopped', 'crashed', 'startFailed', 'deniedInAction']
+
 /** Check SSE JSON once at the boundary; never infer a missing event field. */
 function checkEntry(event, data, open, at = Date.now()) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('chat event')
@@ -240,15 +271,26 @@ function checkEntry(event, data, open, at = Date.now()) {
     delivered: ['id'],
     permission: ['request_id', 'tool', 'description', 'preview'],
     status: [],
+    notice: ['kind', 'agent'],
   }[event]
   if (!fields || fields.some((key) => typeof data[key] !== 'string')) throw new Error('chat event fields')
   if (event === 'reply' && data.to !== undefined && typeof data.to !== 'string') throw new Error('reply to')
   if (
     event === 'status' &&
     (typeof data.connected !== 'boolean' ||
-      (data.agent !== undefined && (typeof data.agent !== 'string' || data.agent.length > 64)))
+      (data.agent !== undefined && (typeof data.agent !== 'string' || data.agent.length > 64)) ||
+      (data.background !== undefined && !AGENT_NAMES.includes(data.background)) ||
+      (data.available !== undefined &&
+        (!Array.isArray(data.available) || data.available.some((name) => !AGENT_NAMES.includes(name)))))
   )
     throw new Error('status')
+  if (
+    event === 'notice' &&
+    (!NOTICES.includes(data.kind) ||
+      data.agent.length > 64 ||
+      (data.code !== undefined && (typeof data.code !== 'string' || data.code.length > 64)))
+  )
+    throw new Error('notice')
   if (event === 'permission' && typeof open !== 'boolean') throw new Error('permission open')
   if (!Number.isSafeInteger(at) || at < 0) throw new Error('chat event time')
   return { event, data, open, at }
@@ -289,6 +331,9 @@ function startPanel() {
   let size = 'compact'
   let unseen = false
   let connected = false
+  // the agent the dev server runs itself, and those it could start (status)
+  let background = null
+  let available = []
   let sending = false
   let sequence = 0
   const messages = new Map()
@@ -331,7 +376,16 @@ function startPanel() {
   close.title = t.close
   close.innerHTML =
     '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>'
+  // the agent the dev server runs itself: a new conversation, or stop it (addons/chat/agents.ts)
+  const freshButton = button(t.fresh, () => void runAgent(background, true))
+  freshButton.className = 'hc-agent-control'
+  const stopButton = button(t.stop, () => void runAgent(null))
+  stopButton.className = 'hc-agent-control'
   header.append(title, resize, close)
+  // under the header, so that the card keeps its title on one line
+  const agentBar = element('div', undefined, 'hc-agent-bar')
+  agentBar.append(freshButton, stopButton)
+  agentBar.hidden = true
   const detailsSwitch = element('input')
   detailsSwitch.type = 'checkbox'
   const detailsLabel = element('label', t.details, 'hc-details-switch')
@@ -343,18 +397,13 @@ function startPanel() {
   })
   const status = element('p', t.reconnecting, 'hc-status')
   status.setAttribute('role', 'status')
+  // without an agent: a button for each the dev server can start, or where none was found, that
   const offline = element('div', undefined, 'hc-offline')
-  const command = element('code', START_COMMAND)
-  const copyResult = element('p')
-  copyResult.setAttribute('role', 'status')
-  offline.append(
-    element('p', t.disconnected),
-    command,
-    button(t.copy, () => {
-      void copyCommand()
-    }),
-    copyResult,
-  )
+  const offlineText = element('p', t.noAgent)
+  const starters = element('div', undefined, 'hc-starters')
+  const startResult = element('p')
+  startResult.setAttribute('role', 'status')
+  offline.append(offlineText, starters, startResult)
   const list = element('div', undefined, 'hc-messages')
   list.setAttribute('aria-live', 'polite')
   list.setAttribute('aria-relevant', 'additions text')
@@ -373,19 +422,37 @@ function startPanel() {
   const send = element('button', t.send)
   send.type = 'submit'
   form.append(label, input, hint, error, send)
-  panel.append(header, detailsLabel, status, offline, list, form)
+  panel.append(header, agentBar, detailsLabel, status, offline, list, form)
   // Sharing the editor's bar keeps all its fixed controls clear of the chat button.
   const devBar = document.querySelector('#hadley-dev-bar')
   ;(devBar.querySelector('.hadley-pill') ?? devBar).append(toggle)
   devBar.prepend(panel)
 
-  async function copyCommand() {
+  /** Starts an agent in the background, a new conversation if fresh, or stops it (null). */
+  async function runAgent(name, fresh = false) {
+    startResult.textContent = name ? t.starting.replace('{agent}', AGENT_TITLES[name]) : ''
+    for (const control of [...starters.children, freshButton, stopButton]) control.disabled = true
     try {
-      await navigator.clipboard.writeText(START_COMMAND)
-      copyResult.textContent = t.copied
+      const response = await post('/__hadley/chat/agent', { run: name, fresh })
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}))
+        startResult.textContent = body.channel ? t.channelBusy : t.failed
+      } else startResult.textContent = ''
     } catch {
-      copyResult.textContent = t.copyFailed
+      startResult.textContent = t.failed
+    } finally {
+      for (const control of [...starters.children, freshButton, stopButton]) control.disabled = false
     }
+  }
+  /** The buttons that start an agent, for those the dev server found. */
+  function setAvailable(names) {
+    available = names
+    starters.replaceChildren(
+      ...names.map((name) => button(t.start.replace('{agent}', AGENT_TITLES[name]), () => void runAgent(name))),
+    )
+    offlineText.textContent = names.length ? t.noAgent : t.noProgram
+    // the large panel says it in its status line already (chat.css)
+    offlineText.className = names.length ? 'hc-no-agent' : ''
   }
   function save() {
     try {
@@ -439,7 +506,7 @@ function startPanel() {
           ? 'connected'
           : 'offline'
     dot.dataset.state = state
-    const said = { permission: t.waitingPermission, new: t.newReply, connected: say('connected'), offline: t.offline }
+    const said = { permission: t.waitingPermission, new: t.newReply, connected: say('connected'), offline: t.noAgent }
     toggle.title = `${t.toggle} · ${said[state]}`
   }
   function updateSend() {
@@ -466,8 +533,13 @@ function startPanel() {
   }
   function setConnected(value) {
     connected = value
-    status.textContent = value ? say('connected') : t.offline
+    status.textContent = value ? say('connected') : t.noAgent
     offline.hidden = value
+    agentBar.hidden = !value || !background
+    if (background) {
+      freshButton.title = say('freshTitle')
+      stopButton.title = say('stopTitle')
+    }
     updateSend()
     updateDot()
   }
@@ -511,7 +583,7 @@ function startPanel() {
       if (response.ok) finish(card, allow ? t.allowed : t.denied)
       else if (response.status === 409) finish(card, t.elsewhere)
       else {
-        card.result.textContent = response.status === 503 ? t.disconnected : t.failed
+        card.result.textContent = response.status === 503 ? t.noAgent : t.failed
         if (response.status === 503) setConnected(false)
       }
     } catch {
@@ -595,6 +667,13 @@ function startPanel() {
       updateDot()
     }
   }
+  /** A line of the agent the dev server runs: continued, begun, stopped, ended, or a request it denied itself. */
+  function addNotice(data, at = Date.now()) {
+    const text = t[data.kind].replaceAll('{agent}', data.agent).replace('{code}', data.code ?? '')
+    const node = element('p', text, 'hc-notice')
+    node.title = new Date(at).toLocaleTimeString(lang)
+    list.append(node)
+  }
   function record(id, event, data, label, at = Date.now()) {
     const request = messages.get(id)
     if (!request) return
@@ -609,13 +688,16 @@ function startPanel() {
   function updateState(request) {
     if (request.completed) return
     const seconds = Math.floor((Date.now() - request.started) / 1000)
+    // a message for the agent the dev server runs waits in its line until the one before is answered
     request.state.textContent = request.permission
       ? t.waitingPermission
-      : seconds > 0
-        ? t.waiting.replace('{n}', seconds)
-        : request.delivered
-          ? t.delivered
-          : t.sent
+      : background && !request.delivered
+        ? say('queued')
+        : seconds > 0
+          ? t.waiting.replace('{n}', seconds)
+          : request.delivered
+            ? t.delivered
+            : t.sent
     const local = [...localActions.values()].find((action) => action.request === request)
     if (local?.row.node.isConnected) {
       const kind = request.permission ? 'permission' : 'pending'
@@ -779,7 +861,7 @@ function startPanel() {
           response.status === 409 || response.status === 404
             ? t.reload
             : response.status === 503
-              ? t.disconnected
+              ? t.noAgent
               : t.invalid,
         )
         row.pending = false
@@ -929,10 +1011,18 @@ function startPanel() {
           }
         addPermission(data, open)
         break
-      case 'status':
+      case 'status': {
+        const stopped = background !== null
+        background = data.background ?? null
+        setAvailable(data.available ?? [])
         setConnected(data.connected)
         setAgent(data.connected ? data.agent : undefined)
-        if (!connected) for (const card of permissions) if (card.open) finish(card, t.answered)
+        if (!connected)
+          for (const card of permissions) if (card.open) finish(card, stopped ? t.deniedOnStop : t.answered)
+        break
+      }
+      case 'notice':
+        addNotice(data, at)
         break
     }
   }
@@ -953,7 +1043,7 @@ function startPanel() {
       if (!response.ok) {
         if (response.status === 503) {
           setConnected(false)
-          error.textContent = t.disconnected
+          error.textContent = t.noAgent
         } else if (response.status === 409 || response.status === 404) error.textContent = t.reload
         else error.textContent = response.status === 400 ? t.invalid : t.failed
         return
@@ -1036,7 +1126,7 @@ function startPanel() {
         list.removeAttribute('aria-busy')
       }
     })
-    for (const name of ['reply', 'suggestion', 'delivered', 'permission', 'status']) {
+    for (const name of ['reply', 'suggestion', 'delivered', 'permission', 'status', 'notice']) {
       stream.addEventListener(name, (event) => {
         try {
           receive(
