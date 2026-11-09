@@ -4,6 +4,7 @@
 // plugin.ts): a click puts one in at the caret, an image as `![](name)` with the caret in its alt text, any other file
 // as a link. The text stays text: what it says is saved as any edit.
 import { el, fitTextarea } from '../core/dom.ts'
+import { spotFor } from '../core/spot.ts'
 import { icon } from '../core/icons.ts'
 import { state } from '../core/state.ts'
 import { T, withLang } from '../core/texts.ts'
@@ -46,9 +47,12 @@ export async function bundleFiles(blockId: string, textarea: HTMLTextAreaElement
     // the field keeps the focus and its caret
     button.addEventListener('mousedown', (e) => e.preventDefault())
     button.addEventListener('click', () => {
-      const start = textarea.selectionStart
+      // not inside an image or link the caret stands in: after it
+      const empty = textarea.selectionStart === textarea.selectionEnd
+      const start = empty ? spotFor(textarea.value, textarea.selectionStart) : textarea.selectionStart
       const link = file.image ? `![](${fileName})` : `[${fileName}](${fileName})`
       textarea.focus()
+      if (empty) textarea.setSelectionRange(start, start)
       document.execCommand('insertText', false, link)
       // an image waits for its alt text, a link is done
       const caret = file.image ? start + 2 : start + link.length

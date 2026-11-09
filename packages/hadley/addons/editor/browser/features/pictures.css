@@ -1,8 +1,9 @@
 /* ─── A picture added to the bundle (pictures.ts) ───────────────────────────────── */
 
-.hadley-textarea.hadley-drop {
+/* the whole field while a file is dragged over it */
+.hadley-editor.hadley-drop {
   outline: 2px dashed var(--he-accent);
-  outline-offset: -4px;
+  outline-offset: -6px;
 }
 
 .hadley-add {

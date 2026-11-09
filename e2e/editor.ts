@@ -61,8 +61,8 @@ type Browser = {
  * What a browser hands the field: a drop of files, or a paste of a clipboard, with text beside the files or not. The
  * event carries the data as its own property: Firefox gives a ClipboardEvent made with a DataTransfer an empty copy.
  */
-export const hand = (page: Page, kind: 'drop' | 'paste', pictures: Picture[], text?: string) =>
-  page.locator('.hadley-textarea').evaluate(
+export const hand = (page: Page, kind: 'drop' | 'paste', pictures: Picture[], text?: string, on = '.hadley-textarea') =>
+  page.locator(on).evaluate(
     (field: { dispatchEvent(event: unknown): boolean }, { kind, pictures, text }) => {
       const { DataTransfer, File, ClipboardEvent, DragEvent } = globalThis as unknown as Browser
       const data = new DataTransfer()

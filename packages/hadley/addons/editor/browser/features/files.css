@@ -1,13 +1,13 @@
 /* ─── The files of the bundle under the field (files.ts) ──────────────────────────── */
 
+/* in as many rows as they need, all in view, never scrolled (Michael, 2026-11-09) */
 .hadley-files {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.375rem;
-  overflow-x: auto;
   padding: 0.4rem 0.75rem;
   background: var(--he-bg-deep);
   border-top: 1px solid var(--he-border);
-  scrollbar-width: thin;
 }
 
 .hadley-file {

@@ -5,6 +5,7 @@
 // in. A name the bundle has already asks whether to replace that file. A paste that holds text is text: an office
 // program puts a picture of what was copied beside it.
 import { el, fitTextarea } from '../core/dom.ts'
+import { spotFor } from '../core/spot.ts'
 import { answer } from '../core/request.ts'
 import { state } from '../core/state.ts'
 import { T, withLang } from '../core/texts.ts'
@@ -27,14 +28,20 @@ export function acceptPictures(
     if (file) addPicture(blockId, textarea, toolbar, file, pasted, refresh)
     else note(toolbar, T.onlyPngJpeg)
   }
-  textarea.addEventListener('dragover', (e) => {
+  // the whole field takes a drop, its text, toolbar and drawers alike (Michael, 2026-11-09); the picture goes in at the
+  // caret, wherever it was let go
+  const target = toolbar.parentElement ?? textarea
+  // dragleave fires for each child the pointer crosses: only when it leaves the field is the frame off
+  target.addEventListener('dragover', (e) => {
     if (!e.dataTransfer?.types.includes('Files')) return
     e.preventDefault()
-    textarea.classList.add('hadley-drop')
+    target.classList.add('hadley-drop')
   })
-  textarea.addEventListener('dragleave', () => textarea.classList.remove('hadley-drop'))
-  textarea.addEventListener('drop', (e) => {
-    textarea.classList.remove('hadley-drop')
+  target.addEventListener('dragleave', (e) => {
+    if (!(e.relatedTarget instanceof Node && target.contains(e.relatedTarget))) target.classList.remove('hadley-drop')
+  })
+  target.addEventListener('drop', (e) => {
+    target.classList.remove('hadley-drop')
     take(e, e.dataTransfer?.files, false)
   })
   textarea.addEventListener('paste', (e) => {
@@ -79,8 +86,9 @@ function addPicture(
 ): void {
   const wrapper = toolbar.parentElement
   wrapper?.querySelector('.hadley-add')?.remove()
-  // where it goes in, as the caret was when it came
-  const caret = [textarea.selectionStart, textarea.selectionEnd] as const
+  // where it goes in, as the caret was when it came; not inside an image or link the caret stands in (spot.ts)
+  const at = textarea.selectionStart === textarea.selectionEnd ? spotFor(textarea.value, textarea.selectionStart) : -1
+  const caret = at === -1 ? ([textarea.selectionStart, textarea.selectionEnd] as const) : ([at, at] as const)
   const preview = URL.createObjectURL(file)
 
   const form = el('form', 'hadley-add')

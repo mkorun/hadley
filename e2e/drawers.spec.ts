@@ -2,7 +2,7 @@
 // Michael, 2026-11-09): one drawer open at a time, the one open last open again in the next field, and a rewrite asked
 // by its keys unfolds its own; the text stays in view throughout.
 import { test, expect } from './chat-fixture.ts'
-import { PIXEL, block, openBlock } from './editor.ts'
+import { PIXEL, block, hand, openBlock, unfold } from './editor.ts'
 import { writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
@@ -49,4 +49,36 @@ test('a rewrite asked by its keys unfolds its drawer', async ({ page, dev }) => 
     'aria-expanded',
     'true',
   )
+})
+
+// Michael, 2026-11-09: the files in rows, never scrolled sideways; one put in after another, never into it
+test('many files wrap into rows, and a second file goes in after the first, not into it', async ({ page, dev }) => {
+  const bundle = dirname(dev.source)
+  await dev.rebuild(async () => {
+    for (let i = 1; i <= 8; i++) await writeFile(join(bundle, `picture-${i}.png`), Buffer.from(PIXEL, 'base64'))
+  })
+  const field = await openBlock(page, dev.origin)
+  await unfold(page, 'Files (8)')
+  // nothing scrolls: not sideways, not down; every file in view
+  const hidden = await page.evaluate(
+    `(() => { const s = document.querySelector('.hadley-files'); return [s.scrollWidth - s.clientWidth, s.scrollHeight - s.clientHeight] })()`,
+  )
+  expect(hidden).toEqual([0, 0])
+  await field.press('Control+End')
+  await page.getByRole('button', { name: 'Insert picture-1.png', exact: true }).click()
+  // the caret waits in the first one's alt text; the second goes after it
+  await page.getByRole('button', { name: 'Insert picture-2.png', exact: true }).click()
+  await expect(field).toHaveValue('First words of the attached block.![](picture-1.png)![](picture-2.png)')
+})
+
+test('a picture dropped anywhere on the field is taken, its toolbar too', async ({ page, dev }) => {
+  await openBlock(page, dev.origin)
+  await hand(
+    page,
+    'drop',
+    [{ name: 'Elsewhere.png', type: 'image/png', base64: PIXEL }],
+    undefined,
+    '.hadley-editor-toolbar',
+  )
+  await expect(page.getByRole('textbox', { name: 'Name', exact: true })).toHaveValue('elsewhere.png')
 })
