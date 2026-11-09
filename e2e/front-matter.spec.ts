@@ -102,6 +102,9 @@ test('without Lima the table marks nothing, says so, and the front matter still 
 test('the badge stays above the front matter while its field is open', async ({ page, dev }) => {
   const field = await open(page, dev.origin)
   const badge = page.locator('.hadley-front-matter-badge')
+  // open: it says so, and takes no pointer while its field is open (Michael, 2026-11-09)
+  await expect(badge).toHaveAttribute('aria-expanded', 'true')
+  await expect(badge).toHaveCSS('pointer-events', 'none')
   const wrapper = page.locator('.hadley-editor')
   await expect
     .poll(async () => {

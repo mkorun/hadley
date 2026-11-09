@@ -79,6 +79,8 @@ export function frames(): Frames {
         // above the frame; while the front matter's field is open above the title, above that field, so that the badge
         // stays where it was (Michael, 2026-11-09: it slid down below the field)
         const field = state.wrapper && title.previousElementSibling === state.wrapper ? state.wrapper : undefined
+        frontMatterBadge.classList.toggle('is-open', field !== undefined)
+        frontMatterBadge.setAttribute('aria-expanded', String(field !== undefined))
         const anchor = field ?? title
         const above = anchor.previousElementSibling?.getBoundingClientRect()
         const anchorTop = anchor.getBoundingClientRect().top
