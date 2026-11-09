@@ -190,21 +190,22 @@ body.hadley-edit-mode #hadley-lang-toggle {
   left: 0.55rem;
 }
 
-/* out of edit mode the pill steps back; it comes forward under the pointer, with the keyboard, and while the chat is
-   open or waits for the author (Michael, 2026-11-09) */
+/* out of edit mode the pill steps back, but for Edit, the way in, which stays in full view (Michael, 2026-11-09); it
+   comes forward under the pointer, with the keyboard, and while the chat is open or waits for the author */
 body:not(.hadley-edit-mode)
   .hadley-pill:not(:hover, :focus-within):not(
     :has(#hadley-chat-toggle[aria-expanded='true'], .hc-dot[data-state='new'], .hc-dot[data-state='permission'])
-  ) {
+  )
+  > :not(#hadley-edit-toggle) {
   opacity: 0.55;
 }
 
-.hadley-pill {
+.hadley-pill > * {
   transition: opacity 0.15s;
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  body:not(.hadley-edit-mode) .hadley-pill {
+  body:not(.hadley-edit-mode) .hadley-pill > * {
     opacity: 1 !important;
   }
 }

@@ -42,15 +42,22 @@ test.describe('a browser in a language the editor does not speak', () => {
   })
 })
 
-// Michael, 2026-11-09: out of edit mode the pill steps back, and comes forward under the pointer
-test('the pill steps back out of edit mode, and comes forward under the pointer', async ({ page, dev }) => {
+// Michael, 2026-11-09: out of edit mode the pill steps back, but for Edit, the way in; it comes forward under the
+// pointer
+test('the pill steps back out of edit mode but for Edit, and comes forward under the pointer', async ({
+  page,
+  dev,
+}) => {
   await page.goto(dev.origin + '/panel/')
   const pill = page.locator('.hadley-pill')
-  await expect(pill).toHaveCSS('opacity', '0.55')
+  const edit = page.locator('#hadley-edit-toggle')
+  const chat = page.locator('#hadley-chat-toggle')
+  await expect(edit).toHaveCSS('opacity', '1')
+  await expect(chat).toHaveCSS('opacity', '0.55')
   await pill.hover()
-  await expect(pill).toHaveCSS('opacity', '1')
+  await expect(chat).toHaveCSS('opacity', '1')
   await page.mouse.move(5, 5)
-  await page.locator('#hadley-edit-toggle').click()
+  await edit.click()
   await page.mouse.move(5, 5)
-  await expect(pill).toHaveCSS('opacity', '1')
+  await expect(chat).toHaveCSS('opacity', '1')
 })
