@@ -27,6 +27,14 @@
   padding: 0;
 }
 
+/* its symbol keeps its size inside any block: a theme may size every svg of a drawing to its width (mko.run does, so
+   the dots filled the button; Michael, 2026-11-09) */
+.hadley-trigger > svg {
+  flex: none;
+  width: 15px !important;
+  height: 15px !important;
+}
+
 /* Non-void: controlled by CSS — in sync with the block hover.
    Descendant combinator (not only a direct child), because for <details> blocks the trigger sits
    in <summary> (otherwise the shadow tree hides every child except summary while closed) */
