@@ -61,12 +61,14 @@ double click on the page's title or subtitle, where the theme marks it (themes.m
 `#` or `__` stays as it is, or the front matter where that gives it; they are never moved, merged or deleted. In edit
 mode a badge above the title opens the page's front matter, which Lima must read when it is saved; its lines are
 striped, its keys and comments marked where Lima finds them, and a line Lima refuses is marked as it is typed, with
-Lima's message below. Each change is saved to the page's Markdown file, and the page is brought up to date in place; a
-file that changed since the page was built is not edited, the page reloads first. The editor is the author's tool, not
-part of the page: it speaks the first of the browser's languages it knows (German, English), else English; its control
-at the bottom right shows the language it speaks, and its menu keeps another for the site. Out of edit mode the control
-steps back, until the pointer or the keyboard comes to it. Where hadley's own code changed since the dev server started,
-a warning above the control asks to restart it, and the terminal says so once. `hadley deploy` serves no editor.
+Lima's message below. On an article or essay without a description, a dot on the badge says so: the first words of its
+text stand in for it in link previews and feeds. Each change is saved to the page's Markdown file, and the page is
+brought up to date in place; a file that changed since the page was built is not edited, the page reloads first. The
+editor is the author's tool, not part of the page: it speaks the first of the browser's languages it knows (German,
+English), else English; its control at the bottom right shows the language it speaks, and its menu keeps another for the
+site. Out of edit mode the control steps back, until the pointer or the keyboard comes to it. Where hadley's own code
+changed since the dev server started, a warning above the control asks to restart it, and the terminal says so once.
+`hadley deploy` serves no editor.
 
 ### Up to date in place
 

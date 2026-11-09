@@ -130,3 +130,25 @@ test('an open field is as wide as the frames of the blocks round it', async ({ p
   expect(Math.abs((field?.x ?? 0) - widest.left)).toBeLessThanOrEqual(1)
   expect(Math.abs((field?.width ?? 0) - widest.width)).toBeLessThanOrEqual(1)
 })
+
+// Michael, 2026-11-09: an article without a description says so on its badge, while writing; the terminal tells only
+// of a published one
+test('an article without a description: a dot on the badge says so, and goes once one is saved', async ({
+  page,
+  dev,
+}) => {
+  const field = await open(page, dev.origin)
+  const badge = page.locator('.hadley-front-matter-badge')
+  await expect(badge.locator('.hadley-badge-dot')).toHaveCount(1)
+  await expect(badge).toHaveAttribute(
+    'title',
+    'No description: link previews and feeds show the first words of the text.',
+  )
+  // its name stays: the title is said after it
+  await expect(page.getByRole('button', { name: 'Front matter', exact: true })).toHaveCount(1)
+  await field.fill(FRONT_MATTER + '\ndescription: A line of its own.')
+  await page.keyboard.press('Control+s')
+  await expect(badge.locator('.hadley-badge-dot')).toHaveCount(0)
+  await expect(badge).toHaveAttribute('title', 'Front matter')
+  expect(await readFile(dev.source, 'utf8')).toContain('description: A line of its own.')
+})

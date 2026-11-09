@@ -87,6 +87,7 @@ export function blockEditorPlugin(): Plugin {
               ...(heads?.title ? { title: heads.title } : {}),
               ...(heads?.subtitle ? { subtitle: heads.subtitle } : {}),
               ...(heads?.frontMatter ? { frontMatter: heads.frontMatter } : {}),
+              ...(heads?.undescribed ? { undescribed: true } : {}),
             }),
           )
         } else if (method === 'GET' && url.startsWith('/__hadley/block/')) {

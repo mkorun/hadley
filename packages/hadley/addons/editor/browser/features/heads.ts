@@ -34,7 +34,7 @@ export function heads(on: {
   const free = () => isEditMode() && !state.block && !state.locked
 
   async function refresh(): Promise<void> {
-    let heads: { title?: Head; subtitle?: Head; frontMatter?: Head } | undefined
+    let heads: { title?: Head; subtitle?: Head; frontMatter?: Head; undescribed?: unknown } | undefined
     try {
       const res = await fetch(withLang(`/__hadley/heads?path=${encodeURIComponent(location.pathname)}`))
       if (!res.ok) return
@@ -77,26 +77,41 @@ export function heads(on: {
     const frontMatterId = heads?.frontMatter?.id
     if (typeof frontMatterId === 'string') ids.frontMatter = frontMatterId
     else delete ids.frontMatter
-    if (badge || ids.frontMatter === undefined || !document.querySelector(HEAD.title)) return
-    badge = el('button', 'hadley-front-matter-badge')
-    badge.type = 'button'
-    badge.append(icon('data'))
-    badge.append(Object.assign(el('span'), { textContent: T.frontMatter }))
-    badge.setAttribute('aria-label', T.frontMatter)
-    badge.title = T.frontMatter
-    badge.dataset['hadleyFrontMatter'] = ''
-    const own = badge
-    own.addEventListener('click', () => {
+    if (!badge && ids.frontMatter !== undefined && document.querySelector(HEAD.title)) badge = makeBadge()
+    // an article without a description: a dot on the badge, and its name says why (Michael, 2026-11-09); gone once one
+    // is saved, as the page comes back in place
+    if (badge) describe(badge, heads?.undescribed === true)
+  }
+
+  function describe(own: HTMLButtonElement, undescribed: boolean): void {
+    // its name stays; the title, beside a name of its own, is what a screen reader says after it
+    own.setAttribute('aria-label', T.frontMatter)
+    own.title = undescribed ? T.noDescription : T.frontMatter
+    own.querySelector('.hadley-badge-dot')?.remove()
+    if (!undescribed) return
+    const dot = el('span', 'hadley-badge-dot')
+    dot.setAttribute('aria-hidden', 'true')
+    own.append(dot)
+  }
+
+  function makeBadge(): HTMLButtonElement {
+    const made = el('button', 'hadley-front-matter-badge')
+    made.type = 'button'
+    made.append(icon('data'))
+    made.append(Object.assign(el('span'), { textContent: T.frontMatter }))
+    made.dataset['hadleyFrontMatter'] = ''
+    made.addEventListener('click', () => {
       const id = ids.frontMatter
       const title = document.querySelector(HEAD.title)
       if (!free() || id === undefined || !title) return
       // the badge sits over the page: the field opens in it, above the title
-      on.edit(id, own, { place: (wrapper) => title.before(wrapper) })
+      on.edit(id, made, { place: (wrapper) => title.before(wrapper) })
     })
     // beside the frames' layer, placed with it, not before the title: the page does not move when edit mode turns on;
     // not in that layer, which is hidden from assistive technology
-    on.badge(own)
-    document.body.append(own)
+    on.badge(made)
+    document.body.append(made)
+    return made
   }
 
   return { refresh }

@@ -38,5 +38,7 @@ export interface PageHeads {
   subtitle?: { id: string; from: 'text' | 'front matter' }
   // the block that edits the page's front matter, where it has one
   frontMatter?: { id: string }
+  // an article or essay without a description: the badge says so (browser/features/front-matter.ts)
+  undescribed?: true
 }
 export const pageHeads = new Map<string, PageHeads>()

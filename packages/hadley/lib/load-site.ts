@@ -344,6 +344,11 @@ async function readPage(
   if (type === 'essay' && !metadata.vgwort_pixel && (state === 'published' || state === 'scheduled')) {
     problems.push({ message: 'is an essay without a VG Wort pixel', hint: true })
   }
+  // a line of its own reads better in lists, the feed and link previews than the start of the text that stands in for
+  // it (render-content.ts); a hint, the build stays green (Michael, 2026-11-09)
+  if (articleLike && !metadata.description && (state === 'published' || state === 'scheduled')) {
+    problems.push({ message: 'has no description', hint: true })
+  }
   // what the parser found wrong, with the line it is on, before what was found here
   const parsed = (doc.parseErrors ?? []).map((error) => {
     const line = error.start === undefined ? undefined : source.slice(0, error.start).split('\n').length

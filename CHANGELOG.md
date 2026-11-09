@@ -33,6 +33,8 @@ brings the page up to date in place.
   the site. A PNG or JPEG dropped on the field or pasted into it is added to the bundle, after a question for its name.
 - `<m data-exif=keep>` around a picture publishes its EXIF and location as they are (docs/content.md, "Pictures").
 - `hadley dev` says, in the editor and in the terminal, when hadley's own code changed since it started.
+- An article or essay without a description says so: the build warns of a published one, and the editor's front
+  matter badge shows a dot while it is written.
 
 ### Changed
 

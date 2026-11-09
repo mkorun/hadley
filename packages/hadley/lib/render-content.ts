@@ -13,8 +13,9 @@ export type BlockEditorHook = (
   blocks: BlockToken[],
   filePath: string,
   rawDoc: string,
-  // the page's address, where its title, subtitle and front matter stand, and its title and subtitle, from either
-  page: { urlPath: string; heads: ParsedDocument['heads']; title?: string; subtitle?: string },
+  // the page's address, where its title, subtitle and front matter stand, and its title and subtitle, from either;
+  // `undescribed` an article or essay whose front matter gives no description
+  page: { urlPath: string; heads: ParsedDocument['heads']; title?: string; subtitle?: string; undescribed?: true },
 ) => (start: number) => string | undefined
 
 /**
@@ -76,6 +77,8 @@ export const renderContent = (
             heads: page.doc.heads,
             ...(typeof page.metadata.title === 'string' ? { title: page.metadata.title } : {}),
             ...(typeof page.metadata.subtitle === 'string' ? { subtitle: page.metadata.subtitle } : {}),
+            // asked before the start of the text stands in for it, below
+            ...(page.articleLike && !page.metadata.description ? { undescribed: true as const } : {}),
           })
       const t = site.locales[page.language] ?? {}
       const heading = headingTemplate

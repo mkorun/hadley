@@ -178,6 +178,14 @@ body.hadley-edit-mode .hadley-front-matter-badge.hadley-block-active {
   background: var(--he-bg-hover);
 }
 
+/* an article without a description: a dot in the warning colour, after the word (heads.ts) */
+.hadley-front-matter-badge .hadley-badge-dot {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 50%;
+  background: var(--he-warn);
+}
+
 /* while its field is open the badge says so in the accent and takes no pointer: a click would do nothing */
 body.hadley-edit-mode .hadley-front-matter-badge.is-open {
   color: var(--he-on-accent);

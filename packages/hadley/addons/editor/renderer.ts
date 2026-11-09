@@ -13,7 +13,7 @@ export function registerPageBlocks(
   blocks: BlockToken[],
   rawDoc: string,
   filePath: string,
-  page?: { urlPath: string; heads: ParsedDocument['heads']; title?: string; subtitle?: string },
+  page?: { urlPath: string; heads: ParsedDocument['heads']; title?: string; subtitle?: string; undescribed?: true },
 ): (start: number) => string | undefined {
   // the page as the build read it is a version, if it changed (history.ts)
   seen(filePath, rawDoc)
@@ -67,6 +67,7 @@ export function registerPageBlocks(
       ...(titleId ? { title: { id: titleId, from: title ? 'text' : 'front matter' } } : {}),
       ...(subtitleId ? { subtitle: { id: subtitleId, from: subtitle ? 'text' : 'front matter' } } : {}),
       ...(frontMatterId ? { frontMatter: { id: frontMatterId } } : {}),
+      ...(page.undescribed ? { undescribed: true as const } : {}),
     })
   }
 

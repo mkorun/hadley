@@ -299,3 +299,20 @@ describe('the day a build decides scheduling on', () => {
     }
   })
 })
+
+describe('a hint for an article without a description', () => {
+  it('says so of a published article or essay, not of a draft, a page or one with a description', async () => {
+    await site('described', {
+      'articles/[a]/a.md': page('title: A\npublishFrom: 2026-01-02\n'),
+      'articles/[b]/b.md': page('title: B\npublishFrom: 2026-01-02\ndescription: A line of its own.\n'),
+      'articles/[c]/c.md': page('title: C\npublishFrom: 2026-01-02\nstatus: draft\n'),
+      'essays/[e]/e.md': page('title: E\npublishFrom: 2026-01-02\nvgwort_pixel: 1234\n'),
+      'pages/[p]/p.md': page('title: P\n'),
+    })
+    const dev = await quietly(() => loadSite(join('sites', 'described'), false))
+    const hints = settle(dev.problems, false).filter((warning) => warning.endsWith(': has no description'))
+    assert.deepEqual(hints.map((warning) => warning.split(':')[0]!.split('/').at(-1)).sort(), ['a.md', 'e.md'])
+    // a hint, not a fault: the site publishes
+    await quietly(() => published('described'))
+  })
+})
