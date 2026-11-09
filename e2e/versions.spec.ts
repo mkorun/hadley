@@ -156,3 +156,30 @@ test('a change to the file made outside the editor is a version too', async ({ p
   await items.nth(1).click()
   await expect(page.locator('#hadley-versions .hv-del')).toHaveText('− First words, from another program.')
 })
+
+// Michael, 2026-11-09: one card above the pill at a time, the versions' or the chat's
+test('opening the versions closes the chat, and opening the chat closes the versions', async ({ page, dev }) => {
+  await page.goto(dev.origin + '/panel/')
+  await page.getByRole('button', { name: 'Toggle edit mode', exact: true }).click()
+  const versions = page.getByRole('button', { name: 'Version history', exact: true })
+  const chat = page.getByRole('button', { name: 'Chat', exact: true })
+  const card = page.locator('#hadley-versions')
+  const panel = page.locator('#hadley-chat')
+
+  await chat.click()
+  await expect(panel).toBeVisible()
+  await versions.click()
+  await expect(card).toBeVisible()
+  await expect(panel).toBeHidden()
+  await expect(chat).toHaveAttribute('aria-expanded', 'false')
+
+  await chat.click()
+  await expect(panel).toBeVisible()
+  await expect(card).toBeHidden()
+  await expect(versions).toHaveAttribute('aria-expanded', 'false')
+
+  // closing one opens nothing
+  await chat.click()
+  await expect(panel).toBeHidden()
+  await expect(card).toBeHidden()
+})

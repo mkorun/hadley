@@ -1,6 +1,7 @@
 // The versions of the page, the time machine (addons/editor/history.ts): a button in the pill, in edit mode, opens a
 // card above it with the page's versions by day, newest first (list.ts). A version opens in its row (detail.ts). At
-// the foot: how many there are, and deleting every unnamed one; the limit of 100 only once it comes near.
+// the foot: how many there are, and deleting every unnamed one; the limit of 100 only once it comes near. One card
+// above the pill at a time: opening it closes the chat's, and the chat's closes it (`hadley:card-open`, addons/chat).
 import { el } from '../../core/dom.ts'
 import { icon } from '../../core/icons.ts'
 import { state } from '../../core/state.ts'
@@ -125,8 +126,14 @@ export function versions(on: {
   function setOpen(open: boolean): void {
     card.hidden = !open
     toggle.setAttribute('aria-expanded', String(open))
-    if (open) void load()
+    if (!open) return
+    // one card above the pill at a time: the versions' or the chat's (Michael, 2026-11-09)
+    document.dispatchEvent(new CustomEvent('hadley:card-open', { detail: { id: card.id } }))
+    void load()
   }
+  document.addEventListener('hadley:card-open', (event) => {
+    if (!card.hidden && (event as CustomEvent<{ id?: string }>).detail?.id !== card.id) setOpen(false)
+  })
   toggle.addEventListener('click', () => setOpen(card.hidden !== false))
   close.addEventListener('click', () => setOpen(false))
   document.addEventListener('keydown', (event) => {

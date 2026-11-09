@@ -483,6 +483,8 @@ function startPanel() {
       }, 140)
     }
     toggle.setAttribute('aria-expanded', String(value))
+    // one card above the pill at a time: the chat's or the versions' (editor/browser/features/versions/)
+    if (value) document.dispatchEvent(new CustomEvent('hadley:card-open', { detail: { id: panel.id } }))
     if (value) unseen = false
     updateDot()
     save()
@@ -900,6 +902,9 @@ function startPanel() {
       updateSend()
     }
   }
+  document.addEventListener('hadley:card-open', (event) => {
+    if (opened && event.detail?.id !== panel.id) setOpen(false, false)
+  })
   document.addEventListener('hadley:editor-close', () => {
     clearInterval(rewriteRow?.timer)
     editor = null
