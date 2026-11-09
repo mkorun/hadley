@@ -6,7 +6,7 @@
  * close the open field.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { copyFile, lstat, mkdir, rename, unlink } from 'node:fs/promises'
+import { constants, copyFile, lstat, mkdir, rename, unlink } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative } from 'node:path'
 import { siteRoot } from './history.ts'
 import { t, type Lang } from './i18n.ts'
@@ -42,14 +42,23 @@ export async function handleTrash(req: IncomingMessage, res: ServerResponse, lan
   const stat = await lstat(path).catch(() => undefined)
   if (!stat?.isFile()) return send(res, 409, { error: t(lang, 'pictureNotPlain') })
 
-  const target = join(root, '.hadley', 'trash', stamp(), inSite)
+  // a folder of its own where the second's already holds a file of that path: nothing in the trash is overwritten
+  // (review 2026-11-09: the same file taken away twice in a second kept only the second); one trash at a time
+  // (oneAtATime), so the free place found stays free
+  const second = stamp()
+  let target = ''
+  for (let n = 1; n <= 100 && !target; n++) {
+    const place = join(root, '.hadley', 'trash', n === 1 ? second : `${second}-${n}`, inSite)
+    if (!(await lstat(place).catch(() => undefined))) target = place
+  }
+  if (!target) return send(res, 500, { error: t(lang, 'couldNotWriteFile') })
   tookAway(path)
   try {
     await mkdir(dirname(target), { recursive: true })
     await rename(path, target).catch(async (error: NodeJS.ErrnoException) => {
       // another file system: copied, then taken away
       if (error.code !== 'EXDEV') throw error
-      await copyFile(path, target)
+      await copyFile(path, target, constants.COPYFILE_EXCL)
       await unlink(path)
     })
   } catch {

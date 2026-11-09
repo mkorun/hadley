@@ -55,6 +55,7 @@ type Key =
   | 'pictureUnpacksTooFar'
   | 'pageUnknown'
   | 'versionUnknown'
+  | 'versionNotKept'
 
 const MESSAGES: Record<Lang, Record<Key, string>> = {
   de: {
@@ -98,6 +99,7 @@ const MESSAGES: Record<Lang, Record<Key, string>> = {
     pictureUnpacksTooFar: 'Das PNG enthält gepackte Daten, die sich auf über 8 MiB entpacken',
     pageUnknown: 'Für diese Seite gibt es hier keine Versionen',
     versionUnknown: 'Diese Fassung der Seite gibt es nicht (mehr)',
+    versionNotKept: 'Die aktuelle Fassung ließ sich nicht sichern; nichts geändert',
   },
   en: {
     assetNotFound: 'Asset not found',
@@ -140,6 +142,7 @@ const MESSAGES: Record<Lang, Record<Key, string>> = {
     pictureUnpacksTooFar: 'The PNG holds packed data that unpacks to more than 8 MiB',
     pageUnknown: 'This page has no versions here',
     versionUnknown: 'There is no such version of this page (any more)',
+    versionNotKept: 'Could not save the current version; nothing changed',
   },
 }
 

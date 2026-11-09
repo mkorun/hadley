@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { afterEach, beforeEach, it } from 'node:test'
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { devServer, events, post } from './support.ts'
@@ -22,7 +22,8 @@ beforeEach(async () => {
   const program = join(bin, 'claude')
   writeFileSync(
     program,
-    `#!/bin/sh\nexec "${process.execPath}" "${join(import.meta.dirname, 'fake-agents', 'claude.mjs')}" "$@"\n`,
+    // each start leaves its process id, which the stand-in keeps through exec
+    `#!/bin/sh\necho $$ >> "${join(dir, 'pids')}"\nexec "${process.execPath}" "${join(import.meta.dirname, 'fake-agents', 'claude.mjs')}" "$@"\n`,
   )
   chmodSync(program, 0o755)
   mkdirSync(join(dir, 'site'))
@@ -102,4 +103,21 @@ it('starts an agent for a browser with the key, answers through it, and stops it
   } finally {
     browser.close()
   }
+})
+
+it('starts and stops in turn: two restarts at once leave one agent, which a stop ends', { skip }, async () => {
+  assert.equal((await post(dev.origin, '/__hadley/chat/agent', { run: 'claude' })).status, 200)
+  // review 2026-11-09: both waited for the same agent to stop, and each started one of its own
+  const restarts = await Promise.all([
+    post(dev.origin, '/__hadley/chat/agent', { run: 'claude', fresh: true }),
+    post(dev.origin, '/__hadley/chat/agent', { run: 'claude', fresh: true }),
+  ])
+  assert.deepEqual(
+    restarts.map((response) => response.status),
+    [200, 200],
+  )
+  assert.equal((await post(dev.origin, '/__hadley/chat/agent', { run: null })).status, 200)
+  const pids = readFileSync(join(dir, 'pids'), 'utf8').trim().split('\n').map(Number)
+  assert.equal(pids.length, 3)
+  for (const pid of pids) assert.throws(() => process.kill(pid, 0), `agent ${pid} still runs`)
 })

@@ -104,7 +104,8 @@ export interface Running {
   busy(): boolean
   send(message: Message, lang: string, action: boolean): void
   verdict(requestId: string, allow: boolean): boolean
-  stop(): Promise<void>
+  /** ends it: its input closes, then SIGTERM, then SIGKILL; `quick` as the dev server goes, within its wait */
+  stop(quick?: boolean): Promise<void>
 }
 
 /** Where the dev server keeps the conversation it continues next time, in the site's own hadley directory. */
@@ -279,15 +280,17 @@ export function runAgent(
       adapter.answer(ref, allow)
       return true
     },
-    async stop() {
+    async stop(quick = false) {
       if (ended) return
       stopping = true
       for (const ref of open.values()) adapter.answer(ref, false)
       open.clear()
       const proc = child
       proc?.stdin?.end()
-      const term = setTimeout(() => proc?.kill('SIGTERM'), 3000)
-      const kill = setTimeout(() => proc?.kill('SIGKILL'), 8000)
+      // the dev server waits 3 s for the chat as it goes (lib/dev-server.ts): its agent is killed within them, where it
+      // would else outlive it (review 2026-11-09)
+      const term = setTimeout(() => proc?.kill('SIGTERM'), quick ? 1000 : 3000)
+      const kill = setTimeout(() => proc?.kill('SIGKILL'), quick ? 2000 : 8000)
       await exited
       clearTimeout(term)
       clearTimeout(kill)

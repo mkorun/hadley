@@ -131,8 +131,13 @@ export async function historyRoute(req: IncomingMessage, res: ServerResponse, la
       return send(res, 500, { error: t(lang, 'couldNotReadFile') })
     }
     if (hashOf(now) !== current) return send(res, 409, { error: t(lang, 'fileChangedSinceOpen') })
-    // the page as it is stays a version: nothing is lost by going back
-    await versions.record(file, now, 'outside').catch(() => undefined)
+    // the page as it is stays a version: nothing is lost by going back, and where it cannot be kept, nothing is written
+    // (review 2026-11-09: a restore overwrote a page no version held)
+    try {
+      await versions.record(file, now, 'outside')
+    } catch {
+      return send(res, 500, { error: t(lang, 'versionNotKept') })
+    }
     try {
       await writeFile(file, text, 'utf-8')
     } catch {
@@ -159,8 +164,12 @@ async function step(file: string, way: 'undo' | 'redo', current: string, res: Se
     return send(res, 500, { error: t(lang, 'couldNotReadFile') })
   }
   if (hashOf(now) !== current) return send(res, 409, { error: t(lang, 'fileChangedSinceOpen') })
-  // the page as it is is a version first, as before restoring
-  await versions.record(file, now, 'outside').catch(() => undefined)
+  // the page as it is is a version first, as before restoring; where it cannot be kept, nothing is written
+  try {
+    await versions.record(file, now, 'outside')
+  } catch {
+    return send(res, 500, { error: t(lang, 'versionNotKept') })
+  }
   const target = (await versions.steps(file))[way]?.target
   const text = target && (await versions.content(file, target.hash))
   if (!target || text === undefined) return send(res, 404, { error: t(lang, 'versionUnknown') })

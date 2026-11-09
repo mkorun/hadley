@@ -81,13 +81,17 @@ export function undo(on: {
     if (!isEditMode() || state.block || state.locked || buttons[way].disabled || !current) return
     clearTimeout(offerTimer)
     on.note(null)
+    // held from the question on: a field opened before the answer would be lost to the reload (review 2026-11-09)
+    state.locked = true
     let res: Response
     try {
       res = await post('/__hadley/history/step', { path, way, current })
     } catch {
+      state.locked = false
       return on.note(T.connectionFailedDev)
     }
     if (res.ok) return on.wait()
+    state.locked = false
     // the page changed since the buttons were shown: they are shown anew
     if (res.status === 409) on.note(T.pageChanged)
     else on.note(serverError(await answer(res)))

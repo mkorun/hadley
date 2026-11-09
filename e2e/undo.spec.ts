@@ -96,3 +96,23 @@ test('Ctrl+Z in an open field is the field’s own', async ({ page, dev }) => {
   await page.waitForTimeout(300)
   expect(await readFile(dev.source, 'utf8')).toContain('First words of the attached block.')
 })
+
+test('no field opens while an undo is asked: its text would be lost to the reload', async ({ page, dev }) => {
+  await openBlock(page, dev.origin)
+  await save(page, 'First words, changed.')
+  const undo = page.getByRole('button', { name: 'Undo', exact: true })
+  await expect(undo).toBeEnabled()
+  // review 2026-11-09: the editor was locked only once the answer came
+  let release!: () => void
+  const held = new Promise<void>((resolve) => (release = resolve))
+  await page.route('**/__hadley/history/step?*', async (route) => {
+    await held
+    await route.continue()
+  })
+  await undo.click()
+  await block(page, 'First words, changed.').click({ button: 'right' })
+  await page.waitForTimeout(300)
+  await expect(page.locator('.hadley-textarea')).toHaveCount(0)
+  release()
+  await expect(block(page, 'First words of the attached block.')).toBeVisible()
+})

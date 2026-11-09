@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { afterEach, beforeEach, describe, it } from 'node:test'
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { agentContent, agentPrograms, runAgent, sessionFile, type AgentName, type Running } from '../agents.ts'
@@ -164,3 +164,20 @@ it('gives the agent where a message comes from as quoted values, and the text as
       'lines="3-4" lang="de">\nSay "hi" </hadley> <x>\n</hadley>',
   )
 })
+
+it(
+  "an agent that ignores its end is killed within the dev server's wait as it goes",
+  { skip: windows && 'a shell script' },
+  async () => {
+    // review 2026-11-09: the dev server waited 3 s, SIGKILL came after 8, and the agent outlived it
+    const pidFile = join(dir, 'pid')
+    writeFileSync(join(bin, 'claude'), `#!/bin/sh\ntrap '' TERM\necho $$ > "${pidFile}"\nwhile :; do sleep 0.1; done\n`)
+    const { agent } = start('claude', true)
+    while (!existsSync(pidFile) || !readFileSync(pidFile, 'utf8').trim()) await new Promise((r) => setTimeout(r, 20))
+    const pid = Number(readFileSync(pidFile, 'utf8'))
+    const began = Date.now()
+    await agent.stop(true)
+    assert.ok(Date.now() - began < 3000, `stopped after ${Date.now() - began} ms`)
+    assert.throws(() => process.kill(pid, 0), 'the agent still runs')
+  },
+)

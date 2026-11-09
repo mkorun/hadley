@@ -104,6 +104,15 @@ export function chatPlugin(options: {
   let agentName: string | undefined
   // the agent the dev server started itself (agents.ts): a dev server has one agent, this or a channel
   let background: Running | undefined
+  // the agent's start and stop, one after another: two at once each stopped the same agent and started one of their
+  // own, of which a stop ended only the last (review 2026-11-09); after close() none starts
+  let lifecycle: Promise<unknown> = Promise.resolve()
+  let closed = false
+  const inTurn = <T>(step: () => Promise<T>): Promise<T> => {
+    const next = lifecycle.then(step)
+    lifecycle = next.catch(() => undefined)
+    return next
+  }
   const browsers = new Set<ServerResponse>()
   const history: Entry[] = []
   const open = new Set<string>()
@@ -134,9 +143,10 @@ export function chatPlugin(options: {
     broadcast({ event: 'status', data: status() })
   }
 
-  /** Starts an agent in the background, in place of one that runs. */
-  async function startAgent(name: AgentName, fresh: boolean): Promise<void> {
+  /** Starts an agent in the background, in place of one that runs; false where a channel connected meanwhile. */
+  async function startAgent(name: AgentName, fresh: boolean): Promise<boolean> {
     await background?.stop()
+    if (closed || channel) return false
     const running = runAgent(
       { name, program: programs[name]!, root, fresh },
       {
@@ -172,6 +182,7 @@ export function chatPlugin(options: {
     )
     background = running
     broadcast({ event: 'status', data: status() })
+    return true
   }
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -306,13 +317,15 @@ export function chatPlugin(options: {
       if (request.fresh !== undefined && typeof request.fresh !== 'boolean')
         throw new Error('fresh: expected a boolean')
       if (request.run === null) {
-        await background?.stop()
+        await inTurn(async () => background?.stop())
         return send(res, 200, {})
       }
       if (!isAgentName(request.run)) throw new Error('run: expected claude, codex or null')
       if (!programs[request.run]) return send(res, 404, { error: `chat: ${AGENTS[request.run]} was not found` })
       if (channel) return send(res, 409, { error: 'chat: a session in a terminal is connected', channel: true })
-      await startAgent(request.run, request.fresh === true)
+      const name = request.run
+      if (!(await inTurn(() => startAgent(name, request.fresh === true))))
+        return send(res, 409, { error: 'chat: a session in a terminal is connected', channel: true })
       return send(res, 200, {})
     }
     if (path === '/__hadley/channel') {
@@ -407,7 +420,9 @@ export function chatPlugin(options: {
       for (const browser of browsers) browser.end()
       browsers.clear()
       rendezvous?.close()
-      return background?.stop() ?? Promise.resolve()
+      closed = true
+      // after a start under way, so that the agent it starts ends too; quickly, as the dev server is going
+      return inTurn(async () => background?.stop(true))
     },
   }
 }

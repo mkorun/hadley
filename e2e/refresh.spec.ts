@@ -177,3 +177,43 @@ test('a field being saved stays, locked and turning, until the page shows its bl
   expect(await marked(page)).toBe(true)
   await expect(page.getByRole('button', { name: 'Toggle edit mode', exact: true })).toBeEnabled()
 })
+
+test('a field opened while the page is fetched holds the change too', async ({ page, dev }) => {
+  await page.goto(dev.origin + '/panel/')
+  await editMode(page)
+  await page.waitForLoadState('networkidle')
+  // review 2026-11-09: the hold was asked only before the fetch, and the block was swapped under the field. The
+  // block's answer is on its way before the file changes; it arrives while the page is fetched.
+  const hold = () => {
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    let reached!: () => void
+    const there = new Promise<void>((resolve) => (reached = resolve))
+    return { held, release, there, reached }
+  }
+  const answer = hold()
+  await page.route('**/__hadley/block/*', async (route) => {
+    const response = await route.fetch()
+    answer.reached()
+    await answer.held
+    await route.fulfill({ response })
+  })
+  const refetch = hold()
+  await page.route('**/panel/', async (route) => {
+    refetch.reached()
+    await refetch.held
+    await route.continue()
+  })
+  await block(page, 'First words').click({ button: 'right' })
+  await answer.there
+  const original = await readFile(dev.source, 'utf8')
+  await writeFile(dev.source, original.replace('Second block.', 'Second block, from outside.'))
+  await refetch.there
+  answer.release()
+  await expect(page.locator('.hadley-textarea')).toBeVisible()
+  refetch.release()
+  await expect(page.getByRole('status').filter({ hasText: 'The page has changed' })).toBeVisible()
+  await expect(block(page, 'Second block')).toHaveText(/^Second block\.$/)
+  await page.keyboard.press('Escape')
+  await expect(block(page, 'Second block')).toContainText('Second block, from outside.')
+})

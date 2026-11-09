@@ -57,9 +57,21 @@ const quiet = (e: Element): boolean =>
   e.tagName === 'META' ||
   (e.tagName === 'SCRIPT' && e.getAttribute('type') === 'application/ld+json')
 
-/** Same tag, same attributes (ids aside), as many children. */
+/** The text an element holds itself, beside its children, its white space collapsed. */
+const own = (e: Element): string =>
+  [...e.childNodes]
+    .filter((node) => node.nodeType === 3)
+    .map((node) => node.textContent ?? '')
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+/** Same tag, same attributes (ids aside), as many children, the same text of its own. */
 const alike = (a: Element, b: Element): boolean =>
-  a.tagName === b.tagName && a.children.length === b.children.length && attributes(a) === attributes(b)
+  a.tagName === b.tagName &&
+  a.children.length === b.children.length &&
+  attributes(a) === attributes(b) &&
+  own(a) === own(b)
 
 /** The longest common subsequence of two lists, as steps: kept (old, new), out (old) or in (new). */
 function steps(
@@ -101,7 +113,9 @@ export function swap(live: Document, before: Document, after: Document): Result 
   for (const [i, element] of oldHead.entries()) {
     const next = newHead[i]!
     if (plain(element) === plain(next)) continue
-    if (element.tagName !== next.tagName || !quiet(element)) return { kind: 'reload', why: 'the head differs' }
+    // both quiet: what becomes a script that runs only runs after a reload (review 2026-11-09)
+    if (element.tagName !== next.tagName || !quiet(element) || !quiet(next))
+      return { kind: 'reload', why: 'the head differs' }
     const target = liveHead.find((e) => plain(e) === plain(element))
     if (!target) return { kind: 'reload', why: 'the live head differs' }
     headSwaps.push([target, next])
@@ -112,7 +126,10 @@ export function swap(live: Document, before: Document, after: Document): Result 
   // outside the content: the smallest elements that differ; the content's ancestors must stay alike
   const outside: { path: number[]; element: Element }[] = []
   const walk = (a: Element, b: Element): boolean => {
-    if (a === oldRoot || plain(a) === plain(b)) return true
+    // the content's own attributes and text, beside its blocks, are not swapped: they ask for a reload (review
+    // 2026-11-09: a title in them stayed as it was)
+    if (a === oldRoot) return attributes(a) === attributes(b) && own(a) === own(b)
+    if (plain(a) === plain(b)) return true
     if (a.contains(oldRoot)) return alike(a, b) && [...a.children].every((child, i) => walk(child, b.children[i]!))
     const descend = alike(a, b) && [...a.children].some((child, i) => plain(child) !== plain(b.children[i]!))
     if (descend) return [...a.children].every((child, i) => walk(child, b.children[i]!))
@@ -133,7 +150,14 @@ export function swap(live: Document, before: Document, after: Document): Result 
   // the field being saved stands in the content until the page shows its block anew (features/field.ts): not the
   // server's
   const liveKids = [...liveRoot.children].filter((kid) => !kid.classList.contains('hadley-editor'))
-  if (liveKids.length !== oldKids.length || liveKids.some((kid, i) => kid.tagName !== oldKids[i]!.tagName))
+  // each block where the server put it, by its id: a theme's script that moved one would else give it another's id
+  // (review 2026-11-09)
+  if (
+    liveKids.length !== oldKids.length ||
+    liveKids.some(
+      (kid, i) => kid.tagName !== oldKids[i]!.tagName || kid.getAttribute(ID) !== oldKids[i]!.getAttribute(ID),
+    )
+  )
     return { kind: 'reload', why: 'the live content differs' }
 
   const added: Element[] = []

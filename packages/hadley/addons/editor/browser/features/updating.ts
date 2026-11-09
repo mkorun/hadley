@@ -44,6 +44,8 @@ export function updating(on: {
     if (!state.block || state.saving) return
     event.preventDefault()
     held = true
+    // the change came: no reload after WAIT, which would lose the field's text; it updates once the field is closed
+    clearTimeout(timer)
     on.note(T.waitingForField)
   })
   document.addEventListener('hadley:editor-close', () => {

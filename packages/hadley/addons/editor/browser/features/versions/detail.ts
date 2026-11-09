@@ -4,6 +4,7 @@
 import { askInPlace } from '../../core/ask.ts'
 import { el } from '../../core/dom.ts'
 import { icon } from '../../core/icons.ts'
+import { state } from '../../core/state.ts'
 import { T } from '../../core/texts.ts'
 import { deleteVersion, keepVersion, restoreVersion, versionText, type Version } from './api.ts'
 import { folded, lineDiff, marked, type MarkedLine } from './diff.ts'
@@ -149,10 +150,15 @@ function escape(event: KeyboardEvent, back: () => void): void {
 }
 
 async function restoreTo(version: Version, restore: HTMLButtonElement, context: Context): Promise<void> {
+  // an open field holds the page: restoring under it would lose its text to the reload (review 2026-11-09)
+  if (state.block) return context.say(T.closeFieldFirst)
   if (!(await context.confirm(moment(version.at)))) return
+  if (state.block) return context.say(T.closeFieldFirst)
   restore.disabled = true
+  state.locked = true
   const done = await restoreVersion(context.path, version, context.current)
   if (done.ok) return context.lock() // the page reloads once the dev server has built it anew, as after any change
+  state.locked = false
   restore.disabled = false
   if (done.status === 409) return context.reload({ message: T.changed })
   context.say(done.error)

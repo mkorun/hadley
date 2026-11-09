@@ -2,7 +2,7 @@
 // version, an earlier one opens in its row and shows what restoring it would change, word by word; a kept one stays,
 // one can be deleted, every unnamed one at once, and restoring brings the page back and keeps the one it left.
 import { test, expect } from './chat-fixture.ts'
-import { openBlock } from './editor.ts'
+import { block, openBlock } from './editor.ts'
 import { readFile, writeFile } from 'node:fs/promises'
 
 const FIRST = 'First words of the attached block.'
@@ -184,4 +184,23 @@ test('opening the versions closes the chat, and opening the chat closes the vers
   await chat.click()
   await expect(panel).toBeHidden()
   await expect(card).toBeHidden()
+})
+
+test('a version is not restored under an open field, whose text the reload would lose', async ({ page, dev }) => {
+  const field = await openBlock(page, dev.origin)
+  await field.fill('First words, changed.')
+  await page.keyboard.press('Control+s')
+  await expect(block(page, 'First words, changed.')).toBeVisible()
+  await block(page, 'First words, changed.').dblclick()
+  await expect(page.locator('.hadley-textarea')).toBeFocused()
+  await page.keyboard.press('End')
+  await page.keyboard.type(' A draft.')
+  const before = await readFile(dev.source, 'utf8')
+  await page.getByRole('button', { name: 'Version history', exact: true }).click()
+  await page.locator('#hadley-versions .hv-item').nth(1).click()
+  await page.getByRole('button', { name: 'Restore this version', exact: true }).click()
+  // review 2026-11-09: the restore went through, and the reload after 15 s took the draft
+  await expect(page.locator('#hadley-versions').getByText('Close the field first.')).toBeVisible()
+  await expect(page.locator('.hadley-textarea')).toHaveValue(/A draft\.$/)
+  expect(await readFile(dev.source, 'utf8')).toBe(before)
 })

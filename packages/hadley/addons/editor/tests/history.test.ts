@@ -119,6 +119,30 @@ describe('the versions of a page', () => {
     assert.equal((await history(root).list(page)).length, 2)
   })
 
+  it('reads a log edited by hand: a version made on itself or a later one ends the chain, and deleting goes on', async () => {
+    // review 2026-11-09: such a log hung the server as a version was deleted
+    const versions = history(root)
+    await versions.record(page, 'a\n', 'outside')
+    const b = await versions.record(page, 'b\n', 'editor', { what: 'edit' })
+    const c = await versions.record(page, 'c\n', 'editor', { what: 'edit' })
+    assert.ok(b && c)
+    const logs = join(root, '.hadley', 'history', 'pages')
+    const [log] = await readdir(logs)
+    const lines = (await readFile(join(logs, log!), 'utf-8'))
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line))
+    lines[1].after = b.at
+    lines[2].after = c.at + 1
+    await writeFile(join(logs, log!), lines.map((line) => JSON.stringify(line) + '\n').join(''))
+    const fresh = history(root)
+    assert.ok(await fresh.remove(page, b.at, b.hash))
+    assert.deepEqual(
+      (await fresh.list(page)).map((v) => v.hash),
+      [hash('c\n'), hash('a\n')],
+    )
+  })
+
   it('never drops the newest, the page as it is', () => {
     const one = (i: number): Version => ({ at: i, hash: String(i).padStart(64, '0'), by: 'editor' })
     const versions = [...Array.from({ length: KEEP }, (_, i) => one(i)), { ...one(KEEP), name: 'n' }]
@@ -265,6 +289,25 @@ describe('the routes of the time machine', () => {
       ],
     )
   })
+  it('restores nothing where the page as it is cannot be kept as a version', async () => {
+    await writeFile(page, 'first\n')
+    seen(page, 'first\n')
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    pageHeads.set('/a/', { filePath: page })
+    // review 2026-11-09: the history could not be written, and a restore overwrote a page no version held
+    await writeFile(page, 'unkept\n')
+    const pages = join(root, '.hadley', 'history', 'pages')
+    await rm(pages, { recursive: true, force: true })
+    await writeFile(pages, 'not a folder')
+    const back = await post('/__hadley/history/restore', {
+      path: '/a/',
+      hash: hash('first\n'),
+      current: hash('unkept\n'),
+    })
+    assert.equal(back.status, 500)
+    assert.equal(await readFile(page, 'utf-8'), 'unkept\n')
+  })
+
   it('undoes and redoes the changes of a page, and only onto the page the button was shown for', async () => {
     await writeFile(page, 'one\n')
     seen(page, 'one\n')
@@ -358,6 +401,18 @@ describe('undo and redo', () => {
     const torn = [v(1, 'outside'), v(5, 'restore', 3)]
     assert.deepEqual([...undone(torn, 5)], [])
     assert.deepEqual(of(steps(torn, 5)), { undo: [5, 1], redo: undefined })
+  })
+
+  it('ends a chain that comes round again', () => {
+    const log = [v(1, 'outside'), v(2, 'editor', 3), v(3, 'editor', 2), v(4, 'editor', 3)]
+    const kept = without(log, new Set([log[1]!, log[2]!]))
+    assert.deepEqual(
+      kept.map((x) => [x.at, x.after]),
+      [
+        [1, undefined],
+        [4, undefined],
+      ],
+    )
   })
 
   it('names the versions undo took the page away from: all but its own and those it was made on', () => {

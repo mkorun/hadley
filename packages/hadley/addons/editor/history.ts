@@ -55,7 +55,9 @@ function versionOf(line: string): Version | undefined {
     ...(WHAT.includes(what as What) ? { what: what as What } : {}),
     ...(typeof agent === 'string' && agent.length <= 64 ? { agent } : {}),
     ...(typeof name === 'string' && name.trim() && name.length <= NAME_MAX ? { name } : {}),
-    ...(typeof after === 'number' ? { after } : {}),
+    // made on an older one, or on none it names: a version made on itself or a later one would never end a walk down
+    // the chain (review 2026-11-09: a log edited by hand hung the server)
+    ...(typeof after === 'number' && after < at ? { after } : {}),
     ...(typeof from === 'number' ? { from } : {}),
   }
 }
@@ -84,7 +86,13 @@ export function without(versions: readonly Version[], drop: ReadonlySet<Version>
     if (drop.has(version)) return []
     let parent = parentOf(versions, index)
     if (!parent || !drop.has(parent)) return [version]
-    while (parent && drop.has(parent)) parent = parentOf(versions, versions.indexOf(parent))
+    // each parent once: a chain that came round again ends (load() keeps none, this holds without it too)
+    const seen = new Set<Version>()
+    while (parent && drop.has(parent) && !seen.has(parent)) {
+      seen.add(parent)
+      parent = parentOf(versions, versions.indexOf(parent))
+    }
+    if (parent && drop.has(parent)) parent = undefined
     const { after: _gone, ...rest } = version
     return [parent ? { ...rest, after: parent.at } : rest]
   })
@@ -212,7 +220,13 @@ export function history(root: string): History {
       if (error.code === 'ENOENT') return ''
       throw error
     })
-    const versions = text.split('\n').flatMap((line) => versionOf(line) ?? [])
+    // in the order of their time, as they are written: one out of it is left out, so that the one before a version is
+    // older too
+    const versions: Version[] = []
+    for (const line of text.split('\n')) {
+      const version = versionOf(line)
+      if (version && (versions.length === 0 || version.at > versions.at(-1)!.at)) versions.push(version)
+    }
     logs.set(path, versions)
     return versions
   }

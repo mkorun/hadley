@@ -51,6 +51,16 @@ describe('a file of the bundle taken away', () => {
     assert.equal(wroteItself(join(bundle, 'gone.png')), true)
   })
 
+  it('overwrites nothing in the trash: the same file taken away twice keeps both', async () => {
+    // review 2026-11-09: within a second the second went to the first one's place
+    const first = (await (await trash({ block: 'b1', name: 'gone.png' })).json()) as { trash: string }
+    await writeFile(join(bundle, 'gone.png'), 'gone again')
+    const second = (await (await trash({ block: 'b1', name: 'gone.png' })).json()) as { trash: string }
+    assert.notEqual(second.trash, first.trash)
+    assert.equal(await readFile(join(root, first.trash), 'utf-8'), 'gone')
+    assert.equal(await readFile(join(root, second.trash), 'utf-8'), 'gone again')
+  })
+
   it('takes only a file the bundle’s list names: no other name, no page, nothing outside', async () => {
     assert.equal((await trash({ block: 'b1', name: '../../../outside.png' })).status, 404)
     assert.equal((await trash({ block: 'b1', name: 'a.md' })).status, 404)

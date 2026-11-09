@@ -50,6 +50,11 @@ async function refresh(): Promise<void> {
   held = false
   const [before, html] = await Promise.all([base, fetchPage()])
   if (html === before) return void document.dispatchEvent(new CustomEvent('hadley:refreshed'))
+  // a field opened while the page was fetched holds it too (review 2026-11-09: its block was swapped under it)
+  if (!document.dispatchEvent(new CustomEvent('hadley:refresh', { cancelable: true }))) {
+    held = true
+    return
+  }
   const kept = anchor()
   const [then, now] = [parse(before), parse(html)]
   document.dispatchEvent(new CustomEvent('hadley:swapping'))
