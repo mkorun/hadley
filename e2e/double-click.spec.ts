@@ -68,7 +68,10 @@ test('Ctrl+Enter saves the field; Enter is a new line in it', async ({ page, dev
 
 test('in edit mode a link in a block leads away only with Ctrl or Cmd; out of it as ever', async ({ page, dev }) => {
   const original = await readFile(dev.source, 'utf8')
-  await writeFile(dev.source, original.replace('Second block.', 'Second block with [a link](/panel/#away).'))
+  // built before the page is asked for, which else may be the page as it was
+  await dev.rebuild(() =>
+    writeFile(dev.source, original.replace('Second block.', 'Second block with [a link](/panel/#away).')),
+  )
   await page.goto(dev.origin + '/panel/')
   const link = page.getByRole('link', { name: 'a link', exact: true })
   await expect(link).toBeVisible({ timeout: 15_000 })

@@ -132,7 +132,9 @@ for (const [action, item, text, done] of [
     dev,
   }) => {
     const original = await readFile(dev.source, 'utf8')
-    await writeFile(dev.source, original.replace('Second block.', 'Second block.\n\nThird block.'))
+    // built before the page is asked for: asked within the moment before the watcher sees the change, it was the page
+    // as it was (Gemini Flash's run 20261109-2126-rofo)
+    await dev.rebuild(() => writeFile(dev.source, original.replace('Second block.', 'Second block.\n\nThird block.')))
     await page.goto(dev.origin + '/panel/')
     await expect(block(page, 'Third block')).toBeVisible()
     await mark(page)
