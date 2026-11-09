@@ -20,7 +20,8 @@ export const TEXT = {
     instruction: 'Instruction for {agent} (at most 500 characters)',
     instructionOptional: 'Anything else? (optional)',
     permissionNeeded: 'Approval needed',
-    undo: 'Undo',
+    undo: 'Take back',
+    undoTitle: 'Take back the proposal',
     rewriteShortcut: 'Ctrl+Shift+Enter',
     undoShortcut: 'Ctrl+Z',
     sent: 'Sent',
@@ -108,7 +109,8 @@ export const TEXT = {
     instruction: 'Anweisung für {agent} (höchstens 500 Zeichen)',
     instructionOptional: 'Noch etwas? (optional)',
     permissionNeeded: 'Freigabe nötig',
-    undo: 'Rückgängig',
+    undo: 'Zurücknehmen',
+    undoTitle: 'Vorschlag zurücknehmen',
     rewriteShortcut: 'Strg+Umschalt+Enter',
     undoShortcut: 'Strg+Z',
     sent: 'Gesendet',
@@ -795,7 +797,6 @@ function startPanel() {
     ),
     check: icon('<path d="M3.5 8.5l3 3 6-7"/>'),
     cross: icon('<path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/>'),
-    undo: icon('<path d="M5.5 5H10a3.25 3.25 0 0 1 0 6.5H6M7.5 3 5.5 5l2 2"/>'),
   }
   // the spinner of Claude Code, its glyphs in turn; with reduced motion one stays
   const SPINNER = ['·', '✢', '✳', '✶', '✻', '✽']
@@ -955,10 +956,10 @@ function startPanel() {
       document.execCommand('undo')
       undo.hidden = true
     })
+    // a word, not the ring of the pill's undo, which takes back a change of the page (Michael, 2026-11-09)
     undo.className = 'hc-undo'
-    undo.innerHTML = ICONS.undo
-    undo.setAttribute('aria-label', t.undo)
-    undo.title = `${t.undo} (${t.undoShortcut})`
+    undo.textContent = t.undo
+    undo.title = `${t.undoTitle} (${t.undoShortcut})`
     undo.hidden = true
     const row = {
       node,

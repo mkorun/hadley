@@ -7,7 +7,7 @@ import type { AddressInfo } from 'node:net'
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { history, KEEP, pruned, seen, startHistory, steps, type Version } from '../history.ts'
+import { history, KEEP, pruned, seen, startHistory, steps, undone, type Version } from '../history.ts'
 import { historyRoute } from '../history-routes.ts'
 import { pageHeads } from '../plugin.ts'
 
@@ -321,5 +321,13 @@ describe('undo and redo', () => {
     const older = [v(1, 'outside'), v(2, 'editor'), v(3, 'editor')]
     assert.deepEqual(of(steps(older, 3)), { undo: [3, 2], redo: undefined })
     assert.deepEqual(of(steps([], 1)), { undo: undefined, redo: undefined })
+  })
+
+  it('names the versions undo took the page away from: all but its own and those it was made on', () => {
+    const log = [v(1, 'outside'), v(2, 'editor', 1), v(3, 'editor', 2), v(4, 'editor', 1)]
+    assert.deepEqual([...undone(log, 2)].sort(), [3, 4])
+    // a change after an undo: what undo took away stays undone
+    assert.deepEqual([...undone(log, 4)].sort(), [2, 3])
+    assert.deepEqual([...undone(log, 3)].sort(), [4])
   })
 })

@@ -29,10 +29,11 @@ const get = (url: string): Promise<Response> => fetch(withLang(url), { cache: 'n
 /** The page's versions, newest first, the hash of its file as it is, and the version it stands at (undo, redo). */
 export const listVersions = (
   path: string,
-): Promise<Answer<{ current: string; at: number | undefined; versions: Version[] }>> =>
+): Promise<Answer<{ current: string; at: number | undefined; undone: Set<number>; versions: Version[] }>> =>
   asked(get(`/__hadley/history${query(path)}`), (data) => ({
     current: typeof data['current'] === 'string' ? data['current'] : '',
     at: typeof data['at'] === 'number' ? data['at'] : undefined,
+    undone: new Set(Array.isArray(data['undone']) ? (data['undone'] as number[]) : []),
     versions: Array.isArray(data['versions']) ? (data['versions'] as Version[]) : [],
   }))
 

@@ -71,6 +71,21 @@ function parentOf(versions: readonly Version[], index: number): Version | undefi
 }
 
 /**
+ * The versions undo took the page away from: all but the one it stands at and those it was made on, back to the
+ * first; the versions card shows them as undone (Michael, 2026-11-09). By their time.
+ */
+export function undone(versions: readonly Version[], at: number): Set<number> {
+  const path = new Set<Version>()
+  let index = versions.findIndex((v) => v.at === at)
+  while (index !== -1 && !path.has(versions[index]!)) {
+    path.add(versions[index]!)
+    const parent = parentOf(versions, index)
+    index = parent ? versions.indexOf(parent) : -1
+  }
+  return new Set(versions.filter((v) => !path.has(v)).map((v) => v.at))
+}
+
+/**
  * Where undo and redo lead from the version the page stands at (Michael, 2026-11-09: back and forth, the agent's
  * changes too, and no version for a step): the versions as a tree, each made on the one it names. Undo takes back the
  * change the page stands at and goes to the version it was made on; redo goes to the newest version made on the one

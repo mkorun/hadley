@@ -68,7 +68,7 @@ export function versions(on: {
       foot.replaceChildren()
       return
     }
-    const { current, at, versions: shown } = got.value
+    const { current, at, undone, versions: shown } = got.value
     // the page as it is: the version it stands at, which undo or redo may have moved from the newest
     const standing = shown.find((version) => version.at === at) ?? shown[0]
     const now = standing?.hash === current ? standing : undefined
@@ -76,6 +76,7 @@ export function versions(on: {
       ...rows(
         shown,
         now,
+        undone,
         (version, detail) =>
           void fill(detail, version, {
             path,

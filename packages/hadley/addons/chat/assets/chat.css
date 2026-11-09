@@ -432,9 +432,14 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
   cursor: pointer;
 }
 
+/* a word, as quiet as the field's Cancel */
 .hadley-rewrite .hc-undo {
-  width: 2rem;
-  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.hadley-rewrite .hc-undo:hover {
+  border-color: var(--he-border);
 }
 
 /* the star and the word "Rewrite"; only where the line is very narrow the star alone, and the instruction keeps its

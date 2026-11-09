@@ -8,12 +8,15 @@ import { described } from '../../core/changes.ts'
 import { day, time } from '../../core/when.ts'
 
 /** What a row says of its version: who made it and what, or that it is the page as it is. */
-export const said = (version: Version, isCurrent: boolean): string => (isCurrent ? T.current : described(version))
+export const said = (version: Version, isCurrent: boolean, away: boolean): string =>
+  isCurrent ? T.current : away ? `${described(version)} · ${T.undone}` : described(version)
 
 /** The rows of `versions` under their days; `open` fills a row's detail when it opens (a closed one is emptied). */
 export function rows(
   versions: readonly Version[],
   current: Version | undefined,
+  // the versions undo took the page away from (history.ts, undone)
+  undone: ReadonlySet<number>,
   open: (version: Version, detail: HTMLElement) => void,
 ): HTMLElement[] {
   const out: HTMLElement[] = []
@@ -41,6 +44,9 @@ export function rows(
       lastDay = label
     }
     const item = el('li', version.name ? 'hv-kept' : undefined)
+    // the page as it is stands out; what undo took it away from steps back
+    if (version === current) item.classList.add('hv-current')
+    else if (undone.has(version.at)) item.classList.add('hv-undone')
     const pick = el('button', 'hv-item')
     pick.type = 'button'
     pick.dataset['at'] = String(version.at)
@@ -52,7 +58,7 @@ export function rows(
     const when = el('span', 'hv-when')
     when.textContent = time(version.at)
     const what = el('span', 'hv-who')
-    what.textContent = said(version, version === current)
+    what.textContent = said(version, version === current, undone.has(version.at))
     pick.append(when, what)
     if (version.name) {
       const name = el('span', 'hv-name')

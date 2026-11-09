@@ -108,6 +108,27 @@ body:not(.hadley-edit-mode) .hadley-versions-toggle {
   border-color: var(--he-accent);
 }
 
+/* the page as it is: in the accent, so that one sees at once where one stands (Michael, 2026-11-09) */
+#hadley-versions .hv-day li.hv-current {
+  background: color-mix(in srgb, var(--he-accent) 9%, var(--he-bg-raised));
+  border-color: var(--he-accent);
+}
+
+#hadley-versions .hv-current .hv-who {
+  font-weight: 600;
+  color: var(--he-accent);
+}
+
+/* what undo took the page away from: still there, to redo or restore, but a step back */
+#hadley-versions .hv-day li.hv-undone > .hv-item {
+  opacity: 0.6;
+}
+
+#hadley-versions .hv-day li.hv-undone > .hv-item:hover,
+#hadley-versions .hv-day li.hv-undone > .hv-item[aria-expanded='true'] {
+  opacity: 1;
+}
+
 #hadley-versions .hv-item {
   display: flex;
   flex-wrap: wrap;

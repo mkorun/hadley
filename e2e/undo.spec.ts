@@ -45,7 +45,12 @@ test('undo goes back change by change, redo forth again; the buttons say what th
   const items = page.locator('#hadley-versions .hv-item')
   await expect(items).toHaveCount(3)
   await expect(items.nth(1)).toContainText('Current version')
-  await expect(items.nth(0)).toContainText('Editor · Block edited')
+  // the page as it is stands out, what undo took it away from says so (Michael, 2026-11-09)
+  const rows = page.locator('#hadley-versions .hv-day li')
+  await expect(rows.nth(1)).toHaveClass(/\bhv-current\b/)
+  await expect(rows.nth(0)).toHaveClass(/\bhv-undone\b/)
+  await expect(items.nth(0)).toContainText('Editor · Block edited · undone')
+  await expect(rows.nth(2)).not.toHaveClass(/\bhv-undone\b/)
   await page.getByRole('button', { name: 'Version history', exact: true }).click()
   // Ctrl+Z, while no field is open
   await page.keyboard.press('Control+z')

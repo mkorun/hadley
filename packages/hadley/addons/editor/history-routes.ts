@@ -9,7 +9,7 @@
 import { createHash } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { siteHistory, NAME_MAX, type Step } from './history.ts'
+import { siteHistory, undone, NAME_MAX, type Step } from './history.ts'
 import { t, type Lang } from './i18n.ts'
 import { oneAtATime, pageHeads, readBody } from './plugin.ts'
 
@@ -53,7 +53,11 @@ export async function historyRoute(req: IncomingMessage, res: ServerResponse, la
     if (!file) return (send(res, 404, { error: t(lang, 'pageUnknown') }), true)
     const current = hashOf(await readFile(file, 'utf-8'))
     // the version the page stands at, which undo or redo may have moved from the newest
-    send(res, 200, { current, at: await versions.standing(file), versions: await versions.list(file) })
+    const at = await versions.standing(file)
+    const listed = await versions.list(file)
+    // the versions undo took the page away from: the card shows them as undone
+    const away = at === undefined ? [] : [...undone([...listed].reverse(), at)]
+    send(res, 200, { current, at, undone: away, versions: listed })
     return true
   }
   if (req.method === 'GET' && url.pathname === '/__hadley/history/steps') {
