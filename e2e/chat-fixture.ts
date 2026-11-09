@@ -202,7 +202,7 @@ export const test = base.extend<{ theme: string; dev: Awaited<ReturnType<typeof 
       await dev.close()
     }
   },
-  // the browser holds the key, as after the link hadley dev prints (chat.js keeps it in the origin's storage); a test
+  // the browser holds the key, as after the link hadley dev prints (the chat keeps it in the origin's storage); a test
   // without it makes its own context
   page: async ({ page, dev }, use) => {
     const { key } = dev.key()

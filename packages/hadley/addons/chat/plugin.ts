@@ -30,9 +30,9 @@ import {
   type Permission,
 } from './protocol.ts'
 
-// the page of the link with the key (browser-key.ts): the key is kept by the panel's origin, chat.js reads it there
-// (review 2026-11-05): it keeps a key only once the server took it, so that no other page can replace the right one
-// with a wrong one, and it runs in no frame
+// the page of the link with the key (browser-key.ts): the key is kept by the panel's origin, the editor's chat reads
+// it there (editor/browser/features/chat/) (review 2026-11-05): it keeps a key only once the server took it, so that
+// no other page can replace the right one with a wrong one, and it runs in no frame
 const UNLOCK_PAGE = `<!doctype html><meta charset="utf-8"><title>hadley</title><script>
 const key = location.hash.slice(1)
 const go = () => location.replace('/')
@@ -176,13 +176,10 @@ export function chatPlugin(options: {
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const path = (req.url ?? '').split('?')[0]
-    if (req.method === 'GET' && (path === '/__hadley/chat.js' || path === '/__hadley/chat.css')) {
-      const name = path.endsWith('.js') ? 'chat.js' : 'chat.css'
-      const source = await readFile(new URL(`./assets/${name}`, import.meta.url), 'utf8')
-      res.writeHead(200, {
-        'Content-Type': name.endsWith('.js') ? 'application/javascript; charset=utf-8' : 'text/css; charset=utf-8',
-        'Cache-Control': 'no-store',
-      })
+    // the chat's stylesheet; its code is a feature of the editor's (editor/browser/features/chat/)
+    if (req.method === 'GET' && path === '/__hadley/chat.css') {
+      const source = await readFile(new URL('./assets/chat.css', import.meta.url), 'utf8')
+      res.writeHead(200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'no-store' })
       res.end(source)
       return
     }
@@ -366,7 +363,6 @@ export function chatPlugin(options: {
       server.middlewares.use((req, res, next) => {
         const path = (req.url ?? '').split('?')[0]
         if (
-          path !== '/__hadley/chat.js' &&
           path !== '/__hadley/chat.css' &&
           path !== '/__hadley/chat' &&
           !path.startsWith('/__hadley/chat/') &&

@@ -106,6 +106,8 @@ theBar.draw()
 theMenu.attach()
 // the dev server's code, older than what lies on the disk: it says so (server-code.ts)
 void checkServerCode((text) => theBar.warn(text))
+// the chat, where the page has it on (lib/dev-server.ts marks it): after the bar, whose control it shares
+if (document.querySelector('meta[name="hadley-chat"]')) void import('./features/chat/index.ts')
 holdLinks()
 // undo and redo in the pill, after the versions' button; a step is a change as any
 const theUndo = undo({

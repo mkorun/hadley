@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { it } from 'node:test'
-import { inlineParts, renderReply, replyParts, selectionOf, TEXT } from '../assets/chat.js'
+import { inlineParts, renderReply, replyParts, selectionOf } from '../../editor/browser/features/chat/reply.ts'
+import { TEXT } from '../../editor/browser/features/chat/texts.ts'
 
 it('has the same nonempty client texts in both languages', () => {
   assert.deepEqual(Object.keys(TEXT.en).sort(), Object.keys(TEXT.de).sort())

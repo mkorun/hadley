@@ -285,9 +285,12 @@ test('includes assets after the editor only when chat is enabled', async ({ page
     await page
       .locator('head script[src^="/__hadley/"]')
       .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('src'))),
-  ).toEqual(['/__hadley/editor/refresh/index.ts', editorEntry, '/__hadley/chat.js'])
+  ).toEqual(['/__hadley/editor/refresh/index.ts', editorEntry])
+  // the chat is a feature of the editor's, which loads it where the page is marked for it
+  await expect(page.locator('meta[name="hadley-chat"]')).toHaveCount(1)
+  await expect(page.locator('#hadley-chat-toggle')).toHaveCount(1)
   for (const [file, type] of [
-    ['chat.js', 'application/javascript'],
+    ['editor/features/chat/index.ts', 'javascript'],
     ['chat.css', 'text/css'],
   ]) {
     const response = await page.request.get(dev.origin + '/__hadley/' + file)
@@ -300,9 +303,7 @@ test('includes assets after the editor only when chat is enabled', async ({ page
     await writeFile(dev.config, (await readFile(dev.config, 'utf8')).replace('chat: true', 'chat: false'))
   })
   await page.goto(dev.origin + '/panel/')
-  await expect(
-    page.locator('script[src="/__hadley/chat.js"], link[href="/__hadley/chat.css"], #hadley-chat'),
-  ).toHaveCount(0)
+  await expect(page.locator('meta[name="hadley-chat"], link[href="/__hadley/chat.css"], #hadley-chat')).toHaveCount(0)
   await page.locator('[data-hadley-id]').first().click({ button: 'right' })
   await expect(page.locator('.hadley-rewrite')).toHaveCount(0)
 })
@@ -314,10 +315,10 @@ test('HTTP: real dev serves the assets and relays block context, replies and ver
   const page = await request.get(dev.origin + '/panel/')
   expect(page.status()).toBe(200)
   const html = await page.text()
-  expect(html.indexOf('/__hadley/chat.js')).toBeGreaterThan(html.indexOf(editorEntry))
+  expect(html).toContain('<meta name="hadley-chat"')
   expect(html).toContain('/__hadley/chat.css')
   for (const [asset, type] of [
-    ['chat.js', 'application/javascript'],
+    ['editor/features/chat/index.ts', 'javascript'],
     ['chat.css', 'text/css'],
   ]) {
     const response = await request.get(dev.origin + '/__hadley/' + asset)

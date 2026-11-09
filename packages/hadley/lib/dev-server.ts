@@ -277,17 +277,16 @@ export async function startDevServer({
           // We inject /@vite/client manually for HMR WebSocket (full-reload only).
           const serveHtml = async (res: any, filePath: string, status: number) => {
             const html = await readFile(filePath, 'utf-8')
-            // the stylesheet before the editor's module, which runs only once it has loaded, and the chat after it,
-            // which finds the editor's control (addons/editor/browser/main.ts); before them the soft refresh, which
-            // stands apart from the editor (addons/editor/browser/refresh/)
+            // the stylesheet before the editor's module, which runs only once it has loaded; before it the soft
+            // refresh, which stands apart from the editor (addons/editor/browser/refresh/). The chat is a feature of
+            // the editor's, which main.ts loads where the page is marked for it (features/chat/)
             const editorInject = editor
               ? '<link rel="stylesheet" href="/__hadley/editor/editor.css">' +
                 '<script type="module" src="/__hadley/editor/refresh/index.ts"></script>' +
                 '<script type="module" src="/__hadley/editor/main.ts"></script>'
               : ''
             const chatInject = chat
-              ? '<link rel="stylesheet" href="/__hadley/chat.css">' +
-                '<script type="module" src="/__hadley/chat.js"></script>'
+              ? '<link rel="stylesheet" href="/__hadley/chat.css">' + '<meta name="hadley-chat" content="on">'
               : ''
             const injected = html.replace(
               '</head>',

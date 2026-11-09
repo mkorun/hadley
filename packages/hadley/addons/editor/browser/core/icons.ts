@@ -1,4 +1,4 @@
-// One set of icons for the whole editor (and the chat, addons/chat/assets/chat.js): a 16 × 16 grid, lines of 1.6 with
+// One set of icons for the whole editor (and its chat, features/chat/): a 16 × 16 grid, lines of 1.6 with
 // round ends and joins, no fill, in currentColor, so that each takes the colour and contrast of its control.
 import { svg, type Shape } from './dom.ts'
 
@@ -35,6 +35,26 @@ const ICONS = {
   redo: [path('M12.2 9.5A4.5 4.5 0 1 1 11 4.7'), path('M12.5 2.5v3h-3')],
   // a version kept: a bookmark
   bookmark: [path('M4.5 2.5h7v11L8 10.8l-3.5 2.7z')],
+  // the chat (features/chat/): its bubble, closing it, larger and smaller, what an AI does, and done
+  chat: [path('M3 4.5h10v6H7l-3 2.5v-2.5H3z')],
+  cross: [path('M4.5 4.5l7 7M11.5 4.5l-7 7')],
+  expand: [path('M9.5 3H13v3.5M6.5 13H3V9.5M13 3l-4 4M3 13l4-4')],
+  shrink: [path('M13 6.5H9.5V3M3 9.5h3.5V13M9.5 6.5 13 3M6.5 9.5 3 13')],
+  // a large and a small star, as a sign of what an AI does; eight rays read as "loading" (Michael, 2026-11-09)
+  sparkle: [
+    [
+      'path',
+      { fill: 'currentColor', d: 'M7 2.5c.4 2.6 1.4 3.6 4 4-2.6.4-3.6 1.4-4 4-.4-2.6-1.4-3.6-4-4 2.6-.4 3.6-1.4 4-4z' },
+    ],
+    [
+      'path',
+      {
+        fill: 'currentColor',
+        d: 'M12.5 10.5c.2 1 .5 1.3 1.5 1.5-1 .2-1.3.5-1.5 1.5-.2-1-.5-1.3-1.5-1.5 1-.2 1.3-.5 1.5-1.5z',
+      },
+    ],
+  ],
+  check: [path('M3.5 8.5l3 3 6-7')],
 } satisfies Record<string, readonly Shape[]>
 
 export type IconName = keyof typeof ICONS
