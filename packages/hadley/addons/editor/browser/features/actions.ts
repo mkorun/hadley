@@ -1,5 +1,7 @@
 // What the block menu changes: merge, move and delete a block. Each animates first, then asks the server
-// (plugin.ts), which writes the page's file; the page reloads with it, and until then nothing else changes (ADR-14).
+// (plugin.ts), which writes the page's file; the page is brought up to date with it (../refresh/), and until then
+// nothing else changes (ADR-14). The animation's styles stay on the blocks until then, and go as the page changes:
+// a reload took them once, the blocks that stay now keep their elements (Michael, 2026-11-09).
 // Each action handles every failure itself, the request and everything before it.
 import { answer, post, serverError } from '../core/request.ts'
 import { state, clearHash, failAction } from '../core/state.ts'
@@ -10,11 +12,20 @@ export interface Actions {
   merge(block: HTMLElement, direction: Direction): Promise<void>
   move(block: HTMLElement, direction: Direction): Promise<void>
   remove(block: HTMLElement): Promise<void>
+  /** the animations' styles taken off the blocks, as the page changes in place */
+  settle(): void
 }
 
 const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)'
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 const blocks = () => [...document.querySelectorAll<HTMLElement>('[data-hadley-id]')]
+
+// the blocks an animation styled, until the page changes
+const styled = new Set<HTMLElement>()
+const style = (element: HTMLElement, properties: Partial<Record<'transition' | 'transform' | 'opacity', string>>) => {
+  styled.add(element)
+  Object.assign(element.style, properties)
+}
 
 async function animateBlockSwap(blockEl: HTMLElement, direction: Direction) {
   const allBlocks = blocks()
@@ -60,16 +71,16 @@ async function animateBlockSwap(blockEl: HTMLElement, direction: Direction) {
   const DURATION = 300
 
   lo.getBoundingClientRect() // reflow: the transition starts from the initial position
-  lo.style.transition = `transform ${DURATION}ms ${EASE}`
-  hi.style.transition = `transform ${DURATION}ms ${EASE}`
-  lo.style.transform = `translateY(${loTarget - loRect.top}px)`
-  hi.style.transform = `translateY(${hiTarget - hiRect.top}px)`
+  style(lo, { transition: `transform ${DURATION}ms ${EASE}` })
+  style(hi, { transition: `transform ${DURATION}ms ${EASE}` })
+  style(lo, { transform: `translateY(${loTarget - loRect.top}px)` })
+  style(hi, { transform: `translateY(${hiTarget - hiRect.top}px)` })
 
   if (thirdEl && thirdRect && thirdTarget !== undefined) {
     const delta = thirdTarget - thirdRect.top
     if (Math.abs(delta) > 0.5) {
-      thirdEl.style.transition = `transform ${DURATION}ms ${EASE}`
-      thirdEl.style.transform = `translateY(${delta}px)`
+      style(thirdEl, { transition: `transform ${DURATION}ms ${EASE}` })
+      style(thirdEl, { transform: `translateY(${delta}px)` })
     }
   }
 
@@ -95,9 +106,9 @@ async function animateBlockMerge(blockEl: HTMLElement, direction: Direction) {
       : neighborRect.top - blockRect.bottom - 2 * OUTLINE_OFFSET // positive → downwards
 
   const DURATION = 220
-  blockEl.style.transition = `transform ${DURATION}ms ${EASE}`
+  style(blockEl, { transition: `transform ${DURATION}ms ${EASE}` })
   blockEl.getBoundingClientRect() // reflow
-  blockEl.style.transform = `translateY(${translateY}px)`
+  style(blockEl, { transform: `translateY(${translateY}px)` })
 
   await wait(DURATION)
 }
@@ -117,15 +128,14 @@ async function animateBlockDelete(blockEl: HTMLElement) {
   const DURATION = 270
 
   // Deleted block: slide out to the left and fade out
-  blockEl.style.transition = `opacity ${DURATION}ms ease, transform ${DURATION}ms ease`
+  style(blockEl, { transition: `opacity ${DURATION}ms ease, transform ${DURATION}ms ease` })
   blockEl.getBoundingClientRect() // reflow
-  blockEl.style.opacity = '0'
-  blockEl.style.transform = 'translateX(-18px)'
+  style(blockEl, { opacity: '0', transform: 'translateX(-18px)' })
 
   // Following blocks: close the gap
   blocksAfter.forEach((other) => {
-    other.style.transition = `transform ${DURATION}ms ${EASE}`
-    other.style.transform = `translateY(-${gapToFill}px)`
+    style(other, { transition: `transform ${DURATION}ms ${EASE}` })
+    style(other, { transform: `translateY(-${gapToFill}px)` })
   })
 
   await wait(DURATION)
@@ -176,6 +186,14 @@ export function actions(on: { closeMenu(): void; lock(): void; confirm(): Promis
   }
 
   return {
+    settle() {
+      // at once, with no transition back: the page's new order is already where the animation ended
+      for (const element of styled) {
+        for (const name of ['transition', 'transform', 'opacity']) element.style.removeProperty(name)
+        if (element.style.length === 0) element.removeAttribute('style')
+      }
+      styled.clear()
+    },
     merge: (blockEl, direction) =>
       change(
         blockEl,

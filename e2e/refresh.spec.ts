@@ -3,7 +3,7 @@
 // anything but Markdown changed; the editor locked until the page is up to date, and freed with a note when the
 // rebuild fails.
 import { test, expect } from './chat-fixture.ts'
-import { block, editMode, openBlock } from './editor.ts'
+import { block, editMode, fromMenu, openBlock } from './editor.ts'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Page } from '@playwright/test'
@@ -119,3 +119,35 @@ test('a rebuild that fails frees the editor and says so; the page stays as it wa
     await writeFile(dev.config, before)
   }
 })
+
+// Michael, 2026-11-09: after a block was moved, a paragraph lay over another: the blocks that stay kept the styles of
+// the action's animation, which a reload used to clear
+for (const [action, item, text, done] of [
+  ['moved', 'Move block down', 'First words', 'Second block.\n\nFirst words'],
+  ['merged', 'Merge with block below', 'First words', 'First words of the attached block.\nSecond block.'],
+  ['deleted', 'Delete block', 'Second block', 'First words of the attached block.\n'],
+] as const) {
+  test(`a block ${action}: the blocks that stay keep no style of the animation, and none overlaps another`, async ({
+    page,
+    dev,
+  }) => {
+    const original = await readFile(dev.source, 'utf8')
+    await writeFile(dev.source, original.replace('Second block.', 'Second block.\n\nThird block.'))
+    await page.goto(dev.origin + '/panel/')
+    await expect(block(page, 'Third block')).toBeVisible()
+    await mark(page)
+    await fromMenu(page, text, item)
+    if (action === 'deleted')
+      await page.getByRole('dialog', { name: 'Delete block?' }).getByRole('button', { name: 'Delete' }).click()
+    await expect.poll(() => readFile(dev.source, 'utf8')).toContain(done)
+    // the page brought up to date: the animation's styles gone with it (a reload took them once)
+    await expect(page.locator('[data-hadley-id][style]')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Toggle edit mode', exact: true })).toBeEnabled()
+    expect(await marked(page)).toBe(true)
+    const boxes = await page.evaluate(
+      `[...document.querySelectorAll('[data-hadley-id]')].map((b) => [b.getBoundingClientRect().top, b.getBoundingClientRect().bottom])`,
+    )
+    const sorted = (boxes as [number, number][]).toSorted((a, b) => a[0] - b[0])
+    for (let i = 1; i < sorted.length; i++) expect(sorted[i]![0]).toBeGreaterThanOrEqual(sorted[i - 1]![1] - 0.5)
+  })
+}

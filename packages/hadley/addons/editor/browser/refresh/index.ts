@@ -6,6 +6,7 @@
 // What it says to the editor and to themes, as document events:
 // - `hadley:refresh` (cancelable) before it changes the page; the editor holds it while a field is open, and lets it
 //   go with `hadley:refresh-release`
+// - `hadley:swapping` right before it changes the page, in the same task: what an animation left on the blocks goes
 // - `hadley:refreshed` once it is done, whether the page changed or not
 // - `hadley:content-updated` with `detail.added`, the new elements, when it changed (docs/themes.md)
 // - `hadley:build-failed` when the rebuild failed
@@ -48,7 +49,9 @@ async function refresh(): Promise<void> {
   const [before, html] = await Promise.all([base, fetchPage()])
   if (html === before) return void document.dispatchEvent(new CustomEvent('hadley:refreshed'))
   const kept = anchor()
-  const result = swap(document, parse(before), parse(html))
+  const [then, now] = [parse(before), parse(html)]
+  document.dispatchEvent(new CustomEvent('hadley:swapping'))
+  const result = swap(document, then, now)
   if (result.kind === 'reload') {
     console.info(`hadley: reloading, ${result.why}`)
     return location.reload()

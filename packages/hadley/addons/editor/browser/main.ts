@@ -55,6 +55,8 @@ const theActions = actions({
   lock: () => theUpdating.wait(),
   confirm: confirmDelete,
 })
+// the animations' styles go in the same task as the page changes, so that nothing between is painted
+document.addEventListener('hadley:swapping', () => theActions.settle())
 const theMenu = menu({
   add(block) {
     void theField.open(block.dataset['hadleyId']!, block, { below: true })
