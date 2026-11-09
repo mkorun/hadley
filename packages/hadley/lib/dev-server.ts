@@ -53,6 +53,18 @@ export async function startDevServer({
   const siteTmp = join(siteDir, outputDir)
 
   let shuttingDown = false
+  // A page asked for while a rebuild is due or running waits for its pages: a reload in that window (the editor's,
+  // after a file changed under it, edits.ts) showed the page as it was, and the rebuild's message reached no page yet.
+  let pagesDue = false
+  const pagesWaiting: (() => void)[] = []
+  const PAGES_WAIT = 30_000
+  const pagesReady = () =>
+    pagesDue
+      ? new Promise<void>((resolve) => {
+          pagesWaiting.push(resolve)
+          setTimeout(resolve, PAGES_WAIT)
+        })
+      : Promise.resolve()
 
   const isTTY = process.stdout.isTTY ?? false
   const dim = isTTY ? '\x1b[2m' : ''
@@ -319,6 +331,7 @@ export async function startDevServer({
             const normalized = decodeURIComponent(url).replace(/^\//, '').replace(/\/$/, '')
             const filePath = join(siteTmp, normalized, 'index.html')
             if (!resolve(filePath).startsWith(resolve(siteTmp) + sep)) return next()
+            await pagesReady()
             try {
               await access(filePath, constants.F_OK)
               await serveHtml(res, filePath, 200)
@@ -414,8 +427,19 @@ export async function startDevServer({
     if (file === undefined) changedAll = true
     else changedFiles.add(file)
     if (shuttingDown) return
+    pagesDue = true
     if (buildTimer) clearTimeout(buildTimer)
-    buildTimer = setTimeout(() => void runBuild(reason), 150)
+    buildTimer = setTimeout(() => {
+      buildTimer = null
+      void runBuild(reason)
+    }, 150)
+  }
+
+  /** The pages stand, built or not: what waits for them goes on, unless another rebuild is due already. */
+  function pagesSettled() {
+    if (buildTimer || buildQueued) return
+    pagesDue = false
+    for (const done of pagesWaiting.splice(0)) done()
   }
 
   // Reports its own failures, so callers start it without awaiting.
@@ -444,15 +468,19 @@ export async function startDevServer({
         deferSearch: true,
       })
       lastBuildOk = true
+      pagesSettled()
       if (!shuttingDown) {
         vite.moduleGraph.invalidateAll()
         if (editor && soft) vite.ws.send({ type: 'custom', event: 'hadley:built' })
-        else vite.ws.send({ type: 'full-reload' })
+        // Without an open page Vite keeps the reload for the next that connects, which would load twice and cut off
+        // its scripts while they load; a page asked for meanwhile waits for this build (pagesReady) instead.
+        else if (vite.ws.clients.size) vite.ws.send({ type: 'full-reload' })
       }
       // the page shows first; the next build waits for the search index (buildRunning)
       await built.search?.()
     } catch (err) {
       lastBuildOk = false
+      pagesSettled()
       logger.failed(err, siteDir)
       // the editor waits for the page after a change of its own: it is free again and says so
       if (editor && !shuttingDown) vite.ws.send({ type: 'custom', event: 'hadley:build-failed' })

@@ -25,6 +25,8 @@ const fetchPage = async (): Promise<string> => {
 
 // the page as the server sent it: what the live page came from
 let base: Promise<string> = fetchPage()
+// a load cut off by a reload is no error of the page; a refresh that awaits it still meets the failure
+base.catch(() => {})
 let held = false
 let running: Promise<void> | undefined
 

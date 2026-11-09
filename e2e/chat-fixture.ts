@@ -8,7 +8,7 @@ import { createServer } from 'node:net'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { init } from '../packages/hadley/lib/init.ts'
-import { events, Inbox, post } from '../packages/hadley/addons/chat/tests/support.ts'
+import { events, post } from '../packages/hadley/addons/chat/tests/support.ts'
 import { parseRendezvous } from '../packages/hadley/addons/chat/rendezvous.ts'
 import { browserKey } from '../packages/hadley/addons/chat/browser-key.ts'
 
@@ -122,23 +122,8 @@ async function startSite(theme: string) {
         { timeout: 45_000, message: 'hadley dev builds the chat page' },
       )
       .toBe(true)
-    // Vite buffers the startup full-reload until its first client, even after the build has finished.
-    // Consume it here so the test's first navigation cannot receive that stale reload.
-    const messages = new Inbox<MessageEvent>()
-    const socket = new WebSocket(origin.replace(/^http/, 'ws'), 'vite-hmr')
-    socket.addEventListener('message', (event) => messages.push(event))
-    try {
-      await messages.next((event) => {
-        const data: unknown = JSON.parse(String(event.data))
-        return data !== null && typeof data === 'object' && 'type' in data && data.type === 'full-reload'
-      })
-    } finally {
-      if (socket.readyState !== WebSocket.CLOSED) {
-        const closed = once(socket, 'close', { signal: AbortSignal.timeout(5000) })
-        socket.close()
-        await closed
-      }
-    }
+    // hadley dev sends no reload while no page is open (lib/dev-server.ts), so Vite keeps none for the test's first
+    // page
   }
   const stop = async () => {
     child.kill('SIGTERM')

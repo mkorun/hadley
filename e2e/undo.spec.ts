@@ -57,9 +57,12 @@ test('undo goes back change by change, redo forth again; the buttons say what th
   await expect.poll(() => readFile(dev.source, 'utf8')).toBe(original)
   await expect(block(page, 'First words of the attached block.')).toBeVisible()
 
-  // forth again: Ctrl+Shift+Z, then Ctrl+Y
+  // forth again: Ctrl+Shift+Z, then Ctrl+Y; each once the button stands again, as the keys do what it does (a slow
+  // browser in a VM pressed them before, 2026-11-09)
+  await expect(redo).toBeEnabled()
   await page.keyboard.press('Control+Shift+z')
   await expect(block(page, 'First words, once.')).toBeVisible()
+  await expect(redo).toBeEnabled()
   await page.keyboard.press('Control+y')
   await expect(block(page, 'First words, twice.')).toBeVisible()
   await expect(redo).toBeDisabled()
