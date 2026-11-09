@@ -348,10 +348,12 @@ for (const lang of ['en', 'de']) {
       await channel.send({ event: 'suggestion', data: { id: 'suggest2', to: selected.id, text: 'Warm' } })
       await expect(field).toHaveValue('Warmcement.')
 
-      // 2026-11-05: a way and a word of one's own at once, sent with Ctrl+Enter from the editing field
+      // 2026-11-05: a way and a word of one's own at once, sent from the editing field; since 2026-11-09 with
+      // Ctrl+Shift+Enter, as Ctrl+Enter saves the block
       await row.getByRole('combobox', { name: t.direction, exact: true }).selectOption({ label: t.shorter })
       await custom.fill('Keep the dry tone.')
-      await field.press('Control+Enter')
+      await field.press('Control+Shift+Enter')
+      await expect(field).toBeVisible()
       const both = (await channel.inbox.next((entry) => entry.event === 'message')).data as {
         direction: string
         instruction: string

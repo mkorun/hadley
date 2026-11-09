@@ -74,7 +74,7 @@ const de = {
   save: 'Speichern',
   frontMatter: 'Front Matter',
   escToCancel: 'Abbrechen (Esc)',
-  saveShortcut: 'Speichern (Strg+S)',
+  saveShortcut: 'Speichern (Strg+Enter oder Strg+S)',
   parseError: (msg: string) => `Parse-Fehler — bitte Text korrigieren:\n\n${msg}`,
   parseErrorElsewhere: (msg: string) =>
     `Es gibt außerdem einen vorbestehenden Fehler an anderer Stelle im Dokument (nicht in diesem Text):\n\n${msg}`,
@@ -168,7 +168,7 @@ const en: typeof de = {
   save: 'Save',
   frontMatter: 'Front matter',
   escToCancel: 'Cancel (Esc)',
-  saveShortcut: 'Save (Ctrl+S)',
+  saveShortcut: 'Save (Ctrl+Enter or Ctrl+S)',
   parseError: (msg) => `Parse error — please fix the text:\n\n${msg}`,
   parseErrorElsewhere: (msg) =>
     `There is also a pre-existing error elsewhere in the document (not in this text):\n\n${msg}`,

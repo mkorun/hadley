@@ -21,7 +21,7 @@ export const TEXT = {
     instructionOptional: 'Anything else? (optional)',
     permissionNeeded: 'Approval needed',
     undo: 'Undo',
-    rewriteShortcut: 'Ctrl+Enter',
+    rewriteShortcut: 'Ctrl+Shift+Enter',
     undoShortcut: 'Ctrl+Z',
     sent: 'Sent',
     delivered: 'Delivered',
@@ -109,7 +109,7 @@ export const TEXT = {
     instructionOptional: 'Noch etwas? (optional)',
     permissionNeeded: 'Freigabe nötig',
     undo: 'Rückgängig',
-    rewriteShortcut: 'Strg+Enter',
+    rewriteShortcut: 'Strg+Umschalt+Enter',
     undoShortcut: 'Strg+Z',
     sent: 'Gesendet',
     delivered: 'Zugestellt',
@@ -978,8 +978,11 @@ function startPanel() {
       instruction = custom.value
       save()
     })
+    // in the instruction Enter asks; in the block's field Ctrl+Shift+Enter, as Ctrl+Enter saves the block (Michael,
+    // 2026-11-09)
     const sendOnEnter = (key, plain) => {
-      if (key.key !== 'Enter' || key.isComposing || (!plain && !(key.ctrlKey || key.metaKey))) return
+      const chord = (key.ctrlKey || key.metaKey) && key.shiftKey
+      if (key.key !== 'Enter' || key.isComposing || (!plain && !chord)) return
       key.preventDefault()
       ask()
     }

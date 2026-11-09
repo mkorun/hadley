@@ -1,7 +1,9 @@
 // The field a block is edited in: loaded from the server (plugin.ts), in the page's flow after the block (ADR-10), and
-// saved back to the page's file, after which the page is brought up to date (ADR-3, ../refresh/). Ctrl+S (Cmd+S on a
-// Mac) saves it, Escape (main.ts) closes it. The chat (addons/chat) hears of it by `hadley:editor-open` and
+// saved back to the page's file, after which the page is brought up to date (ADR-3, ../refresh/). Ctrl+Enter or Ctrl+S
+// (Cmd on a Mac) saves it, Escape (main.ts) closes it; Enter is a new line, which Markdown blocks need (lists, tables,
+// code). The chat (addons/chat) hears of it by `hadley:editor-open` and
 // `hadley:editor-close`.
+import { wordIn, type Clicked } from '../core/word.ts'
 import { el, fitTextarea } from '../core/dom.ts'
 import { answer, post, serverError } from '../core/request.ts'
 import { state, clearHash, failAction } from '../core/state.ts'
@@ -12,6 +14,8 @@ export interface OpenOptions {
   below?: boolean
   /** where the field goes, else right after the block */
   place?: ((wrapper: HTMLElement) => void) | undefined
+  /** the word a double click opened it on: selected in the field, else the cursor at the end */
+  word?: Clicked | undefined
 }
 
 export interface Field {
@@ -62,7 +66,7 @@ export function field(parts: Parts): Field {
     blockId: string,
     blockEl: HTMLElement,
     text: string,
-    { after = null, place }: { after?: string | null; place?: ((wrapper: HTMLElement) => void) | undefined } = {},
+    { after = null, place, word }: Pick<OpenOptions, 'place' | 'word'> & { after?: string | null } = {},
   ) {
     state.block = blockId
     state.after = after
@@ -102,7 +106,9 @@ export function field(parts: Parts): Field {
     state.textarea = textarea
 
     textarea.focus()
-    textarea.selectionStart = textarea.selectionEnd = textarea.value.length
+    const at = word ? wordIn(textarea.value, word) : -1
+    if (word && at !== -1) textarea.setSelectionRange(at, at + word.word.length)
+    else textarea.selectionStart = textarea.selectionEnd = textarea.value.length
 
     textarea.addEventListener('input', () => fitTextarea(textarea))
     fitTextarea(textarea)
@@ -133,7 +139,7 @@ export function field(parts: Parts): Field {
     )
   }
 
-  async function open(blockId: string, blockEl: HTMLElement, { below = false, place }: OpenOptions = {}) {
+  async function open(blockId: string, blockEl: HTMLElement, { below = false, place, word }: OpenOptions = {}) {
     if (state.block) return
     parts.closeMenu()
 
@@ -162,7 +168,7 @@ export function field(parts: Parts): Field {
       // a new block below is an edit of the block above: its text, a blank line, and what is written in the empty
       // field; the server checks it as any edit (hash, Markanto, nothing else changed)
       if (below) openEditor(blockId, blockEl, '', { after: text })
-      else openEditor(blockId, blockEl, text, { place })
+      else openEditor(blockId, blockEl, text, { place, word })
     } catch (error) {
       // openEditor sets the open block first; without this reset no block could be edited any more.
       close()
@@ -222,9 +228,11 @@ export function field(parts: Parts): Field {
     }
   }
 
-  // Ctrl+S (Cmd+S on a Mac) saves the open block, not the page
+  // Ctrl+S or Ctrl+Enter (Cmd on a Mac) saves the open block, not the page
   document.addEventListener('keydown', (e) => {
-    if (!state.block || !(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 's') return
+    // Ctrl+Shift+Enter is the chat's: it rewrites the block (addons/chat)
+    const saves = e.key.toLowerCase() === 's' || (e.key === 'Enter' && !e.shiftKey)
+    if (!state.block || !(e.ctrlKey || e.metaKey) || !saves) return
     e.preventDefault()
     state.wrapper?.querySelector<HTMLElement>('.hadley-save-btn')?.click()
   })

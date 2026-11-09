@@ -16,6 +16,7 @@ import { bundleFiles } from './features/files.ts'
 import { frames } from './features/frames.ts'
 import { limaTable } from './features/front-matter.ts'
 import { heads } from './features/heads.ts'
+import { holdLinks } from './features/links.ts'
 import { menu } from './features/menu.ts'
 import { acceptPictures } from './features/pictures.ts'
 import { updating } from './features/updating.ts'
@@ -61,8 +62,8 @@ const theMenu = menu({
   add(block) {
     void theField.open(block.dataset['hadleyId']!, block, { below: true })
   },
-  edit(block) {
-    void theField.open(block.dataset['hadleyId']!, block)
+  edit(block, word) {
+    void theField.open(block.dataset['hadleyId']!, block, { word })
   },
   merge: (block, direction) => void theActions.merge(block, direction),
   move: (block, direction) => void theActions.move(block, direction),
@@ -96,6 +97,7 @@ const theVersions = versions({
 
 theBar.draw()
 theMenu.attach()
+holdLinks()
 const theHeads = heads({
   edit: (blockId, element, options) => void theField.open(blockId, element, options),
   badge: (badge) => theFrames.badge(badge),

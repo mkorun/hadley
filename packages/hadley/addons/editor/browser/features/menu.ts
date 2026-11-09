@@ -2,6 +2,8 @@
 // at it, or ArrowDown on it, opens the slide-out menu (#hadley-block-menu): a new block below, merge with the block
 // above or below, ↑ ↓, 🗑. A right click on a block edits it. Void elements (<hr>) get their trigger as a sibling,
 // shown by JS.
+import { clickedWord } from '../core/caret.ts'
+import type { Clicked } from '../core/word.ts'
 import { el } from '../core/dom.ts'
 import { icon, type IconName } from '../core/icons.ts'
 import { state, isEditMode } from '../core/state.ts'
@@ -39,7 +41,7 @@ export function menu(on: {
   merge(block: HTMLElement, direction: Direction): void
   move(block: HTMLElement, direction: Direction): void
   remove(block: HTMLElement): void
-  edit(block: HTMLElement): void
+  edit(block: HTMLElement, word?: Clicked): void
 }): Menu {
   let menuBlockEl: HTMLElement | null = null // block whose menu is open
   let menuTriggerEl: HTMLElement | null = null // trigger button of the open menu
@@ -321,6 +323,15 @@ export function menu(on: {
         if (menuBlockEl !== block) return
         if (contains(e.relatedTarget) || e.relatedTarget === blockMenu) return
         scheduleMenuClose()
+      })
+
+      // A double click opens it too, the cursor on the word clicked (Michael, 2026-11-09); in edit mode only, so that
+      // reading still selects words
+      block.addEventListener('dblclick', (e) => {
+        if (!isEditMode() || state.block || state.locked) return
+        if (e.target instanceof Element && e.target.closest('.hadley-trigger')) return
+        e.preventDefault()
+        if (block.dataset['hadleyId']) on.edit(block, clickedWord(block))
       })
 
       // Right click opens the editor (bound directly, bypasses stopPropagation in theme JS)

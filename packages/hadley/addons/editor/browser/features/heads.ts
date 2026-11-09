@@ -3,6 +3,7 @@
 // hadley takes the title and subtitle out of the text, and the theme shows them where it likes; in a dev build it marks
 // them, data-hadley-head="title" and "subtitle" (docs/themes.md). The dev server names the block that edits each, its
 // line of Markdown or the front matter that gives it; a right click opens it as any block, without a block menu.
+import { clickedWord } from '../core/caret.ts'
 import { el } from '../core/dom.ts'
 import { icon } from '../core/icons.ts'
 import { state, isEditMode } from '../core/state.ts'
@@ -63,6 +64,13 @@ export function heads(on: {
         e.preventDefault()
         e.stopPropagation()
         on.edit(now, element)
+      })
+      // a double click, as on a block, the cursor on the word clicked
+      element.addEventListener('dblclick', (e) => {
+        const now = ids[which]
+        if (!free() || now === undefined) return
+        e.preventDefault()
+        on.edit(now, element, { word: clickedWord(element) })
       })
     }
     // the front matter, from a badge right above the title, shown in edit mode only

@@ -61,7 +61,8 @@ hadley dev
 ```
 
 builds the site, watches its files and serves it at <http://localhost:8000>, reloading the browser as a file changes.
-With `dev: editor: true` in `config.lima`, a right click on a block of a page edits it in the browser.
+With `dev: editor: true` in `config.lima`, a right click on a block of a page edits it in the browser, and in edit
+mode a double click.
 [docs/dev-server.md](dev-server.md) has the rest: the editor, another port, HTTPS, a phone on the same network.
 
 ## The first page
