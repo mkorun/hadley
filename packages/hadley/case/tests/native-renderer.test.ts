@@ -602,3 +602,22 @@ describe('native renderer: the theme’s heading', () => {
     assert.deepEqual(result.toc, [{ id: 'über-uns', level: 2, text: 'Über uns' }])
   })
 })
+
+// 2026-11-09 (Michael's workday): a picture of the bundle carried no block editor id, so it had no frame and opened no
+// field, while a drawing and a picture from elsewhere did
+describe('a picture of the bundle as a block of the editor', () => {
+  for (const [what, source] of [
+    ['as it is', '![A desk](desk.png)\n'],
+    ['sized', '<m data-size=50%>![A desk](desk.png)</m>\n'],
+    ['native', '<m data-size=native>![A desk](desk.png)</m>\n'],
+    ['captioned', '![A desk](desk.png)\\\n*A caption.*\n'],
+  ]) {
+    test(`carries the block's id, ${what}`, () => {
+      const { html } = renderBuilt(source, { ...options, getBlockId: () => 'block-1' })
+      assert.equal((html.match(/data-hadley-id="block-1"/g) ?? []).length, 1, html)
+    })
+  }
+  test('carries no id without the editor', () => {
+    assert.ok(!renderBuilt('![A desk](desk.png)\n', options).html.includes('data-hadley-id'))
+  })
+})

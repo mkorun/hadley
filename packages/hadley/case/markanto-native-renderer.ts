@@ -240,7 +240,9 @@ const readOf = (ctx: Ctx, destination: string, use: Use): Destination =>
 
 /**
  * A bundle image from what was built for it: a figure with a picture, or a native-size img (a figure when captioned),
- * or a visible comment on a draft whose image could not be built. A caption is rendered HTML; a title is prose.
+ * or a visible comment on a draft whose image could not be built. A caption is rendered HTML; a title is prose. `dhi`
+ * is the block editor's id, where the image is a block of its own (2026-11-09: a picture of the bundle had none, and
+ * so no frame and no field).
  */
 function bundleImageHtml(
   file: Built,
@@ -248,6 +250,7 @@ function bundleImageHtml(
   meta: { lang?: string; data?: Record<string, string> },
   ctx: Ctx,
   sizing = true,
+  dhi: Attrs = [],
 ): string {
   if (file.kind === 'failed') return notBuilt(file.reason)
   if (file.kind === 'file') throw new Error(`an image was built as a file: ${file.href}`)
@@ -264,14 +267,15 @@ function bundleImageHtml(
     ]
     const caption = image.caption ?? (!dim && image.title ? text(image.title, ctx) : undefined)
     return caption
-      ? `${startTag('figure', metaAttrs(meta))}\n${startTag('img', [...img, ...LAZY])}\n<figcaption>${caption}</figcaption>\n</figure>`
-      : startTag('img', [...img, ...metaAttrs(meta), ...LAZY])
+      ? `${startTag('figure', [...metaAttrs(meta), ...dhi])}\n${startTag('img', [...img, ...LAZY])}\n<figcaption>${caption}</figcaption>\n</figure>`
+      : startTag('img', [...img, ...metaAttrs(meta), ...LAZY, ...dhi])
   }
   const caption = image.caption ?? (image.title ? text(image.title, ctx) : undefined)
   const figure = startTag('figure', [
     ...metaAttrs(meta, sizing),
     ['data-ai-generated', file.ai ? true : undefined],
     ['data-ai-label', file.ai?.badge],
+    ...dhi,
   ])
   const figcaption = caption ? `\n<figcaption>${caption}</figcaption>` : ''
   return `${figure}\n${pictureHtml(file.picture, alt, LAZY)}${figcaption}\n</figure>`
@@ -726,7 +730,7 @@ function renderImage(block: Extract<DocumentBlock, { type: 'imageBlock' }>, ctx:
   const meta = imageMeta(block.attrs, ctx)
   if ('kind' in file) {
     const image = { alt, title: block.title || undefined, caption: captionHtml }
-    return bundleImageHtml(file, image, meta, ctx)
+    return bundleImageHtml(file, image, meta, ctx, true, dhi)
   }
   if ('failed' in file) return notBuilt(file.failed)
   const dim = attr === 'native' && block.title ? DIMENSIONS.exec(block.title) : null
