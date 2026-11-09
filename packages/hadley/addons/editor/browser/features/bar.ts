@@ -13,6 +13,10 @@ export interface Bar {
   draw(): void
   /** the toggle while the page reloads after a change (ADR-14) */
   reloading(): void
+  /** a control of another feature, in the pill after the toggle (the versions, features/versions.ts) */
+  add(control: HTMLElement): void
+  /** a card of another feature, above the pill, as the chat's (features/versions.ts) */
+  place(card: HTMLElement): void
 }
 
 /** The bar, in the body; `leave` runs when edit mode turns off, `changed` after each switch. */
@@ -134,6 +138,12 @@ export function bar(on: { leave(): void; changed(): void }): Bar {
     reloading() {
       toggle.textContent = T.reloading
       toggle.disabled = true
+    },
+    add(control) {
+      pill.insertBefore(control, langBtn)
+    },
+    place(card) {
+      devBar.insertBefore(card, pill)
     },
   }
 }

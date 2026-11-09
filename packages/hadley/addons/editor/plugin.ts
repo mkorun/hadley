@@ -12,6 +12,8 @@ import { IMAGE_SECONDS, located, pngUnpacksWithin } from '../../lib/images.ts'
 import { isSystemFile, lf } from '../../lib/platform.ts'
 import { lookupDirs } from '../../lib/site-paths.ts'
 import { browserFile } from './browser-files.ts'
+import { siteHistory, type What } from './history.ts'
+import { historyRoute } from './history-routes.ts'
 import { resolveLang, t, type Lang } from './i18n.ts'
 
 // Lima's own reader, for the browser: the editor shows the front matter's keys where outline() finds them
@@ -89,6 +91,14 @@ async function readSource(filePath: string): Promise<Source | 'unreadable' | 'mi
 
 /** `text`, edited in LF, with the line ends of the file it came from. */
 const written = (source: Source, text: string): string => (source.crlf ? text.replace(/\n/g, '\r\n') : text)
+
+/** The page before and after a change of the editor, as versions (history.ts); before only if it was not kept yet. */
+async function keepVersions(file: string, source: Source, after: string, what: What): Promise<void> {
+  const versions = siteHistory()
+  if (!versions) return
+  await versions.record(file, written(source, source.content), 'outside').catch(() => undefined)
+  await versions.record(file, after, 'editor', { what }).catch(() => undefined)
+}
 
 // The language comes from the client as the query parameter `?lang=` (see i18n.ts), alike for GET and POST, however
 // far the JSON body could be parsed.
@@ -555,7 +565,9 @@ export async function handlePatch(req: IncomingMessage, res: ServerResponse): Pr
     if (before[kind] && !patchResult.heads[kind]) return send(res, 422, { error: t(lang, 'headLost') })
 
   try {
-    await writeFile(entry.filePath, written(source, patched), 'utf-8')
+    const text = written(source, patched)
+    await writeFile(entry.filePath, text, 'utf-8')
+    await keepVersions(entry.filePath, source, text, below ? 'new' : 'edit')
   } catch {
     return send(res, 500, { error: t(lang, 'couldNotWriteFile') })
   }
@@ -601,7 +613,9 @@ export async function handleDelete(req: IncomingMessage, res: ServerResponse): P
   const patched = content.slice(0, entry.start) + content.slice(entry.end + extraNewline)
 
   try {
-    await writeFile(entry.filePath, written(source, patched), 'utf-8')
+    const text = written(source, patched)
+    await writeFile(entry.filePath, text, 'utf-8')
+    await keepVersions(entry.filePath, source, text, 'delete')
   } catch {
     return send(res, 500, { error: t(lang, 'couldNotWriteFile') })
   }
@@ -671,7 +685,9 @@ export async function handleMove(req: IncomingMessage, res: ServerResponse): Pro
   const patched = content.slice(0, lo.start) + hiText + separator + loText + content.slice(hi.end)
 
   try {
-    await writeFile(entry.filePath, written(source, patched), 'utf-8')
+    const text = written(source, patched)
+    await writeFile(entry.filePath, text, 'utf-8')
+    await keepVersions(entry.filePath, source, text, 'move')
   } catch {
     return send(res, 500, { error: t(lang, 'couldNotWriteFile') })
   }
@@ -743,7 +759,9 @@ export async function handleMerge(req: IncomingMessage, res: ServerResponse): Pr
   const patched = content.slice(0, lo.start) + merged + content.slice(hi.end)
 
   try {
-    await writeFile(entry.filePath, written(source, patched), 'utf-8')
+    const text = written(source, patched)
+    await writeFile(entry.filePath, text, 'utf-8')
+    await keepVersions(entry.filePath, source, text, 'merge')
   } catch {
     return send(res, 500, { error: t(lang, 'couldNotWriteFile') })
   }
@@ -804,6 +822,11 @@ export function blockEditorPlugin(): Plugin {
           handler = oneAtATime(() => handleMerge(req, res))
         } else if (method === 'POST' && url.split('?')[0] === '/__hadley/upload') {
           handler = oneAtATime(() => handleUpload(req, res))
+        } else if (url.startsWith('/__hadley/history')) {
+          // the time machine (history-routes.ts)
+          handler = historyRoute(req, res, lang).then((answered) => {
+            if (!answered) send(res, 404, { error: t(lang, 'notFound') })
+          })
         }
 
         if (handler) {

@@ -18,6 +18,8 @@ const ICONS = {
   data: [path('M2.5 4h3M2.5 8h3M2.5 12h3M10 4h3.5M10 8h2M10 12h3.5'), colon('4'), colon('8'), colon('12')],
   file: [path('M4 2.5h5l3 3v8H4zM9 2.5v3h3')],
   pencil: [path('M10.5 2.5l3 3L6 13H3v-3zM9 4l3 3')],
+  // the versions of a page: a clock
+  clock: [['circle', { cx: '8', cy: '8', r: '5.5' }], path('M8 5v3.2l2.2 1.5')],
 } satisfies Record<string, readonly Shape[]>
 
 export type IconName = keyof typeof ICONS

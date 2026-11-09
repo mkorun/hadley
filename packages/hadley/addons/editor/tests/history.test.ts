@@ -1,0 +1,187 @@
+import { describe, it, beforeEach, afterEach } from 'node:test'
+import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
+import { once } from 'node:events'
+import http from 'node:http'
+import type { AddressInfo } from 'node:net'
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+import { history, KEEP, pruned, seen, startHistory, type Version } from '../history.ts'
+import { historyRoute } from '../history-routes.ts'
+import { pageHeads } from '../plugin.ts'
+
+let root: string
+let page: string
+const hash = (text: string) => createHash('sha256').update(text).digest('hex')
+
+beforeEach(async () => {
+  root = await mkdtemp(join(tmpdir(), 'hadley-history-'))
+  page = join(root, 'content', 'articles', '[a]', 'a.md')
+  await mkdir(join(root, 'content', 'articles', '[a]'), { recursive: true })
+})
+afterEach(async () => {
+  pageHeads.clear()
+  await rm(root, { recursive: true, force: true })
+})
+
+describe('the versions of a page', () => {
+  it('keeps each state once, newest first, and a text only by a hash of its log', async () => {
+    const versions = history(root)
+    assert.ok(await versions.record(page, 'one\n', 'outside'))
+    assert.equal(await versions.record(page, 'one\n', 'outside'), undefined)
+    await versions.record(page, 'two\n', 'editor', { what: 'edit' })
+    const listed = await versions.list(page)
+    assert.deepEqual(
+      listed.map(({ hash: h, by, what }) => ({ h, by, what })),
+      [
+        { h: hash('two\n'), by: 'editor', what: 'edit' },
+        { h: hash('one\n'), by: 'outside', what: undefined },
+      ],
+    )
+    assert.equal(await versions.content(page, hash('one\n')), 'one\n')
+    assert.equal(await versions.content(page, hash('never\n')), undefined)
+    assert.equal(await versions.content(page, '../../config.lima'), undefined)
+    // a second page with the same text shares its object
+    const other = join(root, 'content', 'b.md')
+    await versions.record(other, 'one\n', 'outside')
+    assert.equal((await readdir(join(root, '.hadley', 'history', 'objects'))).length, 2)
+    // a history of its own reads the logs as written
+    assert.deepEqual(
+      (await history(root).list(page)).map((v) => v.hash),
+      listed.map((v) => v.hash),
+    )
+  })
+
+  it('refuses a file outside the site', async () => {
+    await assert.rejects(history(root).record(join(root, '..', 'x.md'), 'x', 'outside'), /outside the site/)
+  })
+
+  it('keeps the last 100 unnamed versions and every named one, and drops the objects no log names', async () => {
+    const versions = history(root)
+    await versions.record(page, 'v0\n', 'outside')
+    assert.ok(await versions.name(page, hash('v0\n'), 'the first'))
+    for (let i = 1; i <= KEEP + 5; i++) await versions.record(page, `v${i}\n`, 'editor', { what: 'edit' })
+    const listed = await versions.list(page)
+    assert.equal(listed.filter((v) => v.name === undefined).length, KEEP)
+    assert.equal(listed.at(-1)?.name, 'the first')
+    assert.equal(listed[0]?.hash, hash(`v${KEEP + 5}\n`))
+    assert.equal(await versions.content(page, hash('v1\n')), undefined)
+    const objects = await readdir(join(root, '.hadley', 'history', 'objects'))
+    assert.equal(objects.length, KEEP + 1)
+    assert.ok(!objects.includes(hash('v1\n')))
+    // a name taken back: the version counts again, and the oldest unnamed goes
+    assert.ok(await versions.name(page, hash('v0\n'), ''))
+    assert.equal((await versions.list(page)).length, KEEP)
+    assert.equal(await versions.name(page, hash('none\n'), 'x'), false)
+  })
+
+  it('never drops the newest, the page as it is', () => {
+    const one = (i: number): Version => ({ at: i, hash: String(i).padStart(64, '0'), by: 'editor' })
+    const versions = [...Array.from({ length: KEEP }, (_, i) => one(i)), { ...one(KEEP), name: 'n' }]
+    const { kept, dropped } = pruned([...versions, { at: 999, hash: 'f'.repeat(64), by: 'editor' }])
+    assert.equal(dropped.length, 1)
+    assert.equal(kept.at(-1)?.hash, 'f'.repeat(64))
+  })
+
+  it('says a page the build read is the agent’s while it works, else from outside', async () => {
+    let agent: string | undefined = 'Claude Code'
+    startHistory(root, () => agent)
+    seen(page, 'by the agent\n')
+    agent = undefined
+    seen(page, 'by hand\n')
+    // seen() does not wait; a list after it does
+    const versions = history(root)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    const listed = await versions.list(page)
+    assert.deepEqual(
+      listed.map(({ by, agent: name }) => ({ by, name })),
+      [
+        { by: 'outside', name: undefined },
+        { by: 'agent', name: 'Claude Code' },
+      ],
+    )
+  })
+})
+
+describe('the routes of the time machine', () => {
+  let server: http.Server
+  let origin: string
+  beforeEach(async () => {
+    startHistory(root)
+    server = http.createServer((req, res) => {
+      void historyRoute(req, res, 'en').then((answered) => {
+        if (!answered) {
+          res.statusCode = 404
+          res.end()
+        }
+      })
+    })
+    server.listen(0, 'localhost')
+    await once(server, 'listening')
+    origin = `http://localhost:${(server.address() as AddressInfo).port}`
+  })
+  afterEach(() => new Promise<void>((resolve) => server.close(() => resolve())))
+
+  const post = (path: string, body: unknown) =>
+    fetch(origin + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+
+  it('lists, shows, names and restores the versions of a page the build knows, by its path only', async () => {
+    await writeFile(page, 'first\n')
+    seen(page, 'first\n')
+    await writeFile(page, 'second\n')
+    seen(page, 'second\n')
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    // a page the build did not register has none, whatever the browser names
+    assert.equal((await fetch(`${origin}/__hadley/history?path=/a/`)).status, 404)
+    pageHeads.set('/a/', { filePath: page })
+
+    const listed = (await (await fetch(`${origin}/__hadley/history?path=/a/`)).json()) as {
+      current: string
+      versions: Version[]
+    }
+    assert.equal(listed.current, hash('second\n'))
+    assert.equal(listed.versions.length, 2)
+    const old = await fetch(`${origin}/__hadley/history/version?path=/a/&hash=${hash('first\n')}`)
+    assert.deepEqual(await old.json(), { text: 'first\n' })
+    assert.equal((await fetch(`${origin}/__hadley/history/version?path=/a/&hash=${'0'.repeat(64)}`)).status, 404)
+
+    assert.equal(
+      (await post('/__hadley/history/name', { path: '/a/', hash: hash('first\n'), name: 'x'.repeat(81) })).status,
+      400,
+    )
+    assert.equal(
+      (await post('/__hadley/history/name', { path: '/a/', hash: hash('first\n'), name: 'start' })).status,
+      200,
+    )
+
+    // going back only onto the page the panel showed
+    const stale = await post('/__hadley/history/restore', {
+      path: '/a/',
+      hash: hash('first\n'),
+      current: hash('other\n'),
+    })
+    assert.equal(stale.status, 409)
+    const back = await post('/__hadley/history/restore', {
+      path: '/a/',
+      hash: hash('first\n'),
+      current: hash('second\n'),
+    })
+    assert.equal(back.status, 200)
+    assert.equal(await readFile(page, 'utf-8'), 'first\n')
+    const after = (await (await fetch(`${origin}/__hadley/history?path=/a/`)).json()) as { versions: Version[] }
+    // the page it left stays a version: forth again is as easy
+    assert.deepEqual(
+      after.versions.map((v) => [v.by, v.hash === hash('first\n') ? 'first' : 'second', v.name ?? '']),
+      [
+        ['restore', 'first', ''],
+        ['outside', 'second', ''],
+        ['outside', 'first', 'start'],
+      ],
+    )
+  })
+})

@@ -1,0 +1,103 @@
+/**
+ * The routes of the time machine (history.ts), under `/__hadley/history`: the versions of a page, the text of one,
+ * going back to one, and naming one. The page is named by its URL path; its file comes from the pages the build
+ * registered (pageHeads), never from the browser, and a version only by a hash its log names. Reads are a source read
+ * for lib/dev-guard.ts, as `/__hadley/block/` is; writes go one at a time with the editor's (oneAtATime).
+ */
+import { createHash } from 'node:crypto'
+import { readFile, writeFile } from 'node:fs/promises'
+import type { IncomingMessage, ServerResponse } from 'node:http'
+import { siteHistory, NAME_MAX } from './history.ts'
+import { t, type Lang } from './i18n.ts'
+import { oneAtATime, pageHeads, readBody } from './plugin.ts'
+
+const HASH = /^[0-9a-f]{64}$/
+
+function send(res: ServerResponse, status: number, body: unknown): void {
+  res.statusCode = status
+  res.setHeader('Content-Type', 'application/json')
+  res.setHeader('Cache-Control', 'no-store')
+  res.end(JSON.stringify(body))
+}
+
+const fileOf = (path: unknown): string | undefined =>
+  typeof path === 'string' && path.startsWith('/') ? pageHeads.get(path)?.filePath : undefined
+
+const hashOf = (text: string): string => createHash('sha256').update(text).digest('hex')
+
+/** Answers a request under /__hadley/history; false for any other path or method. */
+export async function historyRoute(req: IncomingMessage, res: ServerResponse, lang: Lang): Promise<boolean> {
+  const url = new URL(req.url ?? '/', 'http://localhost')
+  const versions = siteHistory()
+  if (!url.pathname.startsWith('/__hadley/history') || !versions) return false
+
+  if (req.method === 'GET' && url.pathname === '/__hadley/history') {
+    const file = fileOf(url.searchParams.get('path'))
+    if (!file) return (send(res, 404, { error: t(lang, 'pageUnknown') }), true)
+    const current = hashOf(await readFile(file, 'utf-8'))
+    send(res, 200, { current, versions: await versions.list(file) })
+    return true
+  }
+  if (req.method === 'GET' && url.pathname === '/__hadley/history/version') {
+    const file = fileOf(url.searchParams.get('path'))
+    if (!file) return (send(res, 404, { error: t(lang, 'pageUnknown') }), true)
+    const text = await versions.content(file, url.searchParams.get('hash') ?? '')
+    if (text === undefined) return (send(res, 404, { error: t(lang, 'versionUnknown') }), true)
+    send(res, 200, { text })
+    return true
+  }
+  if (
+    req.method !== 'POST' ||
+    (url.pathname !== '/__hadley/history/restore' && url.pathname !== '/__hadley/history/name')
+  )
+    return false
+
+  let body: Record<string, unknown>
+  try {
+    const parsed: unknown = JSON.parse(await readBody(req, lang))
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error()
+    body = parsed as Record<string, unknown>
+  } catch {
+    return (send(res, 400, { error: t(lang, 'invalidRequestBody') }), true)
+  }
+  const file = fileOf(body['path'])
+  if (!file) return (send(res, 404, { error: t(lang, 'pageUnknown') }), true)
+  const hash = body['hash']
+  if (typeof hash !== 'string' || !HASH.test(hash))
+    return (send(res, 400, { error: t(lang, 'invalidRequestBody') }), true)
+
+  if (url.pathname === '/__hadley/history/name') {
+    const name = body['name']
+    if (typeof name !== 'string' || name.length > NAME_MAX)
+      return (send(res, 400, { error: t(lang, 'invalidRequestBody') }), true)
+    if (!(await versions.name(file, hash, name))) return (send(res, 404, { error: t(lang, 'versionUnknown') }), true)
+    send(res, 200, { ok: true })
+    return true
+  }
+
+  // going back is a write as the editor's: one at a time, and only onto the page the panel showed
+  const current = body['current']
+  if (typeof current !== 'string' || !HASH.test(current))
+    return (send(res, 400, { error: t(lang, 'invalidRequestBody') }), true)
+  await oneAtATime(async () => {
+    const text = await versions.content(file, hash)
+    if (text === undefined) return send(res, 404, { error: t(lang, 'versionUnknown') })
+    let now: string
+    try {
+      now = await readFile(file, 'utf-8')
+    } catch {
+      return send(res, 500, { error: t(lang, 'couldNotReadFile') })
+    }
+    if (hashOf(now) !== current) return send(res, 409, { error: t(lang, 'fileChangedSinceOpen') })
+    // the page as it is stays a version: nothing is lost by going back
+    await versions.record(file, now, 'outside').catch(() => undefined)
+    try {
+      await writeFile(file, text, 'utf-8')
+    } catch {
+      return send(res, 500, { error: t(lang, 'couldNotWriteFile') })
+    }
+    await versions.record(file, text, 'restore').catch(() => undefined)
+    send(res, 200, { ok: true })
+  })
+  return true
+}

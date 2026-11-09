@@ -10,7 +10,7 @@ import { state } from './core/state.ts'
 import { LANG } from './core/texts.ts'
 import { actions } from './features/actions.ts'
 import { bar } from './features/bar.ts'
-import { confirmDelete } from './features/dialog.ts'
+import { confirmDelete, confirmRestore } from './features/dialog.ts'
 import { field } from './features/field.ts'
 import { bundleFiles } from './features/files.ts'
 import { frames } from './features/frames.ts'
@@ -18,6 +18,7 @@ import { limaTable } from './features/front-matter.ts'
 import { attachHeads } from './features/heads.ts'
 import { menu } from './features/menu.ts'
 import { acceptPictures } from './features/pictures.ts'
+import { versions } from './features/versions.ts'
 
 document.documentElement.dataset['hadleyLang'] = LANG
 
@@ -26,6 +27,7 @@ const theBar = bar({
   leave() {
     theField.close()
     theMenu.close()
+    theVersions.close()
   },
   changed: () => theFrames.queue(),
 })
@@ -64,6 +66,18 @@ document.addEventListener('keydown', (e) => {
     return
   } // field open → close it (whichever element has focus)
   if (theMenu.isOpen()) theMenu.close() // only the menu open → close it
+})
+
+// the time machine: its button in the pill, its card above it; restoring holds the editor as a change does
+const theVersions = versions({
+  add: (control) => theBar.add(control),
+  place: (card) => theBar.place(card),
+  confirm: confirmRestore,
+  lock() {
+    state.locked = true
+    theMenu.close()
+    theBar.reloading()
+  },
 })
 
 theBar.draw()

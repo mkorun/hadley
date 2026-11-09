@@ -2,3 +2,4 @@
 // (docs/dev-server.md, "Block editor").
 export { blockEditorPlugin, wroteItself } from './plugin.ts'
 export { registerPageBlocks } from './renderer.ts'
+export { startHistory } from './history.ts'

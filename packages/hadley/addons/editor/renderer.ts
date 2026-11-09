@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import type { BlockToken, ParsedDocument } from '../../case/index.ts'
 import { blockIdMap, pageHeads } from './plugin.ts'
+import { seen } from './history.ts'
 
 /**
  * Registers every top-level block of a page in blockIdMap, and returns getBlockId, which the renderer calls for each
@@ -14,6 +15,8 @@ export function registerPageBlocks(
   filePath: string,
   page?: { urlPath: string; heads: ParsedDocument['heads']; title?: string; subtitle?: string },
 ): (start: number) => string | undefined {
+  // the page as the build read it is a version, if it changed (history.ts)
+  seen(filePath, rawDoc)
   // the file's earlier entries go: each dev reload registers it anew
   for (const [id, entry] of blockIdMap) {
     if (entry.filePath === filePath) blockIdMap.delete(id)

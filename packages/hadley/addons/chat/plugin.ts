@@ -385,6 +385,10 @@ export function chatPlugin(options: {
     get token(): string | undefined {
       return rendezvous?.record.token
     },
+    /** The agent the dev server runs, while it answers a message (editor/history.ts). */
+    working(): string | undefined {
+      return background?.busy() ? AGENTS[background.name] : undefined
+    },
     // the link hadley dev prints in a terminal, and the file that holds the key
     link: `${options.origin}/__hadley/chat/unlock#${browser.key}`,
     keyFile: browser.file,

@@ -1,8 +1,17 @@
-// The question before a block is deleted: a dialog over the page, Cancel focused, Escape or a click beside it cancels.
+// A question before what cannot be taken back as easily, a block deleted or a version restored: a dialog over the page,
+// Cancel focused, Escape or a click beside it cancels.
 import { el, svg } from '../core/dom.ts'
+import { icon } from '../core/icons.ts'
 import { T } from '../core/texts.ts'
 
-export function confirmDelete(): Promise<boolean> {
+export const confirmDelete = (): Promise<boolean> =>
+  ask({ title: T.deleteDialogTitle, body: T.deleteDialogBody, confirm: T.confirmDelete })
+
+/** The question before a version of the page takes its place (features/versions.ts). */
+export const confirmRestore = (): Promise<boolean> =>
+  ask({ title: T.restoreTitle, body: T.restoreBody, confirm: T.restore, symbol: 'clock' })
+
+function ask(texts: { title: string; body: string; confirm: string; symbol?: 'clock' }): Promise<boolean> {
   return new Promise((resolve) => {
     const overlay = el('div')
     overlay.id = 'hadley-delete-overlay'
@@ -14,34 +23,36 @@ export function confirmDelete(): Promise<boolean> {
     const symbol = el('div', 'hdd-icon')
     symbol.setAttribute('aria-hidden', 'true')
     symbol.append(
-      svg(
-        {
-          viewBox: '0 0 20 20',
-          width: '20',
-          height: '20',
-          fill: 'none',
-          stroke: 'currentColor',
-          'stroke-width': '1.6',
-          'stroke-linecap': 'round',
-          'stroke-linejoin': 'round',
-        },
-        [
-          ['line', { x1: '3', y1: '5', x2: '17', y2: '5' }],
-          ['path', { d: 'M7 5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1' }],
-          ['path', { d: 'M4.5 5l1 11a1 1 0 0 0 1 .9h7a1 1 0 0 0 1-.9l1-11' }],
-        ],
-      ),
+      texts.symbol
+        ? icon(texts.symbol)
+        : svg(
+            {
+              viewBox: '0 0 20 20',
+              width: '20',
+              height: '20',
+              fill: 'none',
+              stroke: 'currentColor',
+              'stroke-width': '1.6',
+              'stroke-linecap': 'round',
+              'stroke-linejoin': 'round',
+            },
+            [
+              ['line', { x1: '3', y1: '5', x2: '17', y2: '5' }],
+              ['path', { d: 'M7 5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1' }],
+              ['path', { d: 'M4.5 5l1 11a1 1 0 0 0 1 .9h7a1 1 0 0 0 1-.9l1-11' }],
+            ],
+          ),
     )
     const title = el('p', 'hdd-title')
     title.id = 'hadley-delete-title'
-    title.textContent = T.deleteDialogTitle
+    title.textContent = texts.title
     const body = el('p', 'hdd-body')
-    body.textContent = T.deleteDialogBody
+    body.textContent = texts.body
     const actions = el('div', 'hdd-actions')
     const cancel = el('button', 'hdd-cancel')
     cancel.textContent = T.cancel
     const confirm = el('button', 'hdd-confirm')
-    confirm.textContent = T.confirmDelete
+    confirm.textContent = texts.confirm
     actions.append(cancel, confirm)
     dialog.append(symbol, title, body, actions)
     overlay.append(dialog)

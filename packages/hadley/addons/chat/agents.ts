@@ -100,6 +100,8 @@ const clip = (value: string): string =>
 
 export interface Running {
   name: AgentName
+  /** whether it is answering a message (the time machine's guess at who changed a page, editor/history.ts) */
+  busy(): boolean
   send(message: Message, lang: string, action: boolean): void
   verdict(requestId: string, allow: boolean): boolean
   stop(): Promise<void>
@@ -265,6 +267,7 @@ export function runAgent(
   if (options.fresh) hooks.notice('begun')
   return {
     name,
+    busy: () => busy !== undefined,
     send(message, lang, action) {
       queue.push({ id: message.id, text: agentContent(message, lang), action })
       pump()

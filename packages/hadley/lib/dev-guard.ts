@@ -85,7 +85,10 @@ export function refusal(
   // a browser sends no Origin with a GET of its own origin, but one, and Sec-Fetch-Site, with a request of another
   if (
     request.method !== 'POST' &&
-    (path.startsWith('/__hadley/block/') || path.startsWith('/__hadley/files/') || path === '/__hadley/chat/events')
+    (path.startsWith('/__hadley/block/') ||
+      path.startsWith('/__hadley/files/') ||
+      path.startsWith('/__hadley/history') ||
+      path === '/__hadley/chat/events')
   ) {
     const origin = request.headers.origin
     const site = request.headers['sec-fetch-site']

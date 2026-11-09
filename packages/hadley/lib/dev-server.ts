@@ -108,6 +108,9 @@ export async function startDevServer({
     ...(https ? { certificate: https.cert } : {}),
     ...(agents ? { agents } : {}),
   })
+  // the versions of each page, wherever the editor is on (addons/editor/history.ts); a page that changes while the
+  // chat's agent works is said to be its
+  editor?.startHistory(siteDir, () => chat?.working())
   const servicePort = commentsPort(serve.port)
   // a port taken stops before anything starts: Vite would only stop later, and a comments service could be another's
   const ports: [number, string][] = [[serve.port, 'the dev server']]
