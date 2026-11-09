@@ -4,7 +4,7 @@ import { T } from './texts.ts'
 
 export interface Change {
   at: number
-  by: 'editor' | 'agent' | 'outside' | 'restore' | 'undo' | 'redo'
+  by: 'editor' | 'agent' | 'outside' | 'restore'
   what?: 'edit' | 'move' | 'merge' | 'delete' | 'new' | 'picture'
   agent?: string
 }
@@ -22,8 +22,6 @@ const WHO: Record<Exclude<Change['by'], 'agent'>, string> = {
   editor: T.byEditor,
   outside: T.byOutside,
   restore: T.byRestore,
-  undo: T.byUndo,
-  redo: T.byRedo,
 }
 
 /** Who made a change and what it did: "Editor · Block edited", "while Claude Code was working". */

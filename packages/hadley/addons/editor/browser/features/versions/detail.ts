@@ -16,6 +16,8 @@ export interface Context {
   /** the hash of the page's file as it is */
   current: string
   isCurrent: boolean
+  /** neither the newest nor the page as it is, which stay */
+  deletable: boolean
   /** the question before restoring a version of `when` */
   confirm(when: string): Promise<boolean>
   /** holds the editor until the page reloads */
@@ -65,7 +67,8 @@ export async function fill(detail: HTMLElement, version: Version, context: Conte
       await context.reload()
     }),
   )
-  actions.append(restore, keepButton(detail, actions, version, context), remove)
+  actions.append(restore, keepButton(detail, actions, version, context))
+  if (context.deletable) actions.append(remove)
   detail.replaceChildren(diff, actions)
 }
 

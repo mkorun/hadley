@@ -68,8 +68,10 @@ export function versions(on: {
       foot.replaceChildren()
       return
     }
-    const { current, versions: shown } = got.value
-    const now = shown[0]?.hash === current ? shown[0] : undefined
+    const { current, at, versions: shown } = got.value
+    // the page as it is: the version it stands at, which undo or redo may have moved from the newest
+    const standing = shown.find((version) => version.at === at) ?? shown[0]
+    const now = standing?.hash === current ? standing : undefined
     list.replaceChildren(
       ...rows(
         shown,
@@ -79,6 +81,8 @@ export function versions(on: {
             path,
             current,
             isCurrent: version === now,
+            // the newest and the page as it is stay (history.ts)
+            deletable: version !== now && version !== shown[0],
             confirm: on.confirm,
             lock: on.lock,
             reload: load,
@@ -91,15 +95,15 @@ export function versions(on: {
       none.textContent = T.none
       list.append(none)
     }
-    footer(shown)
+    footer(shown, now)
     const again = options.open === undefined ? undefined : String(options.open)
     for (const item of list.querySelectorAll<HTMLButtonElement>('.hv-item'))
       if (item.dataset['at'] === again) item.click()
   }
 
-  /** The count, deleting every unnamed version but the newest, and the limit once it comes near. */
-  function footer(shown: readonly Version[]): void {
-    const unnamed = shown.slice(1).filter((version) => !version.name).length
+  /** The count, deleting every unnamed version but the newest and the page as it is, and the limit once near. */
+  function footer(shown: readonly Version[], now: Version | undefined): void {
+    const unnamed = shown.filter((version, i) => i > 0 && version !== now && !version.name).length
     const line = el('div', 'hv-foot-line')
     const count = el('span')
     count.textContent = T.versionCount(shown.length)

@@ -267,50 +267,59 @@ describe('the routes of the time machine', () => {
       (await post('/__hadley/history/step', { path: '/a/', way: 'sideways', current: before.current })).status,
       400,
     )
-    assert.equal(
-      (await post('/__hadley/history/step', { path: '/a/', way: 'undo', current: before.current })).status,
-      200,
-    )
-    assert.equal(await readFile(page, 'utf-8'), 'one\n')
-    const undone = await ask()
-    assert.equal(undone.undo, undefined)
-    assert.equal(undone.redo?.by, 'outside')
-    assert.equal(
-      (await post('/__hadley/history/step', { path: '/a/', way: 'redo', current: undone.current })).status,
-      200,
-    )
-    assert.equal(await readFile(page, 'utf-8'), 'two\n')
-    assert.equal((await ask()).redo, undefined)
+    const list = async () =>
+      (await (await fetch(`${origin}/__hadley/history?path=/a/`)).json()) as { at: number; versions: Version[] }
+    const [second, first] = (await list()).versions
+    assert.ok(first && second)
+    const step = async (way: string, current: string) =>
+      (await post('/__hadley/history/step', { path: '/a/', way, current })).status
+    // back and forth, again and again: the page moves among the versions, and no version comes of it
+    for (let i = 0; i < 3; i++) {
+      assert.equal(await step('undo', (await ask()).current), 200)
+      assert.equal(await readFile(page, 'utf-8'), 'one\n')
+      seen(page, 'one\n')
+      const undone = await ask()
+      assert.equal(undone.undo, undefined)
+      assert.equal(undone.redo?.by, 'outside')
+      assert.equal((await list()).at, first.at)
+      assert.equal(await step('redo', undone.current), 200)
+      assert.equal(await readFile(page, 'utf-8'), 'two\n')
+      seen(page, 'two\n')
+      assert.equal((await ask()).redo, undefined)
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    assert.equal((await list()).versions.length, 2)
+    assert.equal((await list()).at, second.at)
   })
 })
 
 describe('undo and redo', () => {
-  const v = (at: number, by: Version['by'], back?: number): Version => ({
+  const v = (at: number, by: Version['by'], after?: number): Version => ({
     at,
     hash: String(at).padStart(64, '0'),
     by,
-    ...(back === undefined ? {} : { back }),
+    ...(after === undefined ? {} : { after }),
   })
   const of = (result: ReturnType<typeof steps>) => ({
     undo: result.undo && [result.undo.change.at, result.undo.target.at],
     redo: result.redo && [result.redo.change.at, result.redo.target.at],
   })
 
-  it('goes back change by change, the agent’s and those from outside too, and forth again', () => {
-    const log = [v(1, 'outside'), v(2, 'editor'), v(3, 'agent')]
-    assert.deepEqual(of(steps(log)), { undo: [3, 2], redo: undefined })
-    log.push(v(4, 'undo', 2))
-    assert.deepEqual(of(steps(log)), { undo: [2, 1], redo: [3, 3] })
-    log.push(v(5, 'undo', 1))
-    assert.deepEqual(of(steps(log)), { undo: undefined, redo: [2, 2] })
-    log.push(v(6, 'redo', 2))
-    assert.deepEqual(of(steps(log)), { undo: [2, 1], redo: [3, 3] })
+  it('goes back along the versions each change was made on, the agent’s and those from outside too, and forth', () => {
+    const log = [v(1, 'outside'), v(2, 'editor', 1), v(3, 'agent', 2)]
+    assert.deepEqual(of(steps(log, 3)), { undo: [3, 2], redo: undefined })
+    assert.deepEqual(of(steps(log, 2)), { undo: [2, 1], redo: [3, 3] })
+    assert.deepEqual(of(steps(log, 1)), { undo: undefined, redo: [2, 2] })
   })
 
-  it('has nothing to redo once a change came after an undo', () => {
-    const log = [v(1, 'outside'), v(2, 'editor'), v(3, 'undo', 1), v(4, 'editor')]
-    // undo takes back 4, which was made on 1: back to 1, not to 2, which was undone
-    assert.deepEqual(of(steps(log)), { undo: [4, 1], redo: undefined })
-    assert.deepEqual(of(steps([])), { undo: undefined, redo: undefined })
+  it('a change after an undo is made on the version undo went to: undo goes back there', () => {
+    const log = [v(1, 'outside'), v(2, 'editor', 1), v(3, 'editor', 2), v(4, 'editor', 1)]
+    assert.deepEqual(of(steps(log, 4)), { undo: [4, 1], redo: undefined })
+    // from 1, redo brings back the newest made on it
+    assert.deepEqual(of(steps(log, 1)), { undo: undefined, redo: [4, 4] })
+    // an older log, without `after`: each version made on the one before it
+    const older = [v(1, 'outside'), v(2, 'editor'), v(3, 'editor')]
+    assert.deepEqual(of(steps(older, 3)), { undo: [3, 2], redo: undefined })
+    assert.deepEqual(of(steps([], 1)), { undo: undefined, redo: undefined })
   })
 })

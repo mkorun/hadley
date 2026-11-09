@@ -52,7 +52,8 @@ export async function historyRoute(req: IncomingMessage, res: ServerResponse, la
     const file = fileOf(url.searchParams.get('path'))
     if (!file) return (send(res, 404, { error: t(lang, 'pageUnknown') }), true)
     const current = hashOf(await readFile(file, 'utf-8'))
-    send(res, 200, { current, versions: await versions.list(file) })
+    // the version the page stands at, which undo or redo may have moved from the newest
+    send(res, 200, { current, at: await versions.standing(file), versions: await versions.list(file) })
     return true
   }
   if (req.method === 'GET' && url.pathname === '/__hadley/history/steps') {
@@ -145,8 +146,8 @@ export async function historyRoute(req: IncomingMessage, res: ServerResponse, la
 }
 
 /**
- * Undo or redo (history.ts, steps): the version it leads to written to the file, as the editor writes, and kept as a
- * version of its own, which names it; only onto the page the button was shown for.
+ * Undo or redo (history.ts, steps): the version it leads to written to the file, as the editor writes; no version of
+ * its own, the page stands at that one now; only onto the page the button was shown for.
  */
 async function step(file: string, way: 'undo' | 'redo', current: string, res: ServerResponse, lang: Lang) {
   const versions = siteHistory()!
@@ -167,6 +168,6 @@ async function step(file: string, way: 'undo' | 'redo', current: string, res: Se
   } catch {
     return send(res, 500, { error: t(lang, 'couldNotWriteFile') })
   }
-  await versions.record(file, text, way, { back: target.at }).catch(() => undefined)
+  await versions.stand(file, target.at)
   send(res, 200, { ok: true })
 }

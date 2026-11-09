@@ -1,6 +1,6 @@
 // Undo and redo for the page (addons/editor/browser/features/undo.ts, history.ts steps; Michael, 2026-11-09): buttons
 // in the pill and Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y; the editor's changes, the agent's and those from outside alike, back
-// step by step and forth again; nothing to redo once a change came after an undo.
+// step by step and forth again, making no version; nothing to redo once a change came after an undo.
 import { test, expect } from './chat-fixture.ts'
 import { block, editMode, openBlock } from './editor.ts'
 import { readFile, writeFile } from 'node:fs/promises'
@@ -34,6 +34,19 @@ test('undo goes back change by change, redo forth again; the buttons say what th
   await undo.click()
   await expect(block(page, 'First words, once.')).toBeVisible()
   await expect(redo).toBeEnabled()
+  // back and forth makes no version: the card marks the one the page stands at (Michael, 2026-11-09)
+  await redo.click()
+  await expect(block(page, 'First words, twice.')).toBeVisible()
+  await expect(undo).toBeEnabled()
+  await undo.click()
+  await expect(block(page, 'First words, once.')).toBeVisible()
+  await expect(redo).toBeEnabled()
+  await page.getByRole('button', { name: 'Version history', exact: true }).click()
+  const items = page.locator('#hadley-versions .hv-item')
+  await expect(items).toHaveCount(3)
+  await expect(items.nth(1)).toContainText('Current version')
+  await expect(items.nth(0)).toContainText('Editor · Block edited')
+  await page.getByRole('button', { name: 'Version history', exact: true }).click()
   // Ctrl+Z, while no field is open
   await page.keyboard.press('Control+z')
   await expect.poll(() => readFile(dev.source, 'utf8')).toBe(original)
