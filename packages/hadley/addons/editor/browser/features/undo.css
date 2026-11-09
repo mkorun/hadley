@@ -1,0 +1,11 @@
+/* ─── Undo and redo in the pill (undo.ts) ─────────────────────────────────────────── */
+
+/* they stand in the pill only in edit mode, as the versions' button */
+body:not(.hadley-edit-mode) .hadley-undo {
+  display: none;
+}
+
+/* an icon alone: square, as the pill's other icon buttons */
+.hadley-pill > .hadley-undo {
+  padding-inline: 0.55rem;
+}

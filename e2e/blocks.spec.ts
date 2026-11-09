@@ -2,7 +2,7 @@
 // delete it from its menu, and refuse an edit that would change its neighbours. Written before the editor is rebuilt
 // (2026-11-08), as the measure of the new one: each must hold for both.
 import { test, expect } from './chat-fixture.ts'
-import { dialogs, fromMenu, openBlock } from './editor.ts'
+import { block, dialogs, fromMenu, openBlock } from './editor.ts'
 import { readFile } from 'node:fs/promises'
 
 const FIRST = 'First words of the attached block.'
@@ -54,20 +54,17 @@ test('two paragraphs merge into one from the menu', async ({ page, dev }) => {
   await expect.poll(() => source(dev)).toBe(before.replace(`${FIRST}\n\n${SECOND}`, `${FIRST}\n${SECOND}`))
 })
 
-test('a block is deleted only once the dialog is confirmed', async ({ page, dev }) => {
+test('a block is deleted at once, and the note above the pill brings it back', async ({ page, dev }) => {
   const before = await source(dev)
   await page.goto(dev.origin + '/panel/')
   await fromMenu(page, 'Second block', 'Delete block')
-  const dialog = page.getByRole('dialog', { name: 'Delete block?' })
-  await expect(dialog).toBeVisible()
-  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
-  await expect(dialog).toHaveCount(0)
-  await page.waitForTimeout(500)
-  expect(await source(dev)).toBe(before)
-  await fromMenu(page, 'Second block', 'Delete block')
-  await page.getByRole('dialog', { name: 'Delete block?' }).getByRole('button', { name: 'Delete', exact: true }).click()
   // the blank line before the last block stays at the end of the file, as it always did (harmless; noted for later)
   await expect.poll(() => source(dev)).toBe(before.replace(`${SECOND}\n`, ''))
+  const note = page.getByRole('status').filter({ hasText: 'Block deleted' })
+  await expect(note).toBeVisible()
+  await note.getByRole('button', { name: 'Undo', exact: true }).click()
+  await expect.poll(() => source(dev)).toBe(before)
+  await expect(block(page, 'Second block')).toBeVisible()
 })
 
 test('an edit that would swallow the next block is refused, says why and keeps the field', async ({ page, dev }) => {

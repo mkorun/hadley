@@ -137,8 +137,6 @@ for (const [action, item, text, done] of [
     await expect(block(page, 'Third block')).toBeVisible()
     await mark(page)
     await fromMenu(page, text, item)
-    if (action === 'deleted')
-      await page.getByRole('dialog', { name: 'Delete block?' }).getByRole('button', { name: 'Delete' }).click()
     await expect.poll(() => readFile(dev.source, 'utf8')).toContain(done)
     // the page brought up to date: the animation's styles gone with it (a reload took them once)
     await expect(page.locator('[data-hadley-id][style]')).toHaveCount(0)

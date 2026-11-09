@@ -7,7 +7,7 @@ import type { AddressInfo } from 'node:net'
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { history, KEEP, pruned, seen, startHistory, type Version } from '../history.ts'
+import { history, KEEP, pruned, seen, startHistory, steps, type Version } from '../history.ts'
 import { historyRoute } from '../history-routes.ts'
 import { pageHeads } from '../plugin.ts'
 
@@ -244,5 +244,73 @@ describe('the routes of the time machine', () => {
         ['outside', 'start'],
       ],
     )
+  })
+  it('undoes and redoes the changes of a page, and only onto the page the button was shown for', async () => {
+    await writeFile(page, 'one\n')
+    seen(page, 'one\n')
+    await writeFile(page, 'two\n')
+    seen(page, 'two\n')
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    pageHeads.set('/a/', { filePath: page })
+    const ask = async () =>
+      (await (await fetch(`${origin}/__hadley/history/steps?path=/a/`)).json()) as {
+        current: string
+        undo?: { by: string }
+        redo?: { by: string }
+      }
+    const before = await ask()
+    assert.equal(before.current, hash('two\n'))
+    assert.equal(before.undo?.by, 'outside')
+    assert.equal(before.redo, undefined)
+    assert.equal((await post('/__hadley/history/step', { path: '/a/', way: 'undo', current: hash('x') })).status, 409)
+    assert.equal(
+      (await post('/__hadley/history/step', { path: '/a/', way: 'sideways', current: before.current })).status,
+      400,
+    )
+    assert.equal(
+      (await post('/__hadley/history/step', { path: '/a/', way: 'undo', current: before.current })).status,
+      200,
+    )
+    assert.equal(await readFile(page, 'utf-8'), 'one\n')
+    const undone = await ask()
+    assert.equal(undone.undo, undefined)
+    assert.equal(undone.redo?.by, 'outside')
+    assert.equal(
+      (await post('/__hadley/history/step', { path: '/a/', way: 'redo', current: undone.current })).status,
+      200,
+    )
+    assert.equal(await readFile(page, 'utf-8'), 'two\n')
+    assert.equal((await ask()).redo, undefined)
+  })
+})
+
+describe('undo and redo', () => {
+  const v = (at: number, by: Version['by'], back?: number): Version => ({
+    at,
+    hash: String(at).padStart(64, '0'),
+    by,
+    ...(back === undefined ? {} : { back }),
+  })
+  const of = (result: ReturnType<typeof steps>) => ({
+    undo: result.undo && [result.undo.change.at, result.undo.target.at],
+    redo: result.redo && [result.redo.change.at, result.redo.target.at],
+  })
+
+  it('goes back change by change, the agent’s and those from outside too, and forth again', () => {
+    const log = [v(1, 'outside'), v(2, 'editor'), v(3, 'agent')]
+    assert.deepEqual(of(steps(log)), { undo: [3, 2], redo: undefined })
+    log.push(v(4, 'undo', 2))
+    assert.deepEqual(of(steps(log)), { undo: [2, 1], redo: [3, 3] })
+    log.push(v(5, 'undo', 1))
+    assert.deepEqual(of(steps(log)), { undo: undefined, redo: [2, 2] })
+    log.push(v(6, 'redo', 2))
+    assert.deepEqual(of(steps(log)), { undo: [2, 1], redo: [3, 3] })
+  })
+
+  it('has nothing to redo once a change came after an undo', () => {
+    const log = [v(1, 'outside'), v(2, 'editor'), v(3, 'undo', 1), v(4, 'editor')]
+    // undo takes back 4, which was made on 1: back to 1, not to 2, which was undone
+    assert.deepEqual(of(steps(log)), { undo: [4, 1], redo: undefined })
+    assert.deepEqual(of(steps([])), { undo: undefined, redo: undefined })
   })
 })

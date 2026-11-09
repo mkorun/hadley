@@ -11,7 +11,7 @@ import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promise
 import { isAbsolute, join, relative } from 'node:path'
 import { slashed } from '../../lib/platform.ts'
 
-export type By = 'editor' | 'agent' | 'outside' | 'restore'
+export type By = 'editor' | 'agent' | 'outside' | 'restore' | 'undo' | 'redo'
 export type What = 'edit' | 'move' | 'merge' | 'delete' | 'new' | 'picture'
 export interface Version {
   at: number
@@ -21,13 +21,15 @@ export interface Version {
   // the agent that was working when the page changed (by: agent)
   agent?: string
   name?: string
+  // the version an undo or a redo went to, by its time (by: undo, redo)
+  back?: number
 }
 
 /** How many unnamed versions of a page stay (Michael, 2026-11-09: 100, back and forth). */
 export const KEEP = 100
 export const NAME_MAX = 80
 const HASH = /^[0-9a-f]{64}$/
-const BY: readonly By[] = ['editor', 'agent', 'outside', 'restore']
+const BY: readonly By[] = ['editor', 'agent', 'outside', 'restore', 'undo', 'redo']
 const WHAT: readonly What[] = ['edit', 'move', 'merge', 'delete', 'new', 'picture']
 
 const sha256 = (text: string): string => createHash('sha256').update(text).digest('hex')
@@ -42,7 +44,7 @@ function versionOf(line: string): Version | undefined {
   }
   if (typeof value !== 'object' || value === null) return undefined
   const record = value as Record<string, unknown>
-  const { at, hash, by, what, agent, name } = record
+  const { at, hash, by, what, agent, name, back } = record
   if (typeof at !== 'number' || typeof hash !== 'string' || !HASH.test(hash) || !BY.includes(by as By)) return undefined
   return {
     at,
@@ -51,6 +53,43 @@ function versionOf(line: string): Version | undefined {
     ...(WHAT.includes(what as What) ? { what: what as What } : {}),
     ...(typeof agent === 'string' && agent.length <= 64 ? { agent } : {}),
     ...(typeof name === 'string' && name.trim() && name.length <= NAME_MAX ? { name } : {}),
+    ...(typeof back === 'number' ? { back } : {}),
+  }
+}
+
+/** A change undo or redo would take: the version that made it, and the version the page goes to. */
+export interface Step {
+  change: Version
+  target: Version
+}
+
+/**
+ * Where undo and redo lead from the page as it is (Michael, 2026-11-09: back and forth, the agent's changes too): the
+ * log played as an editor's two stacks. A change (every version but an undo or a redo) goes on the undo stack and
+ * empties the redo stack; an undo moves the top of the undo stack to the redo stack, a redo moves it back. Undo takes
+ * back the change on top and goes to the one below it; redo brings back the top of the redo stack.
+ */
+export function steps(versions: readonly Version[]): { undo?: Step; redo?: Step } {
+  const done: Version[] = []
+  const undone: Version[] = []
+  for (const version of versions) {
+    if (version.by === 'undo') {
+      const change = done.pop()
+      if (change) undone.push(change)
+    } else if (version.by === 'redo') {
+      const change = undone.pop()
+      if (change) done.push(change)
+    } else {
+      done.push(version)
+      undone.length = 0
+    }
+  }
+  const change = done.at(-1)
+  const below = done.at(-2)
+  const again = undone.at(-1)
+  return {
+    ...(change && below ? { undo: { change, target: below } } : {}),
+    ...(again ? { redo: { change: again, target: again } } : {}),
   }
 }
 
@@ -70,7 +109,12 @@ export function pruned(versions: readonly Version[]): { kept: Version[]; dropped
 
 export interface History {
   /** Keeps `content` as the newest version of `file`, unless it is that already; the version it made, if any. */
-  record(file: string, content: string, by: By, more?: { what?: What; agent?: string }): Promise<Version | undefined>
+  record(
+    file: string,
+    content: string,
+    by: By,
+    more?: { what?: What; agent?: string; back?: number },
+  ): Promise<Version | undefined>
   /** The versions of `file`, newest first. */
   list(file: string): Promise<Version[]>
   /** The text of a version of `file`: only a hash its log names. */
@@ -84,6 +128,8 @@ export interface History {
   remove(file: string, at: number, hash: string): Promise<boolean>
   /** Deletes every unnamed version of `file` but the newest; how many went. */
   removeUnnamed(file: string): Promise<number>
+  /** Where undo and redo lead from `file` as its log stands (steps). */
+  steps(file: string): Promise<{ undo?: Step; redo?: Step }>
 }
 
 export function history(root: string): History {
@@ -154,7 +200,8 @@ export function history(root: string): History {
         const path = pathOf(file)
         const versions = await load(path)
         const hash = sha256(content)
-        if (versions.at(-1)?.hash === hash) return undefined
+        // an undo or a redo is always a version: the stacks are played from them (steps)
+        if (by !== 'undo' && by !== 'redo' && versions.at(-1)?.hash === hash) return undefined
         await mkdir(objects, { recursive: true })
         const object = join(objects, hash)
         if ((await readFile(object, 'utf-8').catch(() => undefined)) !== content) await replace(object, content)
@@ -165,6 +212,7 @@ export function history(root: string): History {
           by,
           ...(more.what ? { what: more.what } : {}),
           ...(more.agent ? { agent: more.agent.slice(0, 64) } : {}),
+          ...(more.back === undefined ? {} : { back: more.back }),
         }
         const { kept, dropped } = pruned([...versions, version])
         await save(path, kept)
@@ -213,6 +261,9 @@ export function history(root: string): History {
         await collect([dropped])
         return true
       })
+    },
+    steps(file) {
+      return serial(async () => steps(await load(pathOf(file))))
     },
     removeUnnamed(file) {
       return serial(async () => {

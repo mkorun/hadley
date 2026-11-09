@@ -90,6 +90,13 @@ live in `.hadley/history/` of the site, each state once, never in its repository
 need nothing but hadley, on any system. A page of more than 5,000 lines, or two versions that differ in too much of it,
 are not compared, only restored.
 
+Beside Versions, Undo and Redo (Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y, Cmd on a Mac, while no field is open) step through
+the page's changes as an editor's two stacks: the editor's, the agent's and those from outside alike, each button's
+title saying which change it takes back or brings back, and when. Undo goes back change by change, Redo forth again;
+a change after an undo leaves nothing to redo. Each step is written to the file as any change, and kept as a version,
+so nothing is lost. A block is deleted, moved or merged without a question; for a few seconds a note above the
+control offers to undo it.
+
 ## Chat
 
 A site with the block editor can also turn on the chat: a panel in which you talk to an agent on this machine, Claude

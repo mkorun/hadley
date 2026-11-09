@@ -1,11 +1,8 @@
-// A question before what cannot be taken back as easily, a block deleted or a version restored: a dialog over the page,
-// Cancel focused, Escape or a click beside it cancels.
-import { el, svg } from '../core/dom.ts'
+// A question before a version of the page takes its place: a dialog over the page, Cancel focused, Escape or a click
+// beside it cancels. A deleted block asks nothing since undo takes it back (undo.ts, Michael 2026-11-09).
+import { el } from '../core/dom.ts'
 import { icon } from '../core/icons.ts'
 import { T } from '../core/texts.ts'
-
-export const confirmDelete = (): Promise<boolean> =>
-  ask({ title: T.deleteDialogTitle, body: T.deleteDialogBody, confirm: T.confirmDelete })
 
 /** The question before a version of the page, of `when`, takes its place (features/versions/). */
 export const confirmRestore = (when: string): Promise<boolean> =>
@@ -16,7 +13,7 @@ function ask(texts: {
   title: string
   body: string
   confirm: string
-  symbol?: 'clock'
+  symbol: 'clock'
   calm?: boolean
 }): Promise<boolean> {
   return new Promise((resolve) => {
@@ -30,27 +27,7 @@ function ask(texts: {
     dialog.setAttribute('aria-labelledby', 'hadley-delete-title')
     const symbol = el('div', 'hdd-icon')
     symbol.setAttribute('aria-hidden', 'true')
-    symbol.append(
-      texts.symbol
-        ? icon(texts.symbol)
-        : svg(
-            {
-              viewBox: '0 0 20 20',
-              width: '20',
-              height: '20',
-              fill: 'none',
-              stroke: 'currentColor',
-              'stroke-width': '1.6',
-              'stroke-linecap': 'round',
-              'stroke-linejoin': 'round',
-            },
-            [
-              ['line', { x1: '3', y1: '5', x2: '17', y2: '5' }],
-              ['path', { d: 'M7 5V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1' }],
-              ['path', { d: 'M4.5 5l1 11a1 1 0 0 0 1 .9h7a1 1 0 0 0 1-.9l1-11' }],
-            ],
-          ),
-    )
+    symbol.append(icon(texts.symbol))
     const title = el('p', 'hdd-title')
     title.id = 'hadley-delete-title'
     title.textContent = texts.title

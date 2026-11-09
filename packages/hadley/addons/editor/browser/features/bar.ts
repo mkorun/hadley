@@ -15,8 +15,8 @@ export interface Bar {
   updating(): void
   /** the toggle free again */
   ready(): void
-  /** a short note above the pill, or none */
-  note(text: string | null): void
+  /** a short note above the pill, or none; with an action, a button after it (undo, features/undo.ts) */
+  note(text: string | null, action?: { label: string; run(): void }): void
   /** a control of another feature, in the pill after the toggle (the versions, features/versions/) */
   add(control: HTMLElement): void
   /** a card of another feature, above the pill, as the chat's (features/versions/) */
@@ -151,9 +151,17 @@ export function bar(on: { leave(): void; changed(): void }): Bar {
       toggle.disabled = false
       draw()
     },
-    note(text) {
-      note.textContent = text ?? ''
+    note(text, action) {
+      note.replaceChildren()
       note.hidden = text === null
+      if (text === null) return
+      note.append(Object.assign(el('span'), { textContent: text }))
+      if (!action) return
+      const button = el('button', 'hadley-bar-note-action')
+      button.type = 'button'
+      button.textContent = action.label
+      button.addEventListener('click', () => action.run())
+      note.append(button)
     },
     add(control) {
       pill.insertBefore(control, langBtn)

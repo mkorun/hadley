@@ -66,10 +66,10 @@ for (const [name, way] of Object.entries(ways)) {
       await expect.poll(() => messages).toEqual([way.move])
       await page.waitForTimeout(500)
       expect(await readFile(dev.source, 'utf8')).toBe(before)
-      // today: the block stays where its animation took it, below the second, until the page is reloaded
+      // the blocks go back where they were, as the file is (since 2026-11-09; before, the animation's place stayed)
       const first = await block(page, 'First words').boundingBox()
       const second = await block(page, 'Second block').boundingBox()
-      expect(first!.y).toBeGreaterThan(second!.y)
+      expect(first!.y).toBeLessThan(second!.y)
       await expect(page.getByRole('button', { name: 'Toggle edit mode', exact: true })).toBeEnabled()
     })
 
@@ -79,15 +79,11 @@ for (const [name, way] of Object.entries(ways)) {
       await page.route('**/__hadley/delete*', way.fail)
       await page.goto(dev.origin + '/panel/')
       await fromMenu(page, 'Second block', 'Delete block')
-      await page
-        .getByRole('dialog', { name: 'Delete block?' })
-        .getByRole('button', { name: 'Delete', exact: true })
-        .click()
       await expect.poll(() => messages).toEqual([way.delete])
       await page.waitForTimeout(500)
       expect(await readFile(dev.source, 'utf8')).toBe(before)
-      // today: the block stays faded out, as its animation left it, until the page is reloaded
-      await expect(block(page, 'Second block')).toHaveCSS('opacity', '0')
+      // the block shows again, as the file has it (since 2026-11-09; before, it stayed faded out)
+      await expect(block(page, 'Second block')).toHaveCSS('opacity', '1')
       await expect(page.getByRole('button', { name: 'Toggle edit mode', exact: true })).toBeEnabled()
     })
   })

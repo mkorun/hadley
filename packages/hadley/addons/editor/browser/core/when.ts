@@ -1,6 +1,6 @@
-// When a version was made, as the card says it: its day over a group ("Today", "Yesterday", "6 Nov"), its time in
-// its row, and both in a sentence ("today, 11:40").
-import { LANG, T } from '../../core/texts.ts'
+// When a version was made, as the editor says it (the versions card, undo and redo): its day over a group ("Today",
+// "Yesterday", "6 Nov"), its time in its row, and both in a sentence ("today, 11:40").
+import { LANG, T } from './texts.ts'
 
 const DAY = 24 * 60 * 60 * 1000
 

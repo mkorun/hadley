@@ -1,10 +1,12 @@
 // What the block menu changes: merge, move and delete a block. Each animates first, then asks the server
 // (plugin.ts), which writes the page's file; the page is brought up to date with it (../refresh/), and until then
 // nothing else changes (ADR-14). The animation's styles stay on the blocks until then, and go as the page changes:
-// a reload took them once, the blocks that stay now keep their elements (Michael, 2026-11-09).
+// a reload took them once, the blocks that stay now keep their elements (Michael, 2026-11-09); they go too when the
+// server refuses. A deletion asks nothing: undo takes it back (undo.ts).
 // Each action handles every failure itself, the request and everything before it.
 import { answer, post, serverError } from '../core/request.ts'
 import { state, clearHash, failAction } from '../core/state.ts'
+import type { Change } from '../core/changes.ts'
 import { T } from '../core/texts.ts'
 import type { Direction } from './menu.ts'
 
@@ -141,14 +143,24 @@ async function animateBlockDelete(blockEl: HTMLElement) {
   await wait(DURATION)
 }
 
-/** The actions; `closeMenu` before each, `lock` once the server took it, `confirm` before a delete. */
-export function actions(on: { closeMenu(): void; lock(): void; confirm(): Promise<boolean> }): Actions {
-  /** Animate, then send; `animate` answering false cancels the action. */
+/** The animations' styles off the blocks, at once, with no transition back. */
+function settle(): void {
+  for (const element of styled) {
+    for (const name of ['transition', 'transform', 'opacity']) element.style.removeProperty(name)
+    if (element.style.length === 0) element.removeAttribute('style')
+  }
+  styled.clear()
+}
+
+/** The actions; `closeMenu` before each, `lock` once the server took it, with what it was. */
+export function actions(on: { closeMenu(): void; lock(what: NonNullable<Change['what']>): void }): Actions {
+  /** Animate, then send. */
   const change = async (
+    what: 'move' | 'merge' | 'delete',
     blockEl: HTMLElement,
     path: string,
     body: (blockId: string) => unknown,
-    animate: () => Promise<boolean>,
+    animate: () => Promise<void>,
     failed: (status: number, msg: string) => string,
   ) => {
     if (state.locked) return
@@ -157,7 +169,7 @@ export function actions(on: { closeMenu(): void; lock(): void; confirm(): Promis
 
     try {
       on.closeMenu()
-      if (!(await animate())) return
+      await animate()
     } catch (error) {
       // The page may show a half-animated state; reloading shows the file as it is.
       failAction(error)
@@ -169,7 +181,7 @@ export function actions(on: { closeMenu(): void; lock(): void; confirm(): Promis
       const res = await post(path, body(blockId))
 
       if (res.ok) {
-        on.lock()
+        on.lock(what)
         return
       }
 
@@ -179,55 +191,49 @@ export function actions(on: { closeMenu(): void; lock(): void; confirm(): Promis
         location.reload()
         return
       }
+      settle()
       alert(failed(res.status, serverError(data)))
     } catch {
+      settle()
       alert(T.connectionFailed)
     }
   }
 
   return {
-    settle() {
-      // at once, with no transition back: the page's new order is already where the animation ended
-      for (const element of styled) {
-        for (const name of ['transition', 'transform', 'opacity']) element.style.removeProperty(name)
-        if (element.style.length === 0) element.removeAttribute('style')
-      }
-      styled.clear()
-    },
+    settle,
     merge: (blockEl, direction) =>
       change(
+        'merge',
         blockEl,
         '/__hadley/merge',
         (blockId) => ({ blockId, direction }),
         async () => {
           clearHash()
           await animateBlockMerge(blockEl, direction)
-          return true
         },
         T.mergeError,
       ),
     move: (blockEl, direction) =>
       change(
+        'move',
         blockEl,
         '/__hadley/move',
         (blockId) => ({ blockId, direction }),
         async () => {
           clearHash()
           await animateBlockSwap(blockEl, direction)
-          return true
         },
         T.moveError,
       ),
     remove: (blockEl) =>
       change(
+        'delete',
         blockEl,
         '/__hadley/delete',
         (blockId) => ({ blockId }),
         async () => {
-          if (!(await on.confirm())) return false
           clearHash()
           await animateBlockDelete(blockEl)
-          return true
         },
         T.deleteError,
       ),

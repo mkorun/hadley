@@ -24,6 +24,7 @@ export const STYLES: readonly string[] = [
   'features/pictures.css',
   'features/front-matter.css',
   'features/versions/versions.css',
+  'features/undo.css',
   'features/dialog.css',
   'motion.css',
 ]

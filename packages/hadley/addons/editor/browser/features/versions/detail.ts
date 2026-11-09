@@ -6,7 +6,7 @@ import { icon } from '../../core/icons.ts'
 import { T } from '../../core/texts.ts'
 import { deleteVersion, keepVersion, restoreVersion, versionText, type Version } from './api.ts'
 import { folded, lineDiff, marked, type MarkedLine } from './diff.ts'
-import { moment } from './when.ts'
+import { moment } from '../../core/when.ts'
 
 // unchanged lines on either side of a change; a longer run between two changes is folded
 const CONTEXT = 3

@@ -10,7 +10,7 @@ import { state } from './core/state.ts'
 import { LANG } from './core/texts.ts'
 import { actions } from './features/actions.ts'
 import { bar } from './features/bar.ts'
-import { confirmDelete, confirmRestore } from './features/dialog.ts'
+import { confirmRestore } from './features/dialog.ts'
 import { field } from './features/field.ts'
 import { bundleFiles } from './features/files.ts'
 import { frames } from './features/frames.ts'
@@ -19,6 +19,7 @@ import { heads } from './features/heads.ts'
 import { holdLinks } from './features/links.ts'
 import { menu } from './features/menu.ts'
 import { acceptPictures } from './features/pictures.ts'
+import { undo } from './features/undo.ts'
 import { updating } from './features/updating.ts'
 import { versions } from './features/versions/index.ts'
 
@@ -49,12 +50,15 @@ const theUpdating = updating({
     theMenu.attach()
     void theHeads.refresh().then(() => theFrames.queue())
     theVersions.refreshed()
+    void theUndo.refresh()
   },
 })
 const theActions = actions({
   closeMenu: () => theMenu.close(),
-  lock: () => theUpdating.wait(),
-  confirm: confirmDelete,
+  lock(what) {
+    theUndo.offer(what)
+    theUpdating.wait()
+  },
 })
 // the animations' styles go in the same task as the page changes, so that nothing between is painted
 document.addEventListener('hadley:swapping', () => theActions.settle())
@@ -98,6 +102,14 @@ const theVersions = versions({
 theBar.draw()
 theMenu.attach()
 holdLinks()
+// undo and redo in the pill, after the versions' button; a step is a change as any
+const theUndo = undo({
+  add: (control) => theBar.add(control),
+  note: (text, action) => theBar.note(text, action),
+  wait: () => theUpdating.wait(),
+})
+void theUndo.refresh()
+
 const theHeads = heads({
   edit: (blockId, element, options) => void theField.open(blockId, element, options),
   badge: (badge) => theFrames.badge(badge),

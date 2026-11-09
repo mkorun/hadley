@@ -1,19 +1,34 @@
 /**
  * The routes of the time machine (history.ts), under `/__hadley/history`: the versions of a page, the text of one,
  * going back to one, and naming one. The page is named by its URL path; its file comes from the pages the build
- * registered (pageHeads), never from the browser, and a version only by a hash its log names. Reads are a source read
- * for lib/dev-guard.ts, as `/__hadley/block/` is; writes go one at a time with the editor's (oneAtATime). Deleting
- * takes one version or every unnamed one, never the newest: the page as it is.
+ * registered (pageHeads), never from the browser, and a version only by a hash its log names. Undo and redo step
+ * through them as an editor's stacks (history.ts, steps). Reads are a source read for lib/dev-guard.ts, as
+ * `/__hadley/block/` is; writes go one at a time with the editor's (oneAtATime). Deleting takes one version or every
+ * unnamed one, never the newest: the page as it is.
  */
 import { createHash } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { siteHistory, NAME_MAX } from './history.ts'
+import { siteHistory, NAME_MAX, type Step } from './history.ts'
 import { t, type Lang } from './i18n.ts'
 import { oneAtATime, pageHeads, readBody } from './plugin.ts'
 
 const HASH = /^[0-9a-f]{64}$/
-const WRITES = new Set(['/__hadley/history/restore', '/__hadley/history/name', '/__hadley/history/delete'])
+const WRITES = new Set([
+  '/__hadley/history/restore',
+  '/__hadley/history/name',
+  '/__hadley/history/delete',
+  '/__hadley/history/step',
+])
+
+/** What a step would take back or bring back, for the button's title. */
+const summary = (step: Step | undefined) =>
+  step && {
+    at: step.change.at,
+    by: step.change.by,
+    ...(step.change.what ? { what: step.change.what } : {}),
+    ...(step.change.agent ? { agent: step.change.agent } : {}),
+  }
 
 function send(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status
@@ -40,6 +55,14 @@ export async function historyRoute(req: IncomingMessage, res: ServerResponse, la
     send(res, 200, { current, versions: await versions.list(file) })
     return true
   }
+  if (req.method === 'GET' && url.pathname === '/__hadley/history/steps') {
+    const file = fileOf(url.searchParams.get('path'))
+    if (!file) return (send(res, 404, { error: t(lang, 'pageUnknown') }), true)
+    const current = hashOf(await readFile(file, 'utf-8'))
+    const { undo, redo } = await versions.steps(file)
+    send(res, 200, { current, ...(undo ? { undo: summary(undo) } : {}), ...(redo ? { redo: summary(redo) } : {}) })
+    return true
+  }
   if (req.method === 'GET' && url.pathname === '/__hadley/history/version') {
     const file = fileOf(url.searchParams.get('path'))
     if (!file) return (send(res, 404, { error: t(lang, 'pageUnknown') }), true)
@@ -60,6 +83,14 @@ export async function historyRoute(req: IncomingMessage, res: ServerResponse, la
   }
   const file = fileOf(body['path'])
   if (!file) return (send(res, 404, { error: t(lang, 'pageUnknown') }), true)
+  if (url.pathname === '/__hadley/history/step') {
+    const way = body['way']
+    const current = body['current']
+    if ((way !== 'undo' && way !== 'redo') || typeof current !== 'string' || !HASH.test(current))
+      return (send(res, 400, { error: t(lang, 'invalidRequestBody') }), true)
+    await oneAtATime(() => step(file, way, current, res, lang))
+    return true
+  }
   if (url.pathname === '/__hadley/history/delete' && body['unnamed'] === true) {
     send(res, 200, { removed: await versions.removeUnnamed(file) })
     return true
@@ -111,4 +142,31 @@ export async function historyRoute(req: IncomingMessage, res: ServerResponse, la
     send(res, 200, { ok: true })
   })
   return true
+}
+
+/**
+ * Undo or redo (history.ts, steps): the version it leads to written to the file, as the editor writes, and kept as a
+ * version of its own, which names it; only onto the page the button was shown for.
+ */
+async function step(file: string, way: 'undo' | 'redo', current: string, res: ServerResponse, lang: Lang) {
+  const versions = siteHistory()!
+  let now: string
+  try {
+    now = await readFile(file, 'utf-8')
+  } catch {
+    return send(res, 500, { error: t(lang, 'couldNotReadFile') })
+  }
+  if (hashOf(now) !== current) return send(res, 409, { error: t(lang, 'fileChangedSinceOpen') })
+  // the page as it is is a version first, as before restoring
+  await versions.record(file, now, 'outside').catch(() => undefined)
+  const target = (await versions.steps(file))[way]?.target
+  const text = target && (await versions.content(file, target.hash))
+  if (!target || text === undefined) return send(res, 404, { error: t(lang, 'versionUnknown') })
+  try {
+    await writeFile(file, text, 'utf-8')
+  } catch {
+    return send(res, 500, { error: t(lang, 'couldNotWriteFile') })
+  }
+  await versions.record(file, text, way, { back: target.at }).catch(() => undefined)
+  send(res, 200, { ok: true })
 }

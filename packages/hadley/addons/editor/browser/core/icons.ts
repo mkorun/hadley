@@ -28,6 +28,9 @@ const ICONS = {
   pencil: [path('M10.5 2.5l3 3L6 13H3v-3zM9 4l3 3')],
   // the versions of a page: a clock
   clock: [['circle', { cx: '8', cy: '8', r: '5.5' }], path('M8 5v3.2l2.2 1.5')],
+  // undo and redo: a ring with its arrow back, or forth (Michael, 2026-11-09)
+  undo: [path('M3.8 9.5A4.5 4.5 0 1 0 5 4.7'), path('M3.5 2.5v3h3')],
+  redo: [path('M12.2 9.5A4.5 4.5 0 1 1 11 4.7'), path('M12.5 2.5v3h-3')],
   // a version kept: a bookmark
   bookmark: [path('M4.5 2.5h7v11L8 10.8l-3.5 2.7z')],
 } satisfies Record<string, readonly Shape[]>

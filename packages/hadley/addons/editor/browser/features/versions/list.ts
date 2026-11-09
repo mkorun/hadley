@@ -4,29 +4,11 @@ import { el } from '../../core/dom.ts'
 import { icon } from '../../core/icons.ts'
 import { T } from '../../core/texts.ts'
 import type { Version } from './api.ts'
-import { day, time } from './when.ts'
-
-const WHAT: Record<NonNullable<Version['what']>, string> = {
-  edit: T.whatEdit,
-  move: T.whatMove,
-  merge: T.whatMerge,
-  delete: T.whatDelete,
-  new: T.whatNew,
-  picture: T.whatPicture,
-}
-
-const who = (version: Version): string =>
-  version.by === 'editor'
-    ? T.byEditor
-    : version.by === 'agent'
-      ? T.byAgent.replace('{agent}', version.agent ?? 'AI')
-      : version.by === 'restore'
-        ? T.byRestore
-        : T.byOutside
+import { described } from '../../core/changes.ts'
+import { day, time } from '../../core/when.ts'
 
 /** What a row says of its version: who made it and what, or that it is the page as it is. */
-export const said = (version: Version, isCurrent: boolean): string =>
-  isCurrent ? T.current : [who(version), version.what ? WHAT[version.what] : ''].filter(Boolean).join(' · ')
+export const said = (version: Version, isCurrent: boolean): string => (isCurrent ? T.current : described(version))
 
 /** The rows of `versions` under their days; `open` fills a row's detail when it opens (a closed one is emptied). */
 export function rows(

@@ -36,6 +36,27 @@
   display: none;
 }
 
+/* an action after the note, as Gmail's Undo after a deletion */
+.hadley-bar-note-action {
+  margin-left: 0.6rem;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--he-accent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.hadley-bar-note-action:hover {
+  text-decoration: underline;
+}
+
+.hadley-bar-note-action:focus-visible {
+  outline: 2px solid var(--he-accent-focus);
+  outline-offset: 2px;
+}
+
 /* dev-overlay: static inside the bar instead of fixed */
 #hadley-dev-bar .dev-overlay {
   position: static;

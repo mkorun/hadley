@@ -1,14 +1,11 @@
 // The routes of the time machine (addons/editor/history-routes.ts), as the versions card asks them: each answer is
 // what it holds, or the message to show.
+import type { Change } from '../../core/changes.ts'
 import { answer, post, serverError } from '../../core/request.ts'
 import { T, withLang } from '../../core/texts.ts'
 
-export interface Version {
-  at: number
+export interface Version extends Change {
   hash: string
-  by: 'editor' | 'agent' | 'outside' | 'restore'
-  what?: 'edit' | 'move' | 'merge' | 'delete' | 'new' | 'picture'
-  agent?: string
   name?: string
 }
 
