@@ -392,3 +392,20 @@ test('a browser without the key gets no chat, and the link gives it the key', as
     await context.close()
   }
 })
+
+// Michael, 2026-11-09: the closed panel flashed up on each load, as when the language switches
+test('the closed panel is never shown while the page loads', async ({ page, dev }) => {
+  // a script of the page, as text: e2e has no DOM types
+  await page.addInitScript(`
+    const seen = []
+    window.panelSeen = seen
+    new MutationObserver(() => {
+      const panel = document.getElementById('hadley-chat')
+      if (panel) seen.push(!panel.hidden)
+    }).observe(document, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] })
+  `)
+  await page.goto(dev.origin + '/panel/')
+  await expect(page.getByRole('button', { name: 'Chat', exact: true })).toBeVisible()
+  const seen = await page.evaluate('window.panelSeen')
+  expect(seen).not.toContain(true)
+})

@@ -97,3 +97,16 @@ test('without Lima the table marks nothing, says so, and the front matter still 
     .toBe(before.replace(FRONT_MATTER, `${FRONT_MATTER}\ndescription: Without Lima`))
   expect(errors).toEqual([])
 })
+
+// Michael, 2026-11-09: the badge slid down below the open field, over its row of buttons
+test('the badge stays above the front matter while its field is open', async ({ page, dev }) => {
+  const field = await open(page, dev.origin)
+  const badge = page.locator('.hadley-front-matter-badge')
+  const wrapper = page.locator('.hadley-editor')
+  await expect
+    .poll(async () => {
+      const [b, w] = await Promise.all([badge.boundingBox(), wrapper.boundingBox()])
+      return b !== null && w !== null && b.y + b.height <= w.y + 1
+    })
+    .toBe(true)
+})

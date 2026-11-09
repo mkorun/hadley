@@ -6,7 +6,7 @@
 // own over the page, z-index 1: under a site's fixed or sticky bars, above the text. They follow the blocks through
 // resizes, changes to the page and the move animations.
 import { el } from '../core/dom.ts'
-import { isEditMode } from '../core/state.ts'
+import { isEditMode, state } from '../core/state.ts'
 
 const FRAMED = '[data-hadley-id], [data-hadley-head-editable]'
 
@@ -76,15 +76,20 @@ export function frames(): Frames {
         // over a narrow title, the symbol alone (keys and values), so that it keeps clear of what stands left above it
         frontMatterBadge.classList.toggle('is-compact', parseFloat(frame.style.width) < 480)
         // in the middle of the line right above the title, where a theme has one (a date, a category), else just
-        // above the frame
-        const above = title.previousElementSibling?.getBoundingClientRect()
-        const titleTop = title.getBoundingClientRect().top
+        // above the frame; while the front matter's field is open above the title, above that field, so that the badge
+        // stays where it was (Michael, 2026-11-09: it slid down below the field)
+        const field = state.wrapper && title.previousElementSibling === state.wrapper ? state.wrapper : undefined
+        const anchor = field ?? title
+        const above = anchor.previousElementSibling?.getBoundingClientRect()
+        const anchorTop = anchor.getBoundingClientRect().top
         const height = frontMatterBadge.offsetHeight
-        const inLine = above && above.height > 0 && above.height < 80 && titleTop - above.bottom >= 0
+        const inLine = above && above.height > 0 && above.height < 80 && anchorTop - above.bottom >= 0
         frontMatterBadge.style.top =
-          inLine && titleTop - above.bottom < 48
+          inLine && anchorTop - above.bottom < 48
             ? `${above.top + window.scrollY + (above.height - height) / 2}px`
-            : `${parseFloat(frame.style.top) - height - 4}px`
+            : field
+              ? `${anchorTop + window.scrollY - height - 4}px`
+              : `${parseFloat(frame.style.top) - height - 4}px`
         frontMatterBadge.style.left = `${right - frontMatterBadge.offsetWidth}px`
       }
     }

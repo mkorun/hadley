@@ -363,6 +363,8 @@ function startPanel() {
   const dot = element('span', undefined, 'hc-dot')
   toggle.append(dot)
   const panel = element('section')
+  // hidden from the start, setOpen() shows it if it was open: it flashed up on each load (Michael, 2026-11-09)
+  panel.hidden = true
   panel.id = 'hadley-chat'
   panel.setAttribute('aria-labelledby', 'hadley-chat-title')
   const header = element('header')
