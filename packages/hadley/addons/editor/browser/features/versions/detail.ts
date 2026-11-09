@@ -16,7 +16,7 @@ export interface Context {
   /** the hash of the page's file as it is */
   current: string
   isCurrent: boolean
-  /** neither the newest nor the page as it is, which stay */
+  /** not the version the page stands at, which stays */
   deletable: boolean
   /** the question before restoring a version of `when` */
   confirm(when: string): Promise<boolean>

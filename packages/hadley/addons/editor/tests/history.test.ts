@@ -7,7 +7,7 @@ import type { AddressInfo } from 'node:net'
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { history, KEEP, pruned, seen, startHistory, steps, undone, type Version } from '../history.ts'
+import { history, KEEP, pruned, seen, startHistory, steps, undone, without, type Version } from '../history.ts'
 import { historyRoute } from '../history-routes.ts'
 import { pageHeads } from '../plugin.ts'
 
@@ -125,6 +125,21 @@ describe('the versions of a page', () => {
     const { kept, dropped } = pruned([...versions, { at: 999, hash: 'f'.repeat(64), by: 'editor' }])
     assert.equal(dropped.length, 1)
     assert.equal(kept.at(-1)?.hash, 'f'.repeat(64))
+  })
+
+  it('deletes the newest once undo took the page away from it, but never the version the page stands at', async () => {
+    const versions = history(root)
+    const first = await versions.record(page, 'a\n', 'outside')
+    const newest = await versions.record(page, 'b\n', 'editor', { what: 'edit' })
+    assert.ok(first && newest)
+    assert.equal(await versions.remove(page, newest.at, newest.hash), false)
+    await versions.stand(page, first.at)
+    assert.equal(await versions.remove(page, first.at, first.hash), false)
+    assert.ok(await versions.remove(page, newest.at, newest.hash))
+    assert.deepEqual(
+      (await versions.list(page)).map((x) => x.at),
+      [first.at],
+    )
   })
 
   it('says a page the build read is the agent’s while it works, else from outside', async () => {
@@ -321,6 +336,23 @@ describe('undo and redo', () => {
     const older = [v(1, 'outside'), v(2, 'editor'), v(3, 'editor')]
     assert.deepEqual(of(steps(older, 3)), { undo: [3, 2], redo: undefined })
     assert.deepEqual(of(steps([], 1)), { undo: undefined, redo: undefined })
+  })
+
+  it('keeps the chain whole when versions go: what was made on one gone is made on the one below it', () => {
+    const log = [v(1, 'outside'), v(2, 'editor', 1), v(3, 'editor', 2), v(4, 'editor', 3)]
+    const kept = without(log, new Set([log[1]!, log[2]!]))
+    assert.deepEqual(
+      kept.map((x) => [x.at, x.after]),
+      [
+        [1, undefined],
+        [4, 1],
+      ],
+    )
+    assert.deepEqual([...undone(kept, 4)], [])
+    // a log from before: a version naming one that is gone falls back to the one before it (Michael, 2026-11-09)
+    const torn = [v(1, 'outside'), v(5, 'restore', 3)]
+    assert.deepEqual([...undone(torn, 5)], [])
+    assert.deepEqual(of(steps(torn, 5)), { undo: [5, 1], redo: undefined })
   })
 
   it('names the versions undo took the page away from: all but its own and those it was made on', () => {

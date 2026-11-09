@@ -82,8 +82,8 @@ export function versions(on: {
             path,
             current,
             isCurrent: version === now,
-            // the newest and the page as it is stay (history.ts)
-            deletable: version !== now && version !== shown[0],
+            // the version the page stands at stays, the newest too only while it is that one (history.ts)
+            deletable: version !== standing,
             confirm: on.confirm,
             lock: on.lock,
             reload: load,
@@ -96,15 +96,15 @@ export function versions(on: {
       none.textContent = T.none
       list.append(none)
     }
-    footer(shown, now)
+    footer(shown, standing)
     const again = options.open === undefined ? undefined : String(options.open)
     for (const item of list.querySelectorAll<HTMLButtonElement>('.hv-item'))
       if (item.dataset['at'] === again) item.click()
   }
 
-  /** The count, deleting every unnamed version but the newest and the page as it is, and the limit once near. */
-  function footer(shown: readonly Version[], now: Version | undefined): void {
-    const unnamed = shown.filter((version, i) => i > 0 && version !== now && !version.name).length
+  /** The count, deleting every unnamed version but the one the page stands at, and the limit once it comes near. */
+  function footer(shown: readonly Version[], standing: Version | undefined): void {
+    const unnamed = shown.filter((version) => version !== standing && !version.name).length
     const line = el('div', 'hv-foot-line')
     const count = el('span')
     count.textContent = T.versionCount(shown.length)

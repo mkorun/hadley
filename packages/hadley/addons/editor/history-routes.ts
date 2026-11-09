@@ -4,7 +4,7 @@
  * registered (pageHeads), never from the browser, and a version only by a hash its log names. Undo and redo step
  * through them as an editor's stacks (history.ts, steps). Reads are a source read for lib/dev-guard.ts, as
  * `/__hadley/block/` is; writes go one at a time with the editor's (oneAtATime). Deleting takes one version or every
- * unnamed one, never the newest: the page as it is.
+ * unnamed one, never the one the page stands at.
  */
 import { createHash } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'

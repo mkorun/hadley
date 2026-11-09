@@ -67,7 +67,24 @@ export interface Step {
 function parentOf(versions: readonly Version[], index: number): Version | undefined {
   const version = versions[index]
   if (!version) return undefined
-  return version.after === undefined ? versions[index - 1] : versions.find((v) => v.at === version.after)
+  // one it names that is gone (a log from before relinking) falls back to the one before it
+  return (version.after !== undefined && versions.find((v) => v.at === version.after)) || versions[index - 1]
+}
+
+/**
+ * The versions without those in `drop`, each that was made on one of them made on the nearest one kept below it now,
+ * so that deleting or pruning never breaks the chain undo walks (Michael, 2026-11-09: a version deleted in between
+ * made all below it look undone).
+ */
+export function without(versions: readonly Version[], drop: ReadonlySet<Version>): Version[] {
+  return versions.flatMap((version, index) => {
+    if (drop.has(version)) return []
+    let parent = parentOf(versions, index)
+    if (!parent || !drop.has(parent)) return [version]
+    while (parent && drop.has(parent)) parent = parentOf(versions, versions.indexOf(parent))
+    const { after: _gone, ...rest } = version
+    return [parent ? { ...rest, after: parent.at } : rest]
+  })
 }
 
 /**
@@ -114,7 +131,7 @@ export function pruned(versions: readonly Version[], at?: number): { kept: Versi
       unnamed -= 1
     } else kept.push(version)
   })
-  return { kept, dropped }
+  return { kept: without(versions, new Set(dropped)), dropped }
 }
 
 export interface History {
@@ -133,11 +150,11 @@ export interface History {
    */
   name(file: string, hash: string, name: string, at?: number): Promise<boolean>
   /**
-   * Deletes the version of `file` made at `at` with `hash`, never the newest nor the one the page stands at; false
+   * Deletes the version of `file` made at `at` with `hash`, never the one the page stands at; false
    * where none.
    */
   remove(file: string, at: number, hash: string): Promise<boolean>
-  /** Deletes every unnamed version of `file` but the newest and the one the page stands at; how many went. */
+  /** Deletes every unnamed version of `file` but the one the page stands at; how many went. */
   removeUnnamed(file: string): Promise<number>
   /** Where undo and redo lead from the version the page stands at (steps). */
   steps(file: string): Promise<{ undo?: Step; redo?: Step }>
@@ -272,13 +289,10 @@ export function history(root: string): History {
         const path = pathOf(file)
         const versions = await load(path)
         const index = versions.findIndex((version) => version.at === at && version.hash === hash)
-        const here = standingAt(path, versions)
-        if (index === -1 || index === versions.length - 1 || versions[index] === here) return false
+        // the page as it is stays; the newest only while the page stands at it
+        if (index === -1 || versions[index] === standingAt(path, versions)) return false
         const dropped = versions[index]!
-        await save(
-          path,
-          versions.filter((_, i) => i !== index),
-        )
+        await save(path, without(versions, new Set([dropped])))
         await collect([dropped])
         return true
       })
@@ -308,11 +322,9 @@ export function history(root: string): History {
         const path = pathOf(file)
         const versions = await load(path)
         const here = standingAt(path, versions)
-        const keep = (version: Version, i: number) =>
-          version.name !== undefined || i === versions.length - 1 || version === here
-        const dropped = versions.filter((version, i) => !keep(version, i))
+        const dropped = versions.filter((version) => version.name === undefined && version !== here)
         if (dropped.length === 0) return 0
-        await save(path, versions.filter(keep))
+        await save(path, without(versions, new Set(dropped)))
         await collect(dropped)
         return dropped.length
       })
@@ -327,8 +339,13 @@ let working: () => string | undefined = () => undefined
 /** Starts the history of the site the dev server serves; `agent` names the agent of the chat while it works. */
 export function startHistory(root: string, agent?: () => string | undefined): void {
   current = history(root)
+  site = root
   if (agent) working = agent
 }
+
+// the site the dev server serves, whose `.hadley/` holds the history and the files the editor took away (trash.ts)
+let site: string | undefined
+export const siteRoot = (): string | undefined => site
 
 export const siteHistory = (): History | undefined => current
 
