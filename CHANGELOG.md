@@ -6,23 +6,73 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ## [Unreleased]
 
+The chat with an agent beside the page, versions with undo and redo, and a block editor rebuilt in TypeScript that
+brings the page up to date in place.
+
 ### Added
 
+- The chat: with `chat: true` beside `editor: true` under `dev:` in `config.lima`, a panel beside the page in which you
+  talk to an agent on this machine: Claude Code or Codex, which the dev server starts and stops itself, or a Claude
+  Code session that connects through `hadley channel`. What an agent the dev server started would write, run or reach
+  on the network waits for Allow or Deny in the panel; the chat answers only the browser that holds the site's key,
+  which `hadley dev` prints as a link (docs/dev-server.md, "Chat"). Starting an agent is experimental.
+- Rewrite: an open block's Rewrite drawer asks the agent to rewrite the block or the text selected in it, a way chosen
+  (Clearer, Shorter, …) or by an instruction; the proposal takes the place of the text in the field, Take back or
+  Ctrl+Z undoes it, and only saving writes it.
+- Versions: the editor keeps every version of a page's Markdown, whoever wrote it, in `.hadley/history/` of the site.
+  Versions in its control lists them by day, shows what restoring one would change, word by word, and keeps, restores
+  or deletes them; Undo and Redo, or Ctrl+Z and Ctrl+Shift+Z or Ctrl+Y, move the page among them, and make no version
+  (docs/dev-server.md, "Versions").
+- Up to date in place: after a change to the Markdown of pages alone, each open page replaces only what differs instead
+  of reloading; a theme's script hears of new blocks by `hadley:content-updated` (docs/dev-server.md, "Up to date in
+  place"; docs/themes.md, "Editor").
+- The editor edits a page's title and subtitle where the theme marks them (docs/themes.md, "Editor"), and a badge above
+  the title opens its front matter, whose keys, comments and errors Lima marks as it is typed.
+- The block menu adds a new block below. Under Files the page's bundle waits: a click puts a file in at
+  the caret, a picture shows larger as the pointer rests on it, and a file can be taken away into `.hadley/trash/` of
+  the site. A PNG or JPEG dropped on the field or pasted into it is added to the bundle, after a question for its name.
 - `<m data-exif=keep>` around a picture publishes its EXIF and location as they are (docs/content.md, "Pictures").
+- `hadley dev` says, in the editor and in the terminal, when hadley's own code changed since it started.
 
 ### Changed
 
+- The block editor is rebuilt in TypeScript, the chat a part of it, loaded only where it is on. Its control at the
+  bottom right holds edit mode, Versions, Undo and Redo, the chat and the language, and steps back out of edit mode;
+  one card is open at a time.
+- The editor speaks the first of the browser's languages it knows, German or English, no longer the page's; its control
+  shows which, and its menu keeps another for the site.
+- Editing: in edit mode a double click opens a block, the cursor where the pointer was; Ctrl+Enter or Ctrl+S saves it,
+  Enter stays a new line, and a link in a block leads away only with Ctrl or Cmd. The field folds Files and Rewrite into
+  drawers; Save is on only where the text changed, and Cancel or Escape asks first where it did. A field being saved
+  stays, locked, until the page shows its block.
+- A block is deleted, moved or merged without a question; a note offers to undo it.
 - Pictures no longer say where they were taken: those made in widths keep their colour profile, their XMP and the artist
   and copyright of their EXIF, but no other EXIF (location, camera, serial number); the XMP loses its location, as a
   position or a place by name, and a photo stands upright. A JPEG or PNG copied as it is loses the same, its IPTC its
   places by name, but keeps its pixels and its orientation; another picture with EXIF or a location, a WebP or AVIF say,
   fails the build. The build log says how many pictures lost their location, and the next build makes every image again.
+- A dev build warns of the text of a draft or a seed that the parser could not read, as it may be missing from the
+  page.
+- A build's header names its site, by the host of the origin in `config.lima`.
+- Lima 0.8.1 and Markanto 0.2.2.
 
 ### Fixed
 
+- A page with a container name the parser refuses, such as `::: A|B`, hung `hadley dev` and every build (Markanto
+  0.2.2); its text now stays, in the error block.
+- The editor saves a block with one blank line between its parts: Enter pressed for a new paragraph left two.
+- `hadley dev`: a page asked for while a rebuild is due waits for it, where a reload in that moment, after a file
+  changed under the editor, showed the page as it was; and a page opened after a rebuild while none was open no longer
+  loads twice.
 - `hadley dev` no longer waits for a start of Vite that hangs: after 15 s it goes on where the port answers, and
   starts Vite again where it does not, once (docs/dev-server.md). It hung, rarely, in the CI on Linux, macOS and
   Windows.
+
+### Security
+
+- The editor's and the chat's requests are answered only on this machine, never through a proxy or tunnel, even one
+  that rewrites the Host: a request with a header a proxy adds (`Forwarded`, `X-Forwarded-For`, `Via`, …) is refused.
+  The site's pages still show through a tunnel.
 
 ## [0.2.0] — 2026-11-05
 

@@ -51,32 +51,34 @@ The field keeps its text in view and folds its seldom needed tools under its too
 Files or Rewrite, and the field opens next time with the one open last. Save is on only where the text changed; Cancel,
 or Escape, closes the field, and asks first where it changed. Under Files the files of the page's bundle wait (not its
 Markdown, nothing hidden, no other bundle): a click puts one in at the caret, an image as `![](name)` with the caret in
-its alt text. A PNG or JPEG dropped on the field, or pasted into it, is added to the page's bundle: the editor asks for
-its name first, and before it replaces a file of that name, then puts it in at the caret. The file is saved as it is;
-one that says where it was taken is marked, and the site publishes it without that (content.md, "Pictures"). A page that
-is one `.md` file has no bundle, and so no files. A right click or a double click on the page's title or subtitle, where
-the theme marks it (themes.md, "Editor"), edits its text, while its `#` or `__` stays as it is, or the front matter
-where that gives it; they are never moved, merged or deleted. In edit mode a badge above the title opens the page's
-front matter, which Lima must read when it is saved; its lines are striped, its keys and comments marked where Lima
-finds them, and a line Lima refuses is marked as it is typed, with Lima's message below. Each change is saved to the
-page's Markdown file, and the page is brought up to date in place; a file that changed since the page was built is not
-edited, the page reloads first. The editor is the author's tool, not part of the page: it speaks the first of the
-browser's languages it knows (German, English), else English; its control at the bottom right shows the language it
-speaks, and its menu keeps another for the site. Out of edit mode the control steps back, until the pointer or the
-keyboard comes to it. Where hadley's own code changed since the dev server started, a warning above the control asks to
-restart it, and the terminal says so once. `hadley deploy` serves no editor.
+its alt text. A picture shows larger once the pointer rests on it or the keyboard comes to it. The bin beside a file
+takes it away, after a question, which warns if the text still uses it: the file moves to `.hadley/trash/` of the site,
+under its path, from where it can be brought back by hand. A PNG or JPEG dropped on the field, or pasted into it, is
+added to the page's bundle: the editor asks for its name first, and before it replaces a file of that name, then puts it
+in at the caret. The file is saved as it is; one that says where it was taken is marked, and the site publishes it
+without that (content.md, "Pictures"). A page that is one `.md` file has no bundle, and so no files. A right click or a
+double click on the page's title or subtitle, where the theme marks it (themes.md, "Editor"), edits its text, while its
+`#` or `__` stays as it is, or the front matter where that gives it; they are never moved, merged or deleted. In edit
+mode a badge above the title opens the page's front matter, which Lima must read when it is saved; its lines are
+striped, its keys and comments marked where Lima finds them, and a line Lima refuses is marked as it is typed, with
+Lima's message below. Each change is saved to the page's Markdown file, and the page is brought up to date in place; a
+file that changed since the page was built is not edited, the page reloads first. The editor is the author's tool, not
+part of the page: it speaks the first of the browser's languages it knows (German, English), else English; its control
+at the bottom right shows the language it speaks, and its menu keeps another for the site. Out of edit mode the control
+steps back, until the pointer or the keyboard comes to it. Where hadley's own code changed since the dev server started,
+a warning above the control asks to restart it, and the terminal says so once. `hadley deploy` serves no editor.
 
 ### Up to date in place
 
-With the block editor, when only the Markdown of pages changed, by the editor, the chat's agent or another program,
-each open page fetches itself once the dev server has built it, and replaces only the blocks that differ, and outside
-them the smallest element that differs, such as a reading time; its title, description and JSON-LD follow too. Scroll
+With the block editor, when only the Markdown of pages changed, by the editor, the chat's agent or another program, each
+open page fetches itself once the dev server has built it, and replaces only the blocks that differ, and outside them
+the smallest element that differs, such as a reading time; its title, description and JSON-LD follow too. Scroll
 position, an open card and the chat stay, and a page that did not change does nothing. After a change of its own the
-editor waits, the changed block dimmed, until the page is up to date; a change from outside waits while a field is
-open; a rebuild that fails frees the editor and says so. The page reloads as before when anything else changed (the
-theme, `config.lima`, data, pictures), when a stylesheet or script of the page's head differs, when nothing comes
-within 15 seconds, and on any error. A theme whose scripts hang on blocks of the content hears of the new ones
-(themes.md, "Editor").
+editor is locked until the page is up to date: a field being saved stays, its Save saying Saving…, until the page shows
+the block; a change from outside waits while a field is open; a rebuild that fails frees the editor and says so. The
+page reloads as before when anything else changed (the theme, `config.lima`, data, pictures), when a stylesheet or
+script of the page's head differs, when nothing comes within 15 seconds, and on any error. A theme whose scripts hang on
+blocks of the content hears of the new ones (themes.md, "Editor").
 
 ### Versions
 
@@ -87,19 +89,19 @@ control at the bottom right lists them by day, newest first, with when, by whom 
 chat's agent was working is said to have changed while it worked, which is all the dev server knows. One opened in its
 row shows what restoring it would change: a line that goes with −, one that comes with +, and in a line changed for
 another the words that differ. Restore asks first, writes it to the file as any change does, and keeps the page it
-replaces as a version, so that going forward again is as easy. Keep gives a version a name, such as "before the
+replaces as a version, so that going forward again is as easy; the version history says which one it brought back, by
+its name or its time; with a field open, it asks to close it first. Keep gives a version a name, such as "before the
 rework", and a kept version stays; of the unnamed, the last 100 of each page stay. A version can be deleted, after a
-question, and so can every unnamed one at once; the page as it is never. The versions
-live in `.hadley/history/` of the site, each state once, never in its repository, and `hadley clean` leaves them; they
-need nothing but hadley, on any system. A page of more than 5,000 lines, or two versions that differ in too much of it,
-are not compared, only restored.
+question, and so can every unnamed one at once; the page as it is never. The versions live in `.hadley/history/` of the
+site, each state once, never in its repository, and `hadley clean` leaves them; they need nothing but hadley, on any
+system. A page of more than 5,000 lines, or two versions that differ in too much of it, are not compared, only restored.
 
 Beside Versions, Undo and Redo (Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y, Cmd on a Mac, while no field is open) move the page
 among its versions: the editor's changes, the agent's and those from outside alike, each button's title saying which
 change it takes back or brings back, and when. Undo goes back to the version a change was made on, change by change,
 Redo forth again; a step writes the file as any change, but makes no version, and Versions marks the one the page stands
-at. A change after an undo is made on that version, and every version stays. A block is deleted, moved or merged without
-a question; for a few seconds a note above the control offers to undo it.
+at, and those an undo left as undone. A change after an undo is made on that version, and every version stays. A block
+is deleted, moved or merged without a question; for a few seconds a note above the control offers to undo it.
 
 ## Chat
 
@@ -140,11 +142,12 @@ An open block's Rewrite drawer has a way to rewrite it (Clearer, Shorter, More f
 Only instructions), a field for an instruction, which adds to the way and is all of Only instructions, and a button that
 asks the agent, as Ctrl+Shift+Enter in the editing field does. It rewrites the text selected in the editing field, or
 the whole block, as the button's name says; a selection also shows beside it with its length. While the agent works, the
-toolbar counts the seconds, and shows a check once the proposal is in, with Undo beside it. The agent answers with a
-proposal, not a change: it takes the place of the block's text or of the selection, selected, in the editing field,
-Ctrl+Z takes it back, and only saving writes it to the file, as any edit. If the text has changed while the agent was
-answering, or the block was closed, the proposal waits in the panel instead, to insert, copy or discard. Each request
-shows how long it has been waiting, and each answer how long it took.
+drawer counts the seconds, and shows a check once the proposal is in, with Take back beside it. Without an agent only
+the button stays, and it opens the chat to start one. The agent answers with a proposal, not a change: it takes the
+place of the block's text or of the selection, selected, in the editing field, Ctrl+Z takes it back, and only saving
+writes it to the file, as any edit. If the text has changed while the agent was answering, or the block was closed, the
+proposal waits in the panel instead, to insert, copy or discard. Each request shows how long it has been waiting, and
+each answer how long it took.
 
 ### An agent the dev server starts
 
