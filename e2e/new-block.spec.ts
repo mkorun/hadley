@@ -2,7 +2,7 @@
 // (addons/editor/browser/features/files.ts): the new text is saved after the block, an empty one is no edit, an
 // image goes in as Markdown and any other file as a link.
 import { test, expect } from './chat-fixture.ts'
-import { fromMenu, openBlock, PIXEL } from './editor.ts'
+import { PIXEL, fromMenu, openBlock, unfold } from './editor.ts'
 import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
@@ -16,7 +16,8 @@ test('a new block below takes its text, and a file of the bundle goes in as Mark
   const field = page.locator('.hadley-textarea')
   await expect(field).toHaveValue('')
   await expect(field).toBeFocused()
-  // the bundle's image, offered under the field
+  // the bundle's image, offered in the drawer under the field
+  await unfold(page, 'Files (1)')
   const file = page.getByRole('button', { name: 'Insert pixel.png', exact: true })
   await expect(file.locator('img')).toHaveJSProperty('naturalWidth', 1)
   await file.click()
@@ -50,6 +51,7 @@ test('a file of the bundle that is no image goes in as a link, with the caret af
   await dev.rebuild(() => writeFile(join(dirname(dev.source), 'notes.txt'), 'Notes.\n'))
   const before = await readFile(dev.source, 'utf8')
   const field = await openBlock(page, dev.origin)
+  await unfold(page, 'Files')
   await page.getByRole('button', { name: 'Insert notes.txt', exact: true }).click()
   await expect(field).toHaveValue(`${FIRST}[notes.txt](notes.txt)`)
   await page.keyboard.type(' See them.')

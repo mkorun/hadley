@@ -44,23 +44,26 @@ dev:
 ```
 
 With it, every page loads the editor: a right click on a block of its Markdown edits it, and in edit mode a double click
-too, the word clicked selected in the field; the menu beside the block adds a new block below it, moves, merges and
+too, the field's cursor where the pointer was; the menu beside the block adds a new block below it, moves, merges and
 deletes blocks. In the field Enter is a new line, as lists, tables and code need; Ctrl+Enter or Ctrl+S (Cmd on a Mac)
 saves it. In edit mode a link in a block leads away only with Ctrl or Cmd, so that a double click on it opens its block.
-Under the field the files of the page's bundle wait (not its Markdown, nothing hidden, no other bundle): a click puts
-one in at the caret, an image as `![](name)` with the caret in its alt text. A PNG or JPEG dropped on the field, or
-pasted into it, is added to the page's bundle: the editor asks for its name first, and before it replaces a file of that
-name, then puts it in at the caret. The file is saved as it is; one that says where it was taken is marked, and the site
-publishes it without that (content.md, "Pictures"). A page that is one `.md` file has no bundle, and so no files. A
-right click or a double click on the page's title or subtitle, where the theme marks it (themes.md, "Editor"), edits its
-text, while its `#` or `__` stays as it is, or the front matter where that gives it; they are never moved, merged or
-deleted. In edit mode a badge above the title opens the page's front matter, which Lima must read when it is saved; its
-lines are striped, its keys and comments marked where Lima finds them, and a line Lima refuses is marked as it is typed,
-with Lima's message below. Each change is saved to the page's Markdown file, and the page is brought up to date in
-place; a file that changed since the page was built is not edited, the page reloads first. The editor is the author's
-tool, not part of the page: it speaks the first of the browser's languages it knows (German, English), else English; its
-control at the bottom right shows the language it speaks, and its menu keeps another for the site. Out of edit mode the
-control steps back, until the pointer or the keyboard comes to it. `hadley deploy` serves no editor.
+The field keeps its text in view and folds its seldom needed tools under its toolbar: a toggle at the right opens one,
+Files or Rewrite, and the field opens next time with the one open last. Save is on only where the text changed; Cancel,
+or Escape, closes the field, and asks first where it changed. Under Files the files of the page's bundle wait (not its
+Markdown, nothing hidden, no other bundle): a click puts one in at the caret, an image as `![](name)` with the caret in
+its alt text. A PNG or JPEG dropped on the field, or pasted into it, is added to the page's bundle: the editor asks for
+its name first, and before it replaces a file of that name, then puts it in at the caret. The file is saved as it is;
+one that says where it was taken is marked, and the site publishes it without that (content.md, "Pictures"). A page that
+is one `.md` file has no bundle, and so no files. A right click or a double click on the page's title or subtitle, where
+the theme marks it (themes.md, "Editor"), edits its text, while its `#` or `__` stays as it is, or the front matter
+where that gives it; they are never moved, merged or deleted. In edit mode a badge above the title opens the page's
+front matter, which Lima must read when it is saved; its lines are striped, its keys and comments marked where Lima
+finds them, and a line Lima refuses is marked as it is typed, with Lima's message below. Each change is saved to the
+page's Markdown file, and the page is brought up to date in place; a file that changed since the page was built is not
+edited, the page reloads first. The editor is the author's tool, not part of the page: it speaks the first of the
+browser's languages it knows (German, English), else English; its control at the bottom right shows the language it
+speaks, and its menu keeps another for the site. Out of edit mode the control steps back, until the pointer or the
+keyboard comes to it. `hadley deploy` serves no editor.
 
 ### Up to date in place
 
@@ -132,15 +135,15 @@ unlock page keeps a key only once the server took it, so no other page can repla
 hold it. Programs of the same user can read that file, as they can everything of that user's, the browser's history
 among it, which keeps the link.
 
-An open block's toolbar has, after Save (Ctrl+Enter) and Cancel (Esc), a way to rewrite it (Clearer, Shorter, More
-formal, More casual, Only fix errors, or Only instructions), a field for an instruction, which adds to the way and is
-all of Only instructions, and a button that asks the agent, as Ctrl+Shift+Enter in the editing field does. It rewrites
-the text selected in the editing field, or the whole block, as the button's name says; a selection also shows beside it
-with its length. While the agent works, the toolbar counts the seconds, and shows a check once the proposal is in, with
-Undo beside it. The agent answers with a proposal, not a change: it takes the place of the block's text or of the
-selection, selected, in the editing field, Ctrl+Z takes it back, and only saving writes it to the file, as any edit. If
-the text has changed while the agent was answering, or the block was closed, the proposal waits in the panel instead, to
-insert, copy or discard. Each request shows how long it has been waiting, and each answer how long it took.
+An open block's Rewrite drawer has a way to rewrite it (Clearer, Shorter, More formal, More casual, Only fix errors, or
+Only instructions), a field for an instruction, which adds to the way and is all of Only instructions, and a button that
+asks the agent, as Ctrl+Shift+Enter in the editing field does. It rewrites the text selected in the editing field, or
+the whole block, as the button's name says; a selection also shows beside it with its length. While the agent works, the
+toolbar counts the seconds, and shows a check once the proposal is in, with Undo beside it. The agent answers with a
+proposal, not a change: it takes the place of the block's text or of the selection, selected, in the editing field,
+Ctrl+Z takes it back, and only saving writes it to the file, as any edit. If the text has changed while the agent was
+answering, or the block was closed, the proposal waits in the panel instead, to insert, copy or discard. Each request
+shows how long it has been waiting, and each answer how long it took.
 
 ### An agent the dev server starts
 

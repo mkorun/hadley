@@ -77,17 +77,18 @@ const theField = field({
   closeMenu: () => theMenu.close(),
   saved: (block) => theUpdating.wait(block),
   table: limaTable,
-  files: (blockId, textarea, toolbar) => void bundleFiles(blockId, textarea, toolbar),
-  pictures: (blockId, textarea, toolbar) => acceptPictures(blockId, textarea, toolbar, bundleFiles),
+  files: (blockId, textarea, tools) => void bundleFiles(blockId, textarea, tools),
+  pictures: (blockId, textarea, toolbar, tools) =>
+    acceptPictures(blockId, textarea, toolbar, (id, field) => bundleFiles(id, field, tools)),
 })
 
 // Escape: the field before the menu (the order matters)
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return
   if (state.block) {
-    theField.close()
+    theField.cancel()
     return
-  } // field open → close it (whichever element has focus)
+  } // field open → close it, after a question where it changed (whichever element has focus)
   if (theMenu.isOpen()) theMenu.close() // only the menu open → close it
 })
 

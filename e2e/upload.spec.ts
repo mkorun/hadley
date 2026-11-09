@@ -2,7 +2,7 @@
 // (addons/editor/browser/features/pictures.ts; plugin.ts, handleUpload), and in at the caret, while the field stays
 // open.
 import { test, expect } from './chat-fixture.ts'
-import { hand, openBlock, PIXEL } from './editor.ts'
+import { PIXEL, hand, openBlock, unfold } from './editor.ts'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -26,6 +26,7 @@ test('a dropped picture goes into the bundle under the name given, and in at the
   // the caret waits in its alt text, the field is still open, and the files show the new one
   await page.keyboard.type('A map')
   await expect(field).toHaveValue(text + '![A map](karte.png)')
+  await unfold(page, 'Files')
   await expect(page.getByRole('button', { name: 'Insert karte.png', exact: true })).toBeVisible()
   await page.waitForTimeout(1500)
   await expect(field).toHaveValue(text + '![A map](karte.png)')

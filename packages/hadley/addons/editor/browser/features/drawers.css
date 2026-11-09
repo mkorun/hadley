@@ -1,0 +1,79 @@
+/* ─── The field's drawers: its seldom needed tools, folded under the toolbar (drawers.ts) ─────── */
+
+/* the toolbar wraps on a narrow field; the toggles stand at its right */
+.hadley-editor-toolbar {
+  flex-wrap: wrap;
+}
+
+.hadley-drawer-space {
+  flex: 1;
+}
+
+/* a toggle is quiet until it is open: a word and its sign, no box */
+.hadley-drawer-toggle {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.3rem 0.55rem;
+  font:
+    0.8125rem/1.4 ui-sans-serif,
+    system-ui,
+    sans-serif;
+  color: var(--he-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.hadley-drawer-toggle:hover {
+  color: var(--he-text);
+}
+
+.hadley-drawer-toggle[aria-expanded='true'] {
+  color: var(--he-text);
+  background: var(--he-bg);
+  border-color: var(--he-border);
+}
+
+.hadley-drawer-toggle:focus-visible {
+  outline: 2px solid var(--he-accent-focus);
+  outline-offset: 1px;
+}
+
+.hadley-drawer-toggle svg {
+  flex: none;
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.hadley-drawer-chevron::before {
+  content: '▾';
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.hadley-drawer-toggle[aria-expanded='true'] .hadley-drawer-chevron::before {
+  content: '▴';
+}
+
+.hadley-drawer {
+  padding: 0.5rem 0.75rem;
+  background: var(--he-bg-deep);
+  border-top: 1px solid var(--he-border);
+}
+
+.hadley-drawer[hidden] {
+  display: none;
+}
+
+/* the files strip in its drawer: the drawer is its frame now */
+.hadley-drawer .hadley-files {
+  padding: 0;
+  background: none;
+  border-top: 0;
+}

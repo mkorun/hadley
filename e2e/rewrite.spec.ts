@@ -1,4 +1,5 @@
 import { test, expect } from './chat-fixture.ts'
+import { unfold } from './editor.ts'
 import type { Locator, Page } from '@playwright/test'
 import { mkdir, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
@@ -83,6 +84,7 @@ for (const lang of ['en', 'de']) {
         .filter({ hasText: lang === 'en' ? 'First words' : 'Erste Wörter' })
         .first()
         .click({ button: 'right' })
+      await unfold(page, t.rewrite)
       return page.locator('.hadley-textarea')
     }
 
@@ -215,6 +217,7 @@ for (const lang of ['en', 'de']) {
         .filter({ hasText: lang === 'en' ? 'First words' : 'Erste Wörter' })
         .first()
         .click({ button: 'right' })
+      await unfold(page, t.rewrite)
       await expect(row.locator('.hc-send')).toBeEnabled()
     })
 
@@ -265,6 +268,8 @@ for (const lang of ['en', 'de']) {
       await rewriteAs(row, t.clearer)
       const closed = (await channel.inbox.next((entry) => entry.event === 'message')).data as { id: string }
       await page.locator('.hadley-editor').getByRole('button', { name: t.cancel, exact: true }).click()
+      // the field had changed: closing it asks first
+      await page.locator('.hadley-discard').getByRole('button', { name: t.discard, exact: true }).click()
       expect(
         (
           await channel.send({
@@ -283,6 +288,7 @@ for (const lang of ['en', 'de']) {
         .filter({ hasText: lang === 'en' ? 'First words' : 'Erste Wörter' })
         .first()
         .click({ button: 'right' })
+      await unfold(page, t.rewrite)
       await select(page, 0, 0)
       await page.getByRole('button', { name: 'Chat', exact: true }).click()
       await last.getByRole('button', { name: t.insert, exact: true }).click()
@@ -316,6 +322,7 @@ for (const lang of ['en', 'de']) {
       ).toBe(true)
       await select(page, 0, 5)
       await field.click({ button: 'right' })
+      await unfold(page, t.rewrite)
       await expect(page.getByRole('menu')).toHaveCount(0)
       // the right click set the caret in Chromium and WebKit, and left the selection in Firefox: the block, explicitly
       await select(page, 0, 0)
@@ -400,6 +407,7 @@ for (const lang of ['en', 'de']) {
           .filter({ hasText: lang === 'en' ? 'First words' : 'Erste Wörter' })
           .first()
           .click({ button: 'right' })
+        await unfold(page, t.rewrite)
         await channel.send({
           event: 'suggestion',
           data: { id: 'suggest2', to: closed.id, text: 'Old editor proposal.' },

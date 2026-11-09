@@ -83,3 +83,9 @@ export const hand = (page: Page, kind: 'drop' | 'paste', pictures: Picture[], te
     },
     { kind, pictures, text },
   )
+
+/** The open field's drawer whose toggle says `name` unfolded (addons/editor/browser/features/drawers.ts). */
+export const unfold = async (page: Page, name: string | RegExp) => {
+  const toggle = page.locator('.hadley-drawer-toggle').filter({ hasText: name })
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click()
+}

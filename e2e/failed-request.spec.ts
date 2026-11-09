@@ -107,6 +107,7 @@ test('a save the server never answers: Save waits, Cancel still closes the field
   await page.waitForTimeout(500)
   await expect(field).toHaveValue('First words, never answered.')
   await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await page.locator('.hadley-discard').getByRole('button', { name: 'Discard', exact: true }).click()
   await expect(field).toHaveCount(0)
   release()
   await page.waitForTimeout(500)

@@ -331,7 +331,7 @@ export function menu(on: {
         if (!isEditMode() || state.block || state.locked) return
         if (e.target instanceof Element && e.target.closest('.hadley-trigger')) return
         e.preventDefault()
-        if (block.dataset['hadleyId']) on.edit(block, clickedWord(block))
+        if (block.dataset['hadleyId']) on.edit(block, clickedWord(block, e))
       })
 
       // Right click opens the editor (bound directly, bypasses stopPropagation in theme JS)

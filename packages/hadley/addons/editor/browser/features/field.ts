@@ -1,10 +1,13 @@
 // The field a block is edited in: loaded from the server (plugin.ts), in the page's flow after the block (ADR-10), and
-// saved back to the page's file, after which the page is brought up to date (ADR-3, ../refresh/). Ctrl+Enter or Ctrl+S
+// saved back to the page's file, after which the page is brought up to date (ADR-3, ../refresh/). Save is on only
+// where the text changed (Michael, 2026-11-09). Ctrl+Enter or Ctrl+S
 // (Cmd on a Mac) saves it, Escape (main.ts) closes it; Enter is a new line, which Markdown blocks need (lists, tables,
 // code). The chat (addons/chat) hears of it by `hadley:editor-open` and
 // `hadley:editor-close`.
 import { wordIn, type Clicked } from '../core/word.ts'
 import { el, fitTextarea } from '../core/dom.ts'
+import { askDiscard } from './discard.ts'
+import { drawers, type Drawers } from './drawers.ts'
 import { answer, post, serverError } from '../core/request.ts'
 import { state, clearHash, failAction } from '../core/state.ts'
 import { T, withLang } from '../core/texts.ts'
@@ -14,13 +17,15 @@ export interface OpenOptions {
   below?: boolean
   /** where the field goes, else right after the block */
   place?: ((wrapper: HTMLElement) => void) | undefined
-  /** the word a double click opened it on: selected in the field, else the cursor at the end */
+  /** the word a double click opened it on: the cursor in it where the pointer was, else at the end */
   word?: Clicked | undefined
 }
 
 export interface Field {
   open(blockId: string, blockEl: HTMLElement, options?: OpenOptions): Promise<void>
   close(): void
+  /** Cancel or Escape: closes it, after a question where its text changed (discard.ts) */
+  cancel(): void
 }
 
 /** What a field shows beside its text: the front matter's table, the bundle's files, and pictures added to it. */
@@ -29,8 +34,9 @@ export interface Parts {
   /** saved: the block that changed (none for a new one), until the page shows it anew */
   saved(block: HTMLElement | null): void
   table(textarea: HTMLTextAreaElement): HTMLElement
-  files(blockId: string, textarea: HTMLTextAreaElement, toolbar: HTMLElement): void
-  pictures(blockId: string, textarea: HTMLTextAreaElement, toolbar: HTMLElement): void
+  /** the bundle's files, in their drawer (drawers.ts) */
+  files(blockId: string, textarea: HTMLTextAreaElement, drawers: Drawers): void
+  pictures(blockId: string, textarea: HTMLTextAreaElement, toolbar: HTMLElement, drawers: Drawers): void
 }
 
 // On 422, plugin.ts also sends `errors` (Diagnostic.range, markanto-js ≥0.1.1), each with `local`: does the error
@@ -52,7 +58,19 @@ function buildParseErrorMessage(data: Record<string, unknown>): string {
 }
 
 export function field(parts: Parts): Field {
+  // the open field's text as it opened, and where the question before discarding goes
+  let opened: { text: string; toolbar: HTMLElement; showSave(): void } | null = null
+
+  function cancel() {
+    const wrapper = state.wrapper
+    const textarea = state.textarea
+    if (!wrapper || !textarea || !opened) return
+    if (textarea.value === opened.text) return close()
+    askDiscard(wrapper, opened.toolbar, close, () => textarea.focus())
+  }
+
   function close() {
+    opened = null
     document.dispatchEvent(new CustomEvent('hadley:editor-close'))
     state.wrapper?.remove()
     state.wrapper = null
@@ -85,36 +103,50 @@ export function field(parts: Parts): Field {
     saveBtn.type = 'button'
     saveBtn.textContent = T.save
 
+    // Cancel as a word beside Save, as GitHub and Google Docs edit in place (Michael, 2026-11-09: a × said too little)
     const cancelBtn = el('button', 'hadley-cancel-btn')
     cancelBtn.type = 'button'
     cancelBtn.textContent = T.cancel
     cancelBtn.title = T.escToCancel
-    saveBtn.title = T.saveShortcut
 
     editorToolbar.append(saveBtn, cancelBtn)
+    // the seldom needed tools at the toolbar's right, folded away under it
+    const tools = drawers(editorToolbar)
     const frontMatter = blockEl.dataset['hadleyFrontMatter'] !== undefined
     wrapper.append(frontMatter ? parts.table(textarea) : textarea, editorToolbar)
     // after the block, or where the caller puts it (the front matter's badge)
     if (place) place(wrapper)
     else blockEl.insertAdjacentElement('afterend', wrapper)
     if (!frontMatter) {
-      parts.files(blockId, textarea, editorToolbar)
-      parts.pictures(blockId, textarea, editorToolbar)
+      parts.files(blockId, textarea, tools)
+      parts.pictures(blockId, textarea, editorToolbar, tools)
     }
 
     state.wrapper = wrapper
     state.textarea = textarea
 
     textarea.focus()
+    // a double click: the cursor where the pointer was, in the word clicked; else at the end
     const at = word ? wordIn(textarea.value, word) : -1
-    if (word && at !== -1) textarea.setSelectionRange(at, at + word.word.length)
-    else textarea.selectionStart = textarea.selectionEnd = textarea.value.length
+    const caret = word && at !== -1 ? at + (word.inner ?? 0) : textarea.value.length
+    textarea.setSelectionRange(caret, caret)
 
-    textarea.addEventListener('input', () => fitTextarea(textarea))
+    // Save only where there is something to save, and its title says why not
+    const unchanged = () => textarea.value === text
+    const showSave = () => {
+      saveBtn.disabled = unchanged()
+      saveBtn.title = unchanged() ? T.noChanges : T.saveShortcut
+    }
+    showSave()
+    textarea.addEventListener('input', () => {
+      fitTextarea(textarea)
+      showSave()
+    })
     fitTextarea(textarea)
 
     saveBtn.addEventListener('click', () => void save(blockId, blockEl, saveBtn))
-    cancelBtn.addEventListener('click', close)
+    opened = { text: textarea.value, toolbar: editorToolbar, showSave }
+    cancelBtn.addEventListener('click', cancel)
     document.dispatchEvent(
       new CustomEvent('hadley:editor-open', {
         detail: {
@@ -123,6 +155,9 @@ export function field(parts: Parts): Field {
           frontMatter,
           textarea,
           wrapper,
+          // a drawer of the field's for the chat's rewrite (drawers.ts), and opening it
+          drawer: tools.drawer,
+          openDrawer: tools.open,
           insert(start: number, end: number, replacement: string) {
             if (state.textarea !== textarea) return false
             textarea.focus()
@@ -179,8 +214,8 @@ export function field(parts: Parts): Field {
   async function save(blockId: string, blockEl: HTMLElement, saveBtn: HTMLButtonElement) {
     const written = state.textarea?.value
     if (written === undefined) return
-    // an empty new block is no edit
-    if (state.after !== null && !written.trim()) {
+    // nothing changed, or an empty new block: no edit, the field just closes
+    if (written === opened?.text || (state.after !== null && !written.trim())) {
       close()
       return
     }
@@ -192,7 +227,7 @@ export function field(parts: Parts): Field {
       clearHash()
     } catch (error) {
       failAction(error)
-      saveBtn.disabled = false
+      opened?.showSave()
       return
     }
 
@@ -215,16 +250,16 @@ export function field(parts: Parts): Field {
 
       if (res.status === 422) {
         alert(buildParseErrorMessage(data))
-        saveBtn.disabled = false
+        opened?.showSave()
         state.textarea?.focus()
         return
       }
 
       alert(T.saveError(res.status, serverError(data)))
-      saveBtn.disabled = false
+      opened?.showSave()
     } catch {
       alert(T.connectionFailedRetry)
-      saveBtn.disabled = false
+      opened?.showSave()
     }
   }
 
@@ -234,8 +269,10 @@ export function field(parts: Parts): Field {
     const saves = e.key.toLowerCase() === 's' || (e.key === 'Enter' && !e.shiftKey)
     if (!state.block || !(e.ctrlKey || e.metaKey) || !saves) return
     e.preventDefault()
+    // unchanged, Save is off: the keys only close the field
+    if (state.textarea && state.textarea.value === opened?.text) return close()
     state.wrapper?.querySelector<HTMLElement>('.hadley-save-btn')?.click()
   })
 
-  return { open, close }
+  return { open, close, cancel }
 }

@@ -70,7 +70,7 @@ export function heads(on: {
         const now = ids[which]
         if (!free() || now === undefined) return
         e.preventDefault()
-        on.edit(now, element, { word: clickedWord(element) })
+        on.edit(now, element, { word: clickedWord(element, e) })
       })
     }
     // the front matter, from a badge right above the title, shown in edit mode only

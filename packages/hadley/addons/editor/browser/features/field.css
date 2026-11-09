@@ -12,6 +12,50 @@
   box-shadow: 0 4px 16px var(--he-shadow);
 }
 
+/* the question before changes are discarded (discard.ts): in the field, above its toolbar */
+.hadley-discard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.45rem 0.75rem;
+  font:
+    0.8125rem/1.4 ui-sans-serif,
+    system-ui,
+    sans-serif;
+  color: var(--he-text);
+  background: color-mix(in srgb, var(--he-danger) 7%, var(--he-bg));
+  border-top: 1px solid color-mix(in srgb, var(--he-danger) 30%, var(--he-border));
+}
+
+.hadley-discard span {
+  margin-right: auto;
+}
+
+.hadley-discard button {
+  padding: 0.25rem 0.7rem;
+  font: inherit;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.hadley-discard-yes {
+  color: var(--he-danger);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--he-danger) 45%, var(--he-border));
+}
+
+.hadley-discard-no {
+  color: var(--he-on-accent);
+  background: var(--he-accent);
+  border: 1px solid var(--he-accent);
+}
+
+.hadley-discard button:focus-visible {
+  outline: 2px solid var(--he-accent-focus);
+  outline-offset: 1px;
+}
+
 .hadley-textarea {
   display: block;
   width: 100%;
@@ -83,4 +127,13 @@
 .hadley-pending {
   opacity: 0.55;
   transition: opacity 0.15s ease;
+}
+
+/* Cancel beside Save: a word, quiet, without a box until the pointer comes */
+.hadley-editor-toolbar > .hadley-cancel-btn {
+  border-color: transparent;
+}
+
+.hadley-editor-toolbar > .hadley-cancel-btn:hover {
+  border-color: var(--he-border);
 }

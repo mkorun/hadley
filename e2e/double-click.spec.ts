@@ -1,10 +1,10 @@
-// A block opened by a double click in edit mode, the word clicked selected in the field; Ctrl+Enter saves, Enter is a
+// A block opened by a double click in edit mode, the cursor where the pointer was; Ctrl+Enter saves, Enter is a
 // new line; a link in a block leads away in edit mode only with Ctrl or Cmd (Michael, 2026-11-09).
 import { test, expect } from './chat-fixture.ts'
 import { block, editMode } from './editor.ts'
 import { readFile, writeFile } from 'node:fs/promises'
 
-test('a double click in edit mode opens the block, the word clicked selected in the field', async ({ page, dev }) => {
+test('a double click in edit mode opens the block, the cursor where the pointer was', async ({ page, dev }) => {
   await page.goto(dev.origin + '/panel/')
   // out of edit mode a double click only selects
   await block(page, 'First words').getByText('attached').dblclick()
@@ -18,7 +18,7 @@ test('a double click in edit mode opens the block, the word clicked selected in 
   await page.keyboard.press('Escape')
   await expect(field).toHaveCount(0)
 
-  // on a word: that word selected, as the page showed it
+  // on a word: the cursor in it
   const [x, y] = (await page.evaluate(`(() => {
     const b = [...document.querySelectorAll('[data-hadley-id]')].find((e) => e.textContent.includes('First words'))
     const t = b.firstChild
@@ -31,10 +31,14 @@ test('a double click in edit mode opens the block, the word clicked selected in 
   })()`)) as [number, number]
   await page.mouse.dblclick(x, y)
   await expect(field).toBeFocused()
-  const selected = await page.evaluate(
-    `(() => { const f = document.querySelector('.hadley-textarea'); return f.value.slice(f.selectionStart, f.selectionEnd) })()`,
-  )
-  expect(selected).toBe('attached')
+  // the cursor where the pointer was, between the word's second and fourth letter, and nothing selected: a key
+  // would type over a selected word (Michael, 2026-11-09)
+  const [start, end, at] = (await page.evaluate(
+    `(() => { const f = document.querySelector('.hadley-textarea'); return [f.selectionStart, f.selectionEnd, f.value.indexOf('attached')] })()`,
+  )) as [number, number, number]
+  expect(end).toBe(start)
+  expect(start - at).toBeGreaterThanOrEqual(2)
+  expect(start - at).toBeLessThanOrEqual(3)
 })
 
 test('Ctrl+Enter saves the field; Enter is a new line in it', async ({ page, dev }) => {

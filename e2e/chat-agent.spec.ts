@@ -1,6 +1,7 @@
 // The agent the dev server starts itself (addons/chat/agents.ts), from the panel: a stand-in for Claude Code
 // (chat-fixture.ts) starts, answers, asks before a tool, takes a new conversation and stops; a channel cannot join it.
 import { test, expect } from './chat-fixture.ts'
+import { unfold } from './editor.ts'
 
 test('starts an agent from the panel, talks with it, and stops it', async ({ page, dev }) => {
   await page.goto(dev.origin + '/panel/')
@@ -40,6 +41,7 @@ test('without an agent only the rewrite button stays, and it opens the chat to s
   await page.goto(dev.origin + '/panel/')
   await page.getByRole('button', { name: 'Toggle edit mode', exact: true }).click()
   await page.locator('[data-hadley-id]').filter({ hasText: 'First words' }).first().click({ button: 'right' })
+  await unfold(page, 'Rewrite')
   const row = page.locator('.hadley-rewrite')
   await expect(row.locator('.hc-direction')).toBeHidden()
   await expect(row.locator('.hc-instruction')).toBeHidden()

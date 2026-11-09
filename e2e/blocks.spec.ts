@@ -21,11 +21,24 @@ test('a block is edited in its field and saved with Ctrl+S, and the page shows i
   await expect(page.locator('.hadley-textarea')).toHaveCount(0)
 })
 
-test('Escape closes the field and saves nothing', async ({ page, dev }) => {
+test('Escape closes the field and saves nothing; with changes it asks first', async ({ page, dev }) => {
   const before = await source(dev)
-  const field = await openBlock(page, dev.origin)
+  let field = await openBlock(page, dev.origin)
+  // unchanged: closed at once
+  await page.keyboard.press('Escape')
+  await expect(field).toHaveCount(0)
+  field = await openBlock(page, dev.origin)
   await field.fill('Never saved.')
   await page.keyboard.press('Escape')
+  const ask = page.getByRole('group', { name: 'Discard your changes?' })
+  await expect(ask.getByRole('button', { name: 'Keep editing', exact: true })).toBeFocused()
+  // a second Escape keeps editing
+  await page.keyboard.press('Escape')
+  await expect(ask).toHaveCount(0)
+  await expect(field).toBeFocused()
+  await expect(field).toHaveValue('Never saved.')
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await ask.getByRole('button', { name: 'Discard', exact: true }).click()
   await expect(page.locator('.hadley-textarea')).toHaveCount(0)
   await page.waitForTimeout(800)
   expect(await source(dev)).toBe(before)
@@ -77,5 +90,27 @@ test('an edit that would swallow the next block is refused, says why and keeps t
   await expect.poll(() => messages.length).toBe(1)
   expect(messages[0]).toMatch(/outside the edited block|Parse error/)
   await expect(field).toBeVisible()
+  expect(await source(dev)).toBe(before)
+})
+
+// Michael, 2026-11-09: Save only where there is something to save
+test('Save is off until the text changed, and on again only while it differs; unchanged, Ctrl+Enter only closes', async ({
+  page,
+  dev,
+}) => {
+  const before = await source(dev)
+  const field = await openBlock(page, dev.origin)
+  const save = page.getByRole('button', { name: 'Save', exact: true })
+  await expect(save).toBeDisabled()
+  await expect(save).toHaveAttribute('title', 'No changes')
+  await page.keyboard.type(' More.')
+  await expect(save).toBeEnabled()
+  await expect(save).toHaveAttribute('title', 'Save (Ctrl+Enter or Ctrl+S)')
+  // back to what it was: nothing to save again
+  await field.fill(FIRST)
+  await expect(save).toBeDisabled()
+  await page.keyboard.press('Control+Enter')
+  await expect(field).toHaveCount(0)
+  await page.waitForTimeout(800)
   expect(await source(dev)).toBe(before)
 })

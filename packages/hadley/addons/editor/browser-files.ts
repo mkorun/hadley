@@ -21,6 +21,7 @@ export const STYLES: readonly string[] = [
   'features/menu.css',
   'features/field.css',
   'features/files.css',
+  'features/drawers.css',
   'features/pictures.css',
   'features/front-matter.css',
   'features/versions/versions.css',

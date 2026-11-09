@@ -914,8 +914,8 @@ function startPanel() {
     editor = event.detail
     if (editor.frontMatter) return
     const target = editor
-    // the rewrite stands in the editor's toolbar, after Save and Cancel: a way, an instruction, the send button, what
-    // it rewrites, its status and Undo
+    // the rewrite stands in a drawer of the field: a way, an instruction, the send button, what it rewrites, its status
+    // and Undo
     const node = element('div', undefined, 'hadley-rewrite')
     const select = element('select', undefined, 'hc-direction')
     select.setAttribute('aria-label', t.direction)
@@ -935,7 +935,11 @@ function startPanel() {
     }
     placeholder()
     // without an agent, the button opens the chat, where one starts
-    const ask = () => (connected ? void rewrite(target, row, select.value) : setOpen(true))
+    const ask = () => {
+      // asked by its keys with the drawer folded: it opens, so that the request and its answer show
+      target.openDrawer?.('rewrite')
+      return connected ? void rewrite(target, row, select.value) : setOpen(true)
+    }
     const send = button('', ask)
     send.className = 'hc-send'
     // the star and the word, where the row has room; the star alone where it has not (chat.css)
@@ -1011,7 +1015,12 @@ function startPanel() {
     row.showScope = showScope
     showScope()
     node.append(select, custom, send, scope, state, undo)
-    ;(target.wrapper.querySelector('.hadley-editor-toolbar') ?? target.wrapper).append(node)
+    // in the field's drawer, folded under its toolbar until opened (editor/browser/features/drawers.ts; Michael,
+    // 2026-11-09); an editor without drawers takes it in its toolbar
+    const symbol = element('span', undefined, 'hc-drawer-symbol')
+    symbol.innerHTML = ICONS.sparkle
+    const drawer = target.drawer?.('rewrite', t.rewrite, symbol)
+    ;(drawer ?? target.wrapper.querySelector('.hadley-editor-toolbar') ?? target.wrapper).append(node)
     rewriteRow = row
     updateSend()
   })

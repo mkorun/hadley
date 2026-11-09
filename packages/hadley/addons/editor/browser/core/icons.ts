@@ -25,6 +25,8 @@ const ICONS = {
   // the front matter: keys, their colons and values, as Lima writes them
   data: [path('M2.5 4h3M2.5 8h3M2.5 12h3M10 4h3.5M10 8h2M10 12h3.5'), colon('4'), colon('8'), colon('12')],
   file: [path('M4 2.5h5l3 3v8H4zM9 2.5v3h3')],
+  // the bundle's files, folded under the field (drawers.ts): a paper clip
+  attach: [path('M10.5 7.5 6.6 11.4a2 2 0 0 1-2.8-2.8l4.6-4.6a3 3 0 0 1 4.2 4.2L8 12.8')],
   pencil: [path('M10.5 2.5l3 3L6 13H3v-3zM9 4l3 3')],
   // the versions of a page: a clock
   clock: [['circle', { cx: '8', cy: '8', r: '5.5' }], path('M8 5v3.2l2.2 1.5')],

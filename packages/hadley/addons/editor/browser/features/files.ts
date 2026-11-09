@@ -1,15 +1,16 @@
 // The files of the bundle.
 //
-// Under the field, the files that lie beside the page's Markdown (the dev server lists them, plugin.ts): a click puts
-// one in at the caret, an image as `![](name)` with the caret in its alt text, any other file as a link. The text stays
-// text: what it says is saved as any edit.
+// In a drawer under the field (drawers.ts), the files that lie beside the page's Markdown (the dev server lists them,
+// plugin.ts): a click puts one in at the caret, an image as `![](name)` with the caret in its alt text, any other file
+// as a link. The text stays text: what it says is saved as any edit.
 import { el, fitTextarea } from '../core/dom.ts'
 import { icon } from '../core/icons.ts'
 import { state } from '../core/state.ts'
 import { T, withLang } from '../core/texts.ts'
+import type { Drawers } from './drawers.ts'
 
-/** The files of `blockId`'s bundle above `toolbar`, in place of those shown, while `textarea` is the open field. */
-export async function bundleFiles(blockId: string, textarea: HTMLTextAreaElement, toolbar: HTMLElement): Promise<void> {
+/** The files of `blockId`'s bundle in their drawer, in place of those shown, while `textarea` is the open field. */
+export async function bundleFiles(blockId: string, textarea: HTMLTextAreaElement, tools: Drawers): Promise<void> {
   let files: unknown
   try {
     const res = await fetch(withLang(`/__hadley/files/${blockId}`))
@@ -56,7 +57,6 @@ export async function bundleFiles(blockId: string, textarea: HTMLTextAreaElement
     })
     strip.append(button)
   }
-  // in place of the one it shows anew, after a picture was added
-  toolbar.parentElement?.querySelector('.hadley-files')?.remove()
-  toolbar.before(strip)
+  // in place of the ones it showed, after a picture was added
+  tools.drawer('files', T.filesToggle(strip.childElementCount), icon('attach')).replaceChildren(strip)
 }

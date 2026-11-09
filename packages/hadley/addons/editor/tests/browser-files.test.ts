@@ -80,6 +80,14 @@ describe('the browser code of the editor', () => {
     await assert.rejects(browserFile(STYLESHEET, browser, ['tokens.css', 'gone.css']), /lacks gone\.css/)
   })
 
+  // 2026-11-09: a reboot left drawers.css empty, and nothing noticed it but the eye
+  it('has no empty stylesheet among its own', async () => {
+    for (const name of STYLES) {
+      const text = await readFile(join(browserDir, name), 'utf-8')
+      assert.ok(text.trim().length > 0, `${name} is empty`)
+    }
+  })
+
   it('serves its own entry and stylesheet', async () => {
     const file = await browserFile('/__hadley/editor/main.ts')
     assert.match(file?.body ?? '', /import \{ bar \} from "\.\/features\/bar\.ts";/)

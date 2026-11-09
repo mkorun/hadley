@@ -1,10 +1,14 @@
 // The word a double click opened a block on, found in the block's Markdown (caret.ts finds it on the page): no DOM,
 // so that it is tested on its own.
 
-/** The word double-clicked in `block` and where it stands in its text (0 at the start, 1 at the end). */
+/**
+ * The word double-clicked in `block`, where it stands in its text (0 at the start, 1 at the end), and where in the
+ * word the pointer was, in characters: the field's cursor goes there.
+ */
 export interface Clicked {
   word: string
   at: number
+  inner?: number
 }
 
 const LETTER = /[\p{L}\p{N}_]/u

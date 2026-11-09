@@ -1,7 +1,7 @@
 // An answer that comes after its field was closed (addons/editor/browser/features/field.ts): the list of the
 // bundle's files is shown nowhere, and a picture that was added goes into the bundle but into no field.
 import { test, expect } from './chat-fixture.ts'
-import { block, hand, openBlock, PIXEL } from './editor.ts'
+import { PIXEL, block, hand, openBlock, unfold } from './editor.ts'
 import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import type { Page, Route } from '@playwright/test'
@@ -34,8 +34,9 @@ test('the files of the bundle that arrive after Escape are shown nowhere', async
   release()
   await page.waitForTimeout(500)
   await expect(page.locator('.hadley-files')).toHaveCount(0)
-  // the next field shows them
+  // the next field shows them, in their drawer
   await block(page, 'First words').click({ button: 'right' })
+  await unfold(page, 'Files')
   await expect(page.getByRole('button', { name: 'Insert pixel.png', exact: true })).toBeVisible()
   expect(errors).toEqual([])
 })
@@ -48,6 +49,7 @@ test('a picture whose answer comes after Cancel is in the bundle, and in no fiel
   await openBlock(page, dev.origin)
   await hand(page, 'drop', [{ name: 'late.png', type: 'image/png', base64: PIXEL }])
   await page.getByRole('button', { name: 'Add', exact: true }).click()
+  // the field's Cancel (the picture's own question has a Cancel too)
   await page.locator('.hadley-editor-toolbar').getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(page.locator('.hadley-textarea')).toHaveCount(0)
   release()
@@ -60,6 +62,7 @@ test('a picture whose answer comes after Cancel is in the bundle, and in no fiel
   // the next field offers it
   await block(page, 'First words').click({ button: 'right' })
   await expect(page.locator('.hadley-textarea')).toHaveValue('First words of the attached block.')
+  await unfold(page, 'Files')
   await expect(page.getByRole('button', { name: 'Insert late.png', exact: true })).toBeVisible()
   expect(errors).toEqual([])
 })
