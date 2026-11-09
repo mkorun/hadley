@@ -100,6 +100,8 @@ const de = {
   tooLarge: 'Zu groß zum Vergleichen.',
   kept: 'Es bleiben die letzten 100 Fassungen; benannte bleiben immer.',
   closeVersions: 'Versionen schließen',
+  unchangedLine: '1 unveränderte Zeile',
+  unchangedLines: '{n} unveränderte Zeilen',
 }
 
 const en: typeof de = {
@@ -172,6 +174,8 @@ const en: typeof de = {
   tooLarge: 'Too large to compare.',
   kept: 'The last 100 versions are kept; named ones always.',
   closeVersions: 'Close versions',
+  unchangedLine: '1 unchanged line',
+  unchangedLines: '{n} unchanged lines',
 }
 
 export const T = { de, en }[LANG]

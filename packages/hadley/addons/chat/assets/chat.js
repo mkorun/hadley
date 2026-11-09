@@ -68,6 +68,7 @@ export const TEXT = {
     queued: 'Waiting until {agent} is done',
     deniedInAction: 'Denied: {agent} needs no tool to rewrite.',
     deniedOnStop: 'Denied when stopped',
+    noAgentRewrite: 'No agent connected – start one in the chat',
     reconnecting: 'Reconnecting to the dev server…',
     input: 'Message to {agent}',
     send: 'Send',
@@ -155,6 +156,7 @@ export const TEXT = {
     queued: 'Wartet, bis {agent} fertig ist',
     deniedInAction: 'Abgelehnt: Zum Umschreiben braucht {agent} kein Werkzeug.',
     deniedOnStop: 'Beim Beenden abgelehnt',
+    noAgentRewrite: 'Kein Agent verbunden – im Chat starten',
     reconnecting: 'Verbindung zum Entwicklungsserver wird wiederhergestellt…',
     input: 'Nachricht an {agent}',
     send: 'Senden',
@@ -514,7 +516,12 @@ function startPanel() {
   function updateSend() {
     send.disabled = !connected || sending || !input.value.trim()
     send.textContent = sending ? t.sending : t.send
-    if (rewriteRow) for (const control of rewriteRow.controls) control.disabled = !connected || rewriteRow.pending
+    if (rewriteRow) {
+      for (const control of rewriteRow.controls) control.disabled = rewriteRow.pending
+      // without an agent only the button stays, and it opens the chat to start one (Michael, 2026-11-09)
+      rewriteRow.select.hidden = rewriteRow.custom.hidden = !connected
+      rewriteRow.showScope()
+    }
     for (const card of permissions) {
       for (const control of card.controls) control.disabled = !connected || card.pending
     }
@@ -920,7 +927,9 @@ function startPanel() {
       custom.placeholder = select.value === 'custom' ? say('instruction') : t.instructionOptional
     }
     placeholder()
-    const send = button('', () => void rewrite(target, row, select.value))
+    // without an agent, the button opens the chat, where one starts
+    const ask = () => (connected ? void rewrite(target, row, select.value) : setOpen(true))
+    const send = button('', ask)
     send.className = 'hc-send'
     send.innerHTML = ICONS.sparkle
     // the editing field keeps the focus, and with it the selection the browser paints
@@ -938,7 +947,17 @@ function startPanel() {
     undo.setAttribute('aria-label', t.undo)
     undo.title = `${t.undo} (${t.undoShortcut})`
     undo.hidden = true
-    const row = { node, state, custom, undo, placeholder, pending: false, controls: [select, custom, send] }
+    const row = {
+      node,
+      state,
+      select,
+      custom,
+      undo,
+      placeholder,
+      showScope: () => {},
+      pending: false,
+      controls: [select, custom, send],
+    }
     select.addEventListener('change', () => {
       direction = select.value
       placeholder()
@@ -953,13 +972,19 @@ function startPanel() {
     const sendOnEnter = (key, plain) => {
       if (key.key !== 'Enter' || key.isComposing || (!plain && !(key.ctrlKey || key.metaKey))) return
       key.preventDefault()
-      void rewrite(target, row, select.value)
+      ask()
     }
     custom.addEventListener('keydown', (key) => sendOnEnter(key, true))
     target.textarea.addEventListener('keydown', (key) => sendOnEnter(key, false))
     // what the next action rewrites: the button names it; a selection also shows, with its length, as the whole block
     // is what it rewrites otherwise
     const showScope = () => {
+      if (!connected) {
+        send.setAttribute('aria-label', t.noAgentRewrite)
+        send.title = t.noAgentRewrite
+        scope.hidden = true
+        return
+      }
       const selection = selectionOf(target.textarea)
       const label = selection ? t.rewriteSelection : t.rewriteBlock
       send.setAttribute('aria-label', label)
@@ -970,6 +995,7 @@ function startPanel() {
     }
     for (const type of ['select', 'keyup', 'mouseup', 'input', 'focus'])
       target.textarea.addEventListener(type, showScope)
+    row.showScope = showScope
     showScope()
     node.append(select, custom, send, scope, state, undo)
     ;(target.wrapper.querySelector('.hadley-editor-toolbar') ?? target.wrapper).append(node)

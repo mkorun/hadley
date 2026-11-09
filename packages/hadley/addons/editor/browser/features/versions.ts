@@ -153,6 +153,11 @@ export function versions(on: {
     chosen = version.hash
     for (const item of list.querySelectorAll('.hv-item')) item.setAttribute('aria-pressed', String(item === pick))
     detail.replaceChildren()
+    // the page as it is: nothing to compare, only a name to give (Michael, 2026-11-09: "⋯ 99" said nothing)
+    if (version.hash === current) {
+      detail.append(actions(version))
+      return
+    }
     const [then, now] = await Promise.all([text(version.hash), text(current)])
     if (chosen !== version.hash) return
     if (then === undefined || now === undefined) {
@@ -177,7 +182,7 @@ export function versions(on: {
     const fold = () => {
       if (folded === 0) return
       const gap = el('span', 'hv-gap')
-      gap.textContent = `⋯ ${folded}\n`
+      gap.textContent = `⋯ ${folded === 1 ? T.unchangedLine : T.unchangedLines.replace('{n}', String(folded))}\n`
       out.push(gap)
       folded = 0
     }

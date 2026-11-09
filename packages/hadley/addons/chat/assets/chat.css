@@ -385,6 +385,11 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
   color: var(--he-text);
 }
 
+/* without an agent the way and the instruction are hidden; only the button stays, which opens the chat */
+.hadley-rewrite [hidden] {
+  display: none !important;
+}
+
 /* in the editor's toolbar, after Save and Cancel: one line, which wraps on a narrow screen */
 .hadley-editor-toolbar {
   flex-wrap: wrap;

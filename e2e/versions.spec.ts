@@ -32,6 +32,13 @@ test('an edit is a version; an earlier one is compared, named and restored, and 
   await expect(diff.locator('.hv-del')).toHaveText('− First words, changed.')
   await expect(diff.locator('.hv-add')).toHaveText(`+ ${FIRST}`)
 
+  // the current version: nothing to compare, only a name to give
+  await items.nth(0).click()
+  await expect(card.locator('.hv-diff')).toHaveCount(0)
+  await expect(card.getByRole('button', { name: 'Restore', exact: true })).toHaveCount(0)
+  await items.nth(1).click()
+  await expect(diff.locator('.hv-gap').first()).toHaveText(/^⋯ \d+ unchanged lines?\s*$/)
+
   // a name stays with the version
   await card.getByRole('button', { name: 'Name', exact: true }).click()
   await card.getByRole('textbox', { name: 'Name', exact: true }).fill('before the change')
