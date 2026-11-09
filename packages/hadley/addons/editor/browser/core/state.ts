@@ -9,7 +9,7 @@ export const state: {
   textarea: HTMLTextAreaElement | null
   /** a new block below: the text of the block it follows, saved with it (field.ts, open's `after`) */
   after: string | null
-  /** ADR-14: after a delete, move or merge, until the reload */
+  /** ADR-14: after a change of the editor's, until the page is up to date (features/updating.ts) */
   locked: boolean
 } = { block: null, wrapper: null, textarea: null, after: null, locked: false }
 

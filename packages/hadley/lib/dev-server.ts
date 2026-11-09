@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 import { access, constants, mkdir, readFile, readdir, realpath } from 'node:fs/promises'
 import { realpathSync, watch } from 'node:fs'
-import { basename, join, resolve, sep } from 'node:path'
+import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import http from 'node:http'
 import { createServer as createViteServer, createLogger, type InlineConfig } from 'vite'
 import { parse as limaparse } from '@limaformat/lima'
@@ -278,9 +278,11 @@ export async function startDevServer({
           const serveHtml = async (res: any, filePath: string, status: number) => {
             const html = await readFile(filePath, 'utf-8')
             // the stylesheet before the editor's module, which runs only once it has loaded, and the chat after it,
-            // which finds the editor's control (addons/editor/browser/main.ts)
+            // which finds the editor's control (addons/editor/browser/main.ts); before them the soft refresh, which
+            // stands apart from the editor (addons/editor/browser/refresh/)
             const editorInject = editor
               ? '<link rel="stylesheet" href="/__hadley/editor/editor.css">' +
+                '<script type="module" src="/__hadley/editor/refresh/index.ts"></script>' +
                 '<script type="module" src="/__hadley/editor/main.ts"></script>'
               : ''
             const chatInject = chat
@@ -398,8 +400,20 @@ export async function startDevServer({
   let buildStarted = 0
   let buildQueued = false
   let lastBuildOk = false
+  // what changed since the last build: with the editor, a change to the Markdown of pages only updates the open pages
+  // in place (addons/editor/browser/refresh/), anything else reloads them (private/docs/SPEC_hadley-soft-reload.md)
+  let changedFiles = new Set<string>()
+  let changedAll = false
+  const contentDirs = [`${siteDir}/content`]
+  const inside = (dir: string, file: string) => {
+    const path = relative(dir, file)
+    return path !== '' && !path.startsWith('..') && !isAbsolute(path)
+  }
+  const isPageText = (file: string) => file.endsWith('.md') && contentDirs.some((dir) => inside(dir, file))
 
-  function triggerBuild(reason: string) {
+  function triggerBuild(reason: string, file?: string) {
+    if (file === undefined) changedAll = true
+    else changedFiles.add(file)
     if (shuttingDown) return
     if (buildTimer) clearTimeout(buildTimer)
     buildTimer = setTimeout(() => void runBuild(reason), 150)
@@ -414,6 +428,10 @@ export async function startDevServer({
     }
     buildRunning = true
     buildStarted = Date.now()
+    const files = changedFiles
+    const soft = !changedAll && files.size > 0 && [...files].every(isPageText)
+    changedFiles = new Set()
+    changedAll = false
     if (lastBuildOk) clearScreen()
     devLog(`Rebuilding (${reason})...`)
     try {
@@ -429,13 +447,16 @@ export async function startDevServer({
       lastBuildOk = true
       if (!shuttingDown) {
         vite.moduleGraph.invalidateAll()
-        vite.ws.send({ type: 'full-reload' })
+        if (editor && soft) vite.ws.send({ type: 'custom', event: 'hadley:built' })
+        else vite.ws.send({ type: 'full-reload' })
       }
       // the page shows first; the next build waits for the search index (buildRunning)
       await built.search?.()
     } catch (err) {
       lastBuildOk = false
       logger.failed(err, siteDir)
+      // the editor waits for the page after a change of its own: it is free again and says so
+      if (editor && !shuttingDown) vite.ws.send({ type: 'custom', event: 'hadley:build-failed' })
     } finally {
       buildRunning = false
       if (!shuttingDown) devLog(hasKeyboard ? 'r = rebuild · q = quit' : '(no keyboard: not a terminal)')
@@ -463,7 +484,9 @@ export async function startDevServer({
       const contentEntries = await readdir(`${siteDir}/content`, { withFileTypes: true })
       for (const entry of contentEntries) {
         if (entry.isSymbolicLink()) {
-          watchDirs.push(await realpath(`${siteDir}/content/${entry.name}`))
+          const linked = await realpath(`${siteDir}/content/${entry.name}`)
+          watchDirs.push(linked)
+          contentDirs.push(linked)
         }
       }
     } catch {}
@@ -485,7 +508,7 @@ export async function startDevServer({
         } else {
           devLog(filename)
         }
-        triggerBuild(filename)
+        triggerBuild(filename, join(dir, filename))
       })
       watchers.push(watcher)
     }

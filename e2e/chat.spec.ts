@@ -285,7 +285,7 @@ test('includes assets after the editor only when chat is enabled', async ({ page
     await page
       .locator('head script[src^="/__hadley/"]')
       .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('src'))),
-  ).toEqual([editorEntry, '/__hadley/chat.js'])
+  ).toEqual(['/__hadley/editor/refresh/index.ts', editorEntry, '/__hadley/chat.js'])
   for (const [file, type] of [
     ['chat.js', 'application/javascript'],
     ['chat.css', 'text/css'],

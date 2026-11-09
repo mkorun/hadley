@@ -15,9 +15,10 @@ import { field } from './features/field.ts'
 import { bundleFiles } from './features/files.ts'
 import { frames } from './features/frames.ts'
 import { limaTable } from './features/front-matter.ts'
-import { attachHeads } from './features/heads.ts'
+import { heads } from './features/heads.ts'
 import { menu } from './features/menu.ts'
 import { acceptPictures } from './features/pictures.ts'
+import { updating } from './features/updating.ts'
 import { versions } from './features/versions/index.ts'
 
 document.documentElement.dataset['hadleyLang'] = LANG
@@ -31,13 +32,27 @@ const theBar = bar({
   },
   changed: () => theFrames.queue(),
 })
-const theActions = actions({
-  closeMenu: () => theMenu.close(),
+// after a change the page is brought up to date in place (refresh/); the editor waits for it, locked
+const theUpdating = updating({
   lock() {
     state.locked = true
     theMenu.close()
-    theBar.reloading()
+    theBar.updating()
   },
+  unlock() {
+    state.locked = false
+    theBar.ready()
+  },
+  note: (text) => theBar.note(text),
+  refreshed() {
+    theMenu.attach()
+    void theHeads.refresh().then(() => theFrames.queue())
+    theVersions.refreshed()
+  },
+})
+const theActions = actions({
+  closeMenu: () => theMenu.close(),
+  lock: () => theUpdating.wait(),
   confirm: confirmDelete,
 })
 const theMenu = menu({
@@ -53,6 +68,7 @@ const theMenu = menu({
 })
 const theField = field({
   closeMenu: () => theMenu.close(),
+  saved: (block) => theUpdating.wait(block),
   table: limaTable,
   files: (blockId, textarea, toolbar) => void bundleFiles(blockId, textarea, toolbar),
   pictures: (blockId, textarea, toolbar) => acceptPictures(blockId, textarea, toolbar, bundleFiles),
@@ -73,17 +89,14 @@ const theVersions = versions({
   add: (control) => theBar.add(control),
   place: (card) => theBar.place(card),
   confirm: confirmRestore,
-  lock() {
-    state.locked = true
-    theMenu.close()
-    theBar.reloading()
-  },
+  lock: () => theUpdating.wait(),
 })
 
 theBar.draw()
 theMenu.attach()
-void attachHeads({
+const theHeads = heads({
   edit: (blockId, element, options) => void theField.open(blockId, element, options),
   badge: (badge) => theFrames.badge(badge),
-}).then(() => theFrames.queue())
+})
+void theHeads.refresh().then(() => theFrames.queue())
 theFrames.start()

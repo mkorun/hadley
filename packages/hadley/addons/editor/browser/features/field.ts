@@ -1,6 +1,7 @@
 // The field a block is edited in: loaded from the server (plugin.ts), in the page's flow after the block (ADR-10), and
-// saved back to the page's file, which reloads the page (ADR-3). Ctrl+S (Cmd+S on a Mac) saves it, Escape (main.ts)
-// closes it. The chat (addons/chat) hears of it by `hadley:editor-open` and `hadley:editor-close`.
+// saved back to the page's file, after which the page is brought up to date (ADR-3, ../refresh/). Ctrl+S (Cmd+S on a
+// Mac) saves it, Escape (main.ts) closes it. The chat (addons/chat) hears of it by `hadley:editor-open` and
+// `hadley:editor-close`.
 import { el, fitTextarea } from '../core/dom.ts'
 import { answer, post, serverError } from '../core/request.ts'
 import { state, clearHash, failAction } from '../core/state.ts'
@@ -21,6 +22,8 @@ export interface Field {
 /** What a field shows beside its text: the front matter's table, the bundle's files, and pictures added to it. */
 export interface Parts {
   closeMenu(): void
+  /** saved: the block that changed (none for a new one), until the page shows it anew */
+  saved(block: HTMLElement | null): void
   table(textarea: HTMLTextAreaElement): HTMLElement
   files(blockId: string, textarea: HTMLTextAreaElement, toolbar: HTMLElement): void
   pictures(blockId: string, textarea: HTMLTextAreaElement, toolbar: HTMLElement): void
@@ -104,7 +107,7 @@ export function field(parts: Parts): Field {
     textarea.addEventListener('input', () => fitTextarea(textarea))
     fitTextarea(textarea)
 
-    saveBtn.addEventListener('click', () => void save(blockId, saveBtn))
+    saveBtn.addEventListener('click', () => void save(blockId, blockEl, saveBtn))
     cancelBtn.addEventListener('click', close)
     document.dispatchEvent(
       new CustomEvent('hadley:editor-open', {
@@ -167,7 +170,7 @@ export function field(parts: Parts): Field {
     }
   }
 
-  async function save(blockId: string, saveBtn: HTMLButtonElement) {
+  async function save(blockId: string, blockEl: HTMLElement, saveBtn: HTMLButtonElement) {
     const written = state.textarea?.value
     if (written === undefined) return
     // an empty new block is no edit
@@ -192,6 +195,7 @@ export function field(parts: Parts): Field {
 
       if (res.ok) {
         close()
+        parts.saved(below ? null : blockEl)
         return
       }
 

@@ -10,7 +10,7 @@ import { T } from '../core/texts.ts'
 export type Direction = 'up' | 'down'
 
 export interface Menu {
-  /** the triggers on the page's blocks, and their right click */
+  /** the triggers on the page's blocks, and their right click; again after the page changed in place, for new blocks */
   attach(): void
   close(): void
   isOpen(): boolean
@@ -198,8 +198,19 @@ export function menu(on: {
     if (menuBlockEl?.dataset['hadleyId']) on.add(menuBlockEl)
   })
 
+  // a block has its trigger once; a void block's stands in the body, and goes with its block (../refresh/)
+  const attached = new WeakSet<Element>()
+  const floating = new Map<HTMLElement, Element>()
+
   function attach() {
+    for (const [trigger, block] of floating) {
+      if (block.isConnected) continue
+      trigger.remove()
+      floating.delete(trigger)
+    }
     for (const block of document.querySelectorAll<HTMLElement>('[data-hadley-id]')) {
+      if (attached.has(block)) continue
+      attached.add(block)
       const isVoid = VOID_TAGS.has(block.tagName.toLowerCase())
 
       const trigger = el('button', 'hadley-trigger')
@@ -212,6 +223,7 @@ export function menu(on: {
       if (isVoid) {
         // Append the trigger to body directly — positioned with getBoundingClientRect, independent of margins
         document.body.appendChild(trigger)
+        floating.set(trigger, block)
 
         const positionTrigger = () => {
           const r = block.getBoundingClientRect()

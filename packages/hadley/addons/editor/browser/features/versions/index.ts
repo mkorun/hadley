@@ -16,6 +16,8 @@ const NEAR = 90
 
 export interface Versions {
   close(): void
+  /** the page changed in place (../../refresh/): an open card shows its versions anew */
+  refreshed(): void
 }
 
 /** The versions: `add` puts the button in the pill, `place` the card above it, `confirm` asks before restoring a
@@ -141,5 +143,5 @@ export function versions(on: {
     if (event.key === 'Escape' && !card.hidden && !state.block) setOpen(false)
   })
 
-  return { close: () => setOpen(false) }
+  return { close: () => setOpen(false), refreshed: () => void (card.hidden || load()) }
 }

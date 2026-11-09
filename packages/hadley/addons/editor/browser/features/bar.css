@@ -16,6 +16,26 @@
   pointer-events: auto;
 }
 
+/* a note above the pill while the page is brought up to date (features/updating.ts) */
+.hadley-bar-note {
+  max-width: min(22rem, calc(100vw - 2.5rem));
+  margin: 0;
+  padding: 0.45rem 0.75rem;
+  font:
+    0.8125rem/1.4 ui-sans-serif,
+    system-ui,
+    sans-serif;
+  color: var(--he-text);
+  background: var(--he-bg);
+  border: 1px solid var(--he-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px var(--he-shadow);
+}
+
+.hadley-bar-note[hidden] {
+  display: none;
+}
+
 /* dev-overlay: static inside the bar instead of fixed */
 #hadley-dev-bar .dev-overlay {
   position: static;

@@ -16,55 +16,80 @@ interface Head {
   from?: unknown
 }
 
+export interface Heads {
+  /** the heads as the dev server names them now: their blocks' ids change with every change of the file */
+  refresh(): Promise<void>
+}
+
 /** The heads made editable; `edit` opens a block's field, `badge` places the front matter's badge. */
-export async function attachHeads(on: {
+export function heads(on: {
   edit(blockId: string, el: HTMLElement, options?: OpenOptions): void
   badge(badge: HTMLElement): void
-}): Promise<void> {
-  let heads: { title?: Head; subtitle?: Head; frontMatter?: Head } | undefined
-  try {
-    const res = await fetch(withLang(`/__hadley/heads?path=${encodeURIComponent(location.pathname)}`))
-    if (!res.ok) return
-    heads = (await res.json()) as typeof heads
-  } catch {
-    return
-  }
+}): Heads {
+  const ids: { title?: string; subtitle?: string; frontMatter?: string } = {}
+  // an element is bound once; one the page brought anew (../refresh/) is bound at the next refresh
+  const bound = new WeakSet<Element>()
+  let badge: HTMLButtonElement | undefined
   const free = () => isEditMode() && !state.block && !state.locked
-  for (const which of ['title', 'subtitle'] as const) {
-    const head = heads?.[which]
-    const id = head?.id
-    if (!head || typeof id !== 'string') continue
-    const element = document.querySelector<HTMLElement>(HEAD[which])
-    if (!element) continue
-    element.dataset['hadleyHeadEditable'] = ''
-    // the front matter, where it gives the title or subtitle, is Lima, not text to rewrite (addons/chat)
-    if (head.from === 'front matter') element.dataset['hadleyFrontMatter'] = ''
-    element.addEventListener('contextmenu', (e) => {
-      if (!free()) return
-      e.preventDefault()
-      e.stopPropagation()
-      on.edit(id, element)
-    })
-  }
-  // the front matter, from a badge right above the title, shown in edit mode only
-  const title = document.querySelector(HEAD.title)
-  const frontMatterId = heads?.frontMatter?.id
-  if (typeof frontMatterId === 'string' && title) {
-    const badge = el('button', 'hadley-front-matter-badge')
+
+  async function refresh(): Promise<void> {
+    let heads: { title?: Head; subtitle?: Head; frontMatter?: Head } | undefined
+    try {
+      const res = await fetch(withLang(`/__hadley/heads?path=${encodeURIComponent(location.pathname)}`))
+      if (!res.ok) return
+      heads = (await res.json()) as typeof heads
+    } catch {
+      return
+    }
+    for (const which of ['title', 'subtitle'] as const) {
+      const head = heads?.[which]
+      const id = head?.id
+      if (!head || typeof id !== 'string') {
+        delete ids[which]
+        continue
+      }
+      ids[which] = id
+      const element = document.querySelector<HTMLElement>(HEAD[which])
+      if (!element) continue
+      element.dataset['hadleyHeadEditable'] = ''
+      // the front matter, where it gives the title or subtitle, is Lima, not text to rewrite (addons/chat)
+      if (head.from === 'front matter') element.dataset['hadleyFrontMatter'] = ''
+      else delete element.dataset['hadleyFrontMatter']
+      if (bound.has(element)) continue
+      bound.add(element)
+      element.addEventListener('contextmenu', (e) => {
+        const now = ids[which]
+        if (!free() || now === undefined) return
+        e.preventDefault()
+        e.stopPropagation()
+        on.edit(now, element)
+      })
+    }
+    // the front matter, from a badge right above the title, shown in edit mode only
+    const frontMatterId = heads?.frontMatter?.id
+    if (typeof frontMatterId === 'string') ids.frontMatter = frontMatterId
+    else delete ids.frontMatter
+    if (badge || ids.frontMatter === undefined || !document.querySelector(HEAD.title)) return
+    badge = el('button', 'hadley-front-matter-badge')
     badge.type = 'button'
     badge.append(icon('data'))
     badge.append(Object.assign(el('span'), { textContent: T.frontMatter }))
     badge.setAttribute('aria-label', T.frontMatter)
     badge.title = T.frontMatter
     badge.dataset['hadleyFrontMatter'] = ''
-    badge.addEventListener('click', () => {
-      if (!free()) return
+    const own = badge
+    own.addEventListener('click', () => {
+      const id = ids.frontMatter
+      const title = document.querySelector(HEAD.title)
+      if (!free() || id === undefined || !title) return
       // the badge sits over the page: the field opens in it, above the title
-      on.edit(frontMatterId, badge, { place: (wrapper) => title.before(wrapper) })
+      on.edit(id, own, { place: (wrapper) => title.before(wrapper) })
     })
     // beside the frames' layer, placed with it, not before the title: the page does not move when edit mode turns on;
     // not in that layer, which is hidden from assistive technology
-    on.badge(badge)
-    document.body.append(badge)
+    on.badge(own)
+    document.body.append(own)
   }
+
+  return { refresh }
 }

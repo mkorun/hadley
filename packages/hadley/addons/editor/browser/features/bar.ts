@@ -11,8 +11,12 @@ const STORAGE_KEY = 'hadley-edit-mode'
 export interface Bar {
   /** the toggle as edit mode is */
   draw(): void
-  /** the toggle while the page reloads after a change (ADR-14) */
-  reloading(): void
+  /** the toggle while the page is brought up to date after a change (ADR-14, features/updating.ts) */
+  updating(): void
+  /** the toggle free again */
+  ready(): void
+  /** a short note above the pill, or none */
+  note(text: string | null): void
   /** a control of another feature, in the pill after the toggle (the versions, features/versions/) */
   add(control: HTMLElement): void
   /** a card of another feature, above the pill, as the chat's (features/versions/) */
@@ -129,15 +133,27 @@ export function bar(on: { leave(): void; changed(): void }): Bar {
     if (!langMenu.hidden && !langMenu.contains(e.target as Node) && !langBtn.contains(e.target as Node)) showMenu(false)
   })
   pill.appendChild(langBtn)
+  // what the bar has to say for a while (features/updating.ts)
+  const note = el('p', 'hadley-bar-note')
+  note.setAttribute('role', 'status')
+  note.hidden = true
   // above the pill, which clips what overflows it
-  devBar.append(langMenu, pill)
+  devBar.append(langMenu, note, pill)
   document.body.appendChild(devBar)
 
   return {
     draw,
-    reloading() {
-      toggle.textContent = T.reloading
+    updating() {
+      toggle.textContent = T.updating
       toggle.disabled = true
+    },
+    ready() {
+      toggle.disabled = false
+      draw()
+    },
+    note(text) {
+      note.textContent = text ?? ''
+      note.hidden = text === null
     },
     add(control) {
       pill.insertBefore(control, langBtn)

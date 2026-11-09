@@ -78,3 +78,9 @@
 .hadley-cancel-btn:hover {
   background: var(--he-bg);
 }
+
+/* a block the editor changed, until the page shows it anew (features/updating.ts) */
+.hadley-pending {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
