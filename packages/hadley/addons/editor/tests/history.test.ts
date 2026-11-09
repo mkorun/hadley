@@ -224,14 +224,19 @@ describe('the routes of the time machine', () => {
       current: hash('other\n'),
     })
     assert.equal(stale.status, 409)
+    const named = (await (await fetch(`${origin}/__hadley/history?path=/a/`)).json()) as { versions: Version[] }
+    const source = named.versions.find((v) => v.hash === hash('first\n'))!
     const back = await post('/__hadley/history/restore', {
       path: '/a/',
       hash: hash('first\n'),
+      at: source.at,
       current: hash('second\n'),
     })
     assert.equal(back.status, 200)
     assert.equal(await readFile(page, 'utf-8'), 'first\n')
     const after = (await (await fetch(`${origin}/__hadley/history?path=/a/`)).json()) as { versions: Version[] }
+    // the restore names the version it brought back
+    assert.equal(after.versions[0]?.from, source.at)
     // the page it left stays a version: forth again is as easy
     assert.deepEqual(
       after.versions.map((v) => [v.by, v.hash === hash('first\n') ? 'first' : 'second', v.name ?? '']),

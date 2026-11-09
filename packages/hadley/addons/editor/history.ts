@@ -23,6 +23,8 @@ export interface Version {
   name?: string
   // the version the page stood at when this one was made, by its time: undo goes back to it (steps)
   after?: number
+  // the version a restore brought back, by its time (by: restore): the card names it
+  from?: number
 }
 
 /** How many unnamed versions of a page stay (Michael, 2026-11-09: 100, back and forth). */
@@ -44,7 +46,7 @@ function versionOf(line: string): Version | undefined {
   }
   if (typeof value !== 'object' || value === null) return undefined
   const record = value as Record<string, unknown>
-  const { at, hash, by, what, agent, name, after } = record
+  const { at, hash, by, what, agent, name, after, from } = record
   if (typeof at !== 'number' || typeof hash !== 'string' || !HASH.test(hash) || !BY.includes(by as By)) return undefined
   return {
     at,
@@ -54,6 +56,7 @@ function versionOf(line: string): Version | undefined {
     ...(typeof agent === 'string' && agent.length <= 64 ? { agent } : {}),
     ...(typeof name === 'string' && name.trim() && name.length <= NAME_MAX ? { name } : {}),
     ...(typeof after === 'number' ? { after } : {}),
+    ...(typeof from === 'number' ? { from } : {}),
   }
 }
 
@@ -139,7 +142,12 @@ export interface History {
    * Keeps `content` as the newest version of `file`, made on the version the page stands at, unless it is that one
    * already; the version it made, if any. The page then stands at it.
    */
-  record(file: string, content: string, by: By, more?: { what?: What; agent?: string }): Promise<Version | undefined>
+  record(
+    file: string,
+    content: string,
+    by: By,
+    more?: { what?: What; agent?: string; from?: number },
+  ): Promise<Version | undefined>
   /** The versions of `file`, newest first. */
   list(file: string): Promise<Version[]>
   /** The text of a version of `file`: only a hash its log names. */
@@ -249,6 +257,7 @@ export function history(root: string): History {
           ...(more.what ? { what: more.what } : {}),
           ...(more.agent ? { agent: more.agent.slice(0, 64) } : {}),
           ...(here ? { after: here.at } : {}),
+          ...(more.from === undefined ? {} : { from: more.from }),
         }
         stands.set(path, version.at)
         const { kept, dropped } = pruned([...versions, version], version.at)

@@ -7,6 +7,8 @@ export interface Change {
   by: 'editor' | 'agent' | 'outside' | 'restore'
   what?: 'edit' | 'move' | 'merge' | 'delete' | 'new' | 'picture'
   agent?: string
+  // the version a restore brought back (by: restore)
+  from?: number
 }
 
 export const WHAT: Record<NonNullable<Change['what']>, string> = {

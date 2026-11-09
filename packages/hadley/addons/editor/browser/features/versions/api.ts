@@ -45,7 +45,7 @@ export async function versionText(path: string, hash: string): Promise<string | 
 
 /** Brings `version` back, only onto the page of `current` (else status 409). */
 export const restoreVersion = (path: string, version: Version, current: string): Promise<Answer<true>> =>
-  asked(post('/__hadley/history/restore', { path, hash: version.hash, current }), () => true as const)
+  asked(post('/__hadley/history/restore', { path, hash: version.hash, at: version.at, current }), () => true as const)
 
 /** Keeps `version` under `name`, or takes its name with ''. */
 export const keepVersion = (path: string, version: Version, name: string): Promise<Answer<true>> =>

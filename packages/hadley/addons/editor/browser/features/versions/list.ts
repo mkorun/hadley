@@ -5,11 +5,22 @@ import { icon } from '../../core/icons.ts'
 import { T } from '../../core/texts.ts'
 import type { Version } from './api.ts'
 import { described } from '../../core/changes.ts'
-import { day, time } from '../../core/when.ts'
+import { day, moment, time } from '../../core/when.ts'
 
-/** What a row says of its version: who made it and what, or that it is the page as it is. */
-export const said = (version: Version, isCurrent: boolean, away: boolean): string =>
-  isCurrent ? T.current : away ? `${described(version)} · ${T.undone}` : described(version)
+/** A restore names the version it brought back: its name, else when it was made; none where that one is gone. */
+function restored(version: Version, all: readonly Version[]): string | undefined {
+  if (version.by !== 'restore' || version.from === undefined) return undefined
+  const source = all.find((v) => v.at === version.from)
+  return source && T.restoredFrom(source.name ?? moment(source.at))
+}
+
+/** What a row says of its version: who made it and what, or that it is the page as it is, and where it came from. */
+export function said(version: Version, isCurrent: boolean, away: boolean, all: readonly Version[] = []): string {
+  const origin = restored(version, all)
+  if (isCurrent) return origin ? `${T.current} · ${origin}` : T.current
+  const what = origin ?? described(version)
+  return away ? `${what} · ${T.undone}` : what
+}
 
 /** The rows of `versions` under their days; `open` fills a row's detail when it opens (a closed one is emptied). */
 export function rows(
@@ -58,7 +69,7 @@ export function rows(
     const when = el('span', 'hv-when')
     when.textContent = time(version.at)
     const what = el('span', 'hv-who')
-    what.textContent = said(version, version === current, undone.has(version.at))
+    what.textContent = said(version, version === current, undone.has(version.at), versions)
     pick.append(when, what)
     if (version.name) {
       const name = el('span', 'hv-name')

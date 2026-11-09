@@ -143,7 +143,9 @@ export async function historyRoute(req: IncomingMessage, res: ServerResponse, la
     } catch {
       return send(res, 500, { error: t(lang, 'couldNotWriteFile') })
     }
-    await versions.record(file, text, 'restore').catch(() => undefined)
+    // which version came back, for the card to name it (Michael, 2026-11-09)
+    const from = body['at']
+    await versions.record(file, text, 'restore', typeof from === 'number' ? { from } : {}).catch(() => undefined)
     send(res, 200, { ok: true })
   })
   return true
