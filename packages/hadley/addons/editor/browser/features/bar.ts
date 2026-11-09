@@ -15,6 +15,8 @@ export interface Bar {
   updating(): void
   /** the toggle free again */
   ready(): void
+  /** a standing warning above the pill, or none: the dev server runs older code (server-code.ts) */
+  warn(text: string | null): void
   /** a short note above the pill, or none; with an action, a button after it (undo, features/undo.ts) */
   note(text: string | null, action?: { label: string; run(): void }): void
   /** a control of another feature, in the pill after the toggle (the versions, features/versions/) */
@@ -137,8 +139,12 @@ export function bar(on: { leave(): void; changed(): void }): Bar {
   const note = el('p', 'hadley-bar-note')
   note.setAttribute('role', 'status')
   note.hidden = true
+  // what stands until it is mended: the dev server runs older code (server-code.ts)
+  const warning = el('p', 'hadley-bar-note hadley-bar-warning')
+  warning.setAttribute('role', 'alert')
+  warning.hidden = true
   // above the pill, which clips what overflows it
-  devBar.append(langMenu, note, pill)
+  devBar.append(langMenu, warning, note, pill)
   document.body.appendChild(devBar)
 
   return {
@@ -150,6 +156,10 @@ export function bar(on: { leave(): void; changed(): void }): Bar {
     ready() {
       toggle.disabled = false
       draw()
+    },
+    warn(text) {
+      warning.textContent = text ?? ''
+      warning.hidden = text === null
     },
     note(text, action) {
       note.replaceChildren()

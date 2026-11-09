@@ -16,6 +16,7 @@ import { bundleFiles } from './features/files.ts'
 import { frames } from './features/frames.ts'
 import { limaTable } from './features/front-matter.ts'
 import { heads } from './features/heads.ts'
+import { checkServerCode } from './features/server-code.ts'
 import { holdLinks } from './features/links.ts'
 import { menu } from './features/menu.ts'
 import { acceptPictures } from './features/pictures.ts'
@@ -51,6 +52,7 @@ const theUpdating = updating({
     void theHeads.refresh().then(() => theFrames.queue())
     theVersions.refreshed()
     void theUndo.refresh()
+    void checkServerCode((text) => theBar.warn(text))
   },
 })
 const theActions = actions({
@@ -102,6 +104,8 @@ const theVersions = versions({
 
 theBar.draw()
 theMenu.attach()
+// the dev server's code, older than what lies on the disk: it says so (server-code.ts)
+void checkServerCode((text) => theBar.warn(text))
 holdLinks()
 // undo and redo in the pill, after the versions' button; a step is a change as any
 const theUndo = undo({

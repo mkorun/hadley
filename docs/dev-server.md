@@ -63,7 +63,8 @@ page's Markdown file, and the page is brought up to date in place; a file that c
 edited, the page reloads first. The editor is the author's tool, not part of the page: it speaks the first of the
 browser's languages it knows (German, English), else English; its control at the bottom right shows the language it
 speaks, and its menu keeps another for the site. Out of edit mode the control steps back, until the pointer or the
-keyboard comes to it. `hadley deploy` serves no editor.
+keyboard comes to it. Where hadley's own code changed since the dev server started, a warning above the control asks to
+restart it, and the terminal says so once. `hadley deploy` serves no editor.
 
 ### Up to date in place
 

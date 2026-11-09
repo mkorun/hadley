@@ -15,6 +15,7 @@ import { browserFile } from './browser-files.ts'
 import { siteHistory, type What } from './history.ts'
 import { historyRoute } from './history-routes.ts'
 import { handleTrash } from './trash.ts'
+import { codeChanged } from '../../lib/code-stamp.ts'
 import { resolveLang, t, type Lang } from './i18n.ts'
 
 // Lima's own reader, for the browser: the editor shows the front matter's keys where outline() finds them
@@ -792,6 +793,9 @@ export function oneAtATime(write: () => Promise<void>): Promise<void> {
   return run
 }
 
+// said once in the terminal, whatever the pages ask
+let toldStale = false
+
 export function blockEditorPlugin(): Plugin {
   return {
     name: 'hadley-block-editor',
@@ -837,6 +841,15 @@ export function blockEditorPlugin(): Plugin {
         } else if (method === 'POST' && url.split('?')[0] === '/__hadley/trash') {
           // a file of a page's bundle taken away, into the site's .hadley/trash/ (trash.ts)
           handler = oneAtATime(() => handleTrash(req, res, lang))
+        } else if (method === 'GET' && url.split('?')[0] === '/__hadley/stale') {
+          // hadley's own code changed since the start: the editor asks the author to restart (lib/code-stamp.ts)
+          handler = codeChanged().then((stale) => {
+            if (stale && !toldStale) {
+              toldStale = true
+              console.warn("[dev]   hadley's own code changed since the dev server started: restart it (Ctrl+C)")
+            }
+            send(res, 200, { stale })
+          })
         } else if (url.startsWith('/__hadley/history')) {
           // the time machine (history-routes.ts)
           handler = historyRoute(req, res, lang).then((answered) => {

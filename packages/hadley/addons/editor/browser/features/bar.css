@@ -36,6 +36,12 @@
   display: none;
 }
 
+/* the warning that the dev server runs older code: it stays until the server is restarted */
+.hadley-bar-warning {
+  border-color: color-mix(in srgb, var(--he-warn, #d97706) 55%, var(--he-border));
+  background: color-mix(in srgb, var(--he-warn, #d97706) 10%, var(--he-bg));
+}
+
 /* an action after the note, as Gmail's Undo after a deletion */
 .hadley-bar-note-action {
   margin-left: 0.6rem;
