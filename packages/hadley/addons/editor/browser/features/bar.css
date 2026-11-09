@@ -68,7 +68,8 @@
   display: flex;
   overflow: hidden;
   background: var(--he-bg);
-  border-radius: 999px;
+  /* rounded, not a capsule (Michael, 2026-11-09: the ends were too round, and the chat's dot fell outside them) */
+  border-radius: 10px;
   box-shadow:
     0 0 0 1px var(--he-tone-light),
     0 0 0 2px var(--he-tone-dark),

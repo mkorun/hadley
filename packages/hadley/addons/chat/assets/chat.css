@@ -19,8 +19,9 @@
 /* the dot: a permission to give, a reply not seen yet, connected; hollow while no session is connected */
 .hc-dot {
   position: absolute;
-  top: 0.3rem;
-  right: 0.35rem;
+  /* on the bubble's top right, as a badge on its sign, wherever the button's corner lies */
+  top: calc(50% - 0.7rem);
+  left: calc(50% + 0.2rem);
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
