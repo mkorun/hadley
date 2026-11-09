@@ -214,6 +214,18 @@ that shows `meta.subtitle`. hems and punch mark them in every template:
 
 A theme that does not mark them shows them as before; the editor then does not offer to edit them there.
 
+After a change to a page's Markdown the dev server brings the page up to date in place (dev-server.md, "Up to date in
+place"): blocks that changed are new elements, the others stay. A theme script that hangs on blocks of the content
+hears of the new ones, on `document`:
+
+```js
+document.addEventListener('hadley:content-updated', (event) => {
+  for (const element of event.detail.added) decorate(element)
+})
+```
+
+Only in `hadley dev` with the editor; a published site never sends it. hems and punch need nothing of it.
+
 The editor takes one colour from the theme, its accent, as `--editor-accent` on `:root`; without it, a neutral blue.
 Plain CSS, so it follows a theme that changes it, a colour picker as well as a dark mode:
 

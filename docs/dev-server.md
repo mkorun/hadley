@@ -1,7 +1,8 @@
 # The dev server
 
 `hadley dev`, run in the site's directory or below it (or with `--root`), builds the site, serves it with Vite and
-builds it again on every change of its content, theme or `config.lima`; the page in the browser reloads.
+builds it again on every change of its content, theme or `config.lima`; the page in the browser reloads. With the
+block editor, a change to the Markdown of pages alone brings each open page up to date in place instead (below).
 `hadley deploy` without `--build` serves the publish build the same way, without watching.
 
 ```bash
@@ -53,10 +54,23 @@ marks it (themes.md, "Editor"), edits its text, while its `#` or `__` stays as i
 gives it; they are never moved, merged or deleted. In edit mode a badge above the title opens the page's front matter,
 which Lima must read when it is saved; its lines are striped, its keys and comments marked where Lima finds them, and a
 line Lima refuses is marked as it is typed, with Lima's message below. Each change is saved to the page's Markdown file,
-and the page reloads; a file that changed since the page was built is not edited, the page reloads first. The editor is
+and the page is brought up to date in place; a file that changed since the page was built is not edited, the page
+reloads first. The editor is
 the author's tool, not part of the page: it speaks the first of the browser's languages it knows (German, English), else
 English; its control at the bottom right shows the language it speaks, and its menu keeps another for the site. Out of
 edit mode the control steps back, until the pointer or the keyboard comes to it. `hadley deploy` serves no editor.
+
+### Up to date in place
+
+With the block editor, when only the Markdown of pages changed, by the editor, the chat's agent or another program,
+each open page fetches itself once the dev server has built it, and replaces only the blocks that differ, and outside
+them the smallest element that differs, such as a reading time; its title, description and JSON-LD follow too. Scroll
+position, an open card and the chat stay, and a page that did not change does nothing. After a change of its own the
+editor waits, the changed block dimmed, until the page is up to date; a change from outside waits while a field is
+open; a rebuild that fails frees the editor and says so. The page reloads as before when anything else changed (the
+theme, `config.lima`, data, pictures), when a stylesheet or script of the page's head differs, when nothing comes
+within 15 seconds, and on any error. A theme whose scripts hang on blocks of the content hears of the new ones
+(themes.md, "Editor").
 
 ### Versions
 
