@@ -78,7 +78,7 @@ const de = {
     `Es gibt außerdem einen vorbestehenden Fehler an anderer Stelle im Dokument (nicht in diesem Text):\n\n${msg}`,
   // the time machine (features/versions.ts)
   versions: 'Versionen',
-  versionsTitle: 'Versionen dieser Seite',
+  versionsTitle: 'Versionsverlauf',
   current: 'Jetzige Fassung',
   byEditor: 'Editor',
   byAgent: 'während {agent} arbeitete',
@@ -152,7 +152,7 @@ const en: typeof de = {
   parseErrorElsewhere: (msg) =>
     `There is also a pre-existing error elsewhere in the document (not in this text):\n\n${msg}`,
   versions: 'Versions',
-  versionsTitle: 'Versions of this page',
+  versionsTitle: 'Version history',
   current: 'Current version',
   byEditor: 'Editor',
   byAgent: 'while {agent} was working',

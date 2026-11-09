@@ -17,7 +17,7 @@ test('an edit is a version; an earlier one is compared, named and restored, and 
   await page.keyboard.press('Control+s')
   await expect(page.locator('[data-hadley-id]').filter({ hasText: 'First words, changed.' })).toHaveCount(1)
 
-  const toggle = page.getByRole('button', { name: 'Versions of this page', exact: true })
+  const toggle = page.getByRole('button', { name: 'Version history', exact: true })
   await toggle.click()
   const card = page.locator('#hadley-versions')
   await expect(card).toBeVisible()
@@ -53,7 +53,7 @@ test('an edit is a version; an earlier one is compared, named and restored, and 
   await expect(page.locator('[data-hadley-id]').filter({ hasText: FIRST })).toHaveCount(1)
 
   // after the reload: the restored version is current, the one it left is still there
-  await page.getByRole('button', { name: 'Versions of this page', exact: true }).click()
+  await page.getByRole('button', { name: 'Version history', exact: true }).click()
   const after = page.locator('#hadley-versions .hv-item')
   await expect(after).toHaveCount(3)
   await expect(after.nth(0)).toContainText('Current version')
@@ -63,7 +63,7 @@ test('an edit is a version; an earlier one is compared, named and restored, and 
 
 test('the versions button stands in the pill in edit mode only, and Escape closes its card', async ({ page, dev }) => {
   await page.goto(dev.origin + '/panel/')
-  const toggle = page.getByRole('button', { name: 'Versions of this page', exact: true })
+  const toggle = page.getByRole('button', { name: 'Version history', exact: true })
   await expect(toggle).toBeHidden()
   await page.getByRole('button', { name: 'Toggle edit mode', exact: true }).click()
   await toggle.click()
@@ -82,7 +82,7 @@ test('a change to the file made outside the editor is a version too', async ({ p
     timeout: 15_000,
   })
   await page.getByRole('button', { name: 'Toggle edit mode', exact: true }).click()
-  await page.getByRole('button', { name: 'Versions of this page', exact: true }).click()
+  await page.getByRole('button', { name: 'Version history', exact: true }).click()
   const items = page.locator('#hadley-versions .hv-item')
   await expect(items).toHaveCount(2)
   await expect(items.nth(0)).toContainText('Current version')
