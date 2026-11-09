@@ -2,7 +2,8 @@
  * The routes of the time machine (history.ts), under `/__hadley/history`: the versions of a page, the text of one,
  * going back to one, and naming one. The page is named by its URL path; its file comes from the pages the build
  * registered (pageHeads), never from the browser, and a version only by a hash its log names. Reads are a source read
- * for lib/dev-guard.ts, as `/__hadley/block/` is; writes go one at a time with the editor's (oneAtATime).
+ * for lib/dev-guard.ts, as `/__hadley/block/` is; writes go one at a time with the editor's (oneAtATime). Deleting
+ * takes one version or every unnamed one, never the newest: the page as it is.
  */
 import { createHash } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
@@ -12,6 +13,7 @@ import { t, type Lang } from './i18n.ts'
 import { oneAtATime, pageHeads, readBody } from './plugin.ts'
 
 const HASH = /^[0-9a-f]{64}$/
+const WRITES = new Set(['/__hadley/history/restore', '/__hadley/history/name', '/__hadley/history/delete'])
 
 function send(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status
@@ -46,11 +48,7 @@ export async function historyRoute(req: IncomingMessage, res: ServerResponse, la
     send(res, 200, { text })
     return true
   }
-  if (
-    req.method !== 'POST' ||
-    (url.pathname !== '/__hadley/history/restore' && url.pathname !== '/__hadley/history/name')
-  )
-    return false
+  if (req.method !== 'POST' || !WRITES.has(url.pathname)) return false
 
   let body: Record<string, unknown>
   try {
@@ -62,15 +60,28 @@ export async function historyRoute(req: IncomingMessage, res: ServerResponse, la
   }
   const file = fileOf(body['path'])
   if (!file) return (send(res, 404, { error: t(lang, 'pageUnknown') }), true)
+  if (url.pathname === '/__hadley/history/delete' && body['unnamed'] === true) {
+    send(res, 200, { removed: await versions.removeUnnamed(file) })
+    return true
+  }
   const hash = body['hash']
   if (typeof hash !== 'string' || !HASH.test(hash))
     return (send(res, 400, { error: t(lang, 'invalidRequestBody') }), true)
 
   if (url.pathname === '/__hadley/history/name') {
     const name = body['name']
-    if (typeof name !== 'string' || name.length > NAME_MAX)
+    const at = body['at']
+    if (typeof name !== 'string' || name.length > NAME_MAX || (at !== undefined && typeof at !== 'number'))
       return (send(res, 400, { error: t(lang, 'invalidRequestBody') }), true)
-    if (!(await versions.name(file, hash, name))) return (send(res, 404, { error: t(lang, 'versionUnknown') }), true)
+    if (!(await versions.name(file, hash, name, at)))
+      return (send(res, 404, { error: t(lang, 'versionUnknown') }), true)
+    send(res, 200, { ok: true })
+    return true
+  }
+  if (url.pathname === '/__hadley/history/delete') {
+    const at = body['at']
+    if (typeof at !== 'number') return (send(res, 400, { error: t(lang, 'invalidRequestBody') }), true)
+    if (!(await versions.remove(file, at, hash))) return (send(res, 404, { error: t(lang, 'versionUnknown') }), true)
     send(res, 200, { ok: true })
     return true
   }

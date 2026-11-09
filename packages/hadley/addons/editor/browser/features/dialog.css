@@ -122,6 +122,21 @@
   outline-offset: 2px;
 }
 
+/* a question before what loses nothing (restoring a version): in the accent */
+#hadley-delete-dialog.is-calm .hdd-icon {
+  color: var(--he-accent);
+  background: var(--he-key-bg);
+}
+#hadley-delete-dialog.is-calm .hdd-confirm {
+  background: var(--he-accent);
+}
+#hadley-delete-dialog.is-calm .hdd-confirm:hover {
+  background: var(--he-accent-deep);
+}
+#hadley-delete-dialog.is-calm .hdd-confirm:focus-visible {
+  outline-color: var(--he-accent-focus);
+}
+
 /* The front matter's badge above the title: shown in edit mode only */
 .hadley-front-matter-badge {
   display: none;

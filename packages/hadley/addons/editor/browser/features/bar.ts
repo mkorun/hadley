@@ -13,9 +13,9 @@ export interface Bar {
   draw(): void
   /** the toggle while the page reloads after a change (ADR-14) */
   reloading(): void
-  /** a control of another feature, in the pill after the toggle (the versions, features/versions.ts) */
+  /** a control of another feature, in the pill after the toggle (the versions, features/versions/) */
   add(control: HTMLElement): void
-  /** a card of another feature, above the pill, as the chat's (features/versions.ts) */
+  /** a card of another feature, above the pill, as the chat's (features/versions/) */
   place(card: HTMLElement): void
 }
 

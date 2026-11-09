@@ -7,16 +7,24 @@ import { T } from '../core/texts.ts'
 export const confirmDelete = (): Promise<boolean> =>
   ask({ title: T.deleteDialogTitle, body: T.deleteDialogBody, confirm: T.confirmDelete })
 
-/** The question before a version of the page takes its place (features/versions.ts). */
-export const confirmRestore = (): Promise<boolean> =>
-  ask({ title: T.restoreTitle, body: T.restoreBody, confirm: T.restore, symbol: 'clock' })
+/** The question before a version of the page, of `when`, takes its place (features/versions/). */
+export const confirmRestore = (when: string): Promise<boolean> =>
+  ask({ title: T.restoreTitle, body: T.restoreBody(when), confirm: T.restore, symbol: 'clock', calm: true })
 
-function ask(texts: { title: string; body: string; confirm: string; symbol?: 'clock' }): Promise<boolean> {
+// calm: nothing is lost by it (going back keeps the page as it is), so the accent, not the red of deleting
+function ask(texts: {
+  title: string
+  body: string
+  confirm: string
+  symbol?: 'clock'
+  calm?: boolean
+}): Promise<boolean> {
   return new Promise((resolve) => {
     const overlay = el('div')
     overlay.id = 'hadley-delete-overlay'
     const dialog = el('div')
     dialog.id = 'hadley-delete-dialog'
+    if (texts.calm) dialog.classList.add('is-calm')
     dialog.setAttribute('role', 'dialog')
     dialog.setAttribute('aria-modal', 'true')
     dialog.setAttribute('aria-labelledby', 'hadley-delete-title')

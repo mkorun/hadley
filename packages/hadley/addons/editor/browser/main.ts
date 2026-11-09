@@ -18,7 +18,7 @@ import { limaTable } from './features/front-matter.ts'
 import { attachHeads } from './features/heads.ts'
 import { menu } from './features/menu.ts'
 import { acceptPictures } from './features/pictures.ts'
-import { versions } from './features/versions.ts'
+import { versions } from './features/versions/index.ts'
 
 document.documentElement.dataset['hadleyLang'] = LANG
 

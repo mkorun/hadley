@@ -28,6 +28,8 @@ const ICONS = {
   pencil: [path('M10.5 2.5l3 3L6 13H3v-3zM9 4l3 3')],
   // the versions of a page: a clock
   clock: [['circle', { cx: '8', cy: '8', r: '5.5' }], path('M8 5v3.2l2.2 1.5')],
+  // a version kept: a bookmark
+  bookmark: [path('M4.5 2.5h7v11L8 10.8l-3.5 2.7z')],
 } satisfies Record<string, readonly Shape[]>
 
 export type IconName = keyof typeof ICONS

@@ -63,11 +63,13 @@ edit mode the control steps back, until the pointer or the keyboard comes to it.
 The editor keeps every version of a page's Markdown file the dev server sees, whoever wrote it: the editor, the chat's
 agent or another program. When the build reads a page that changed since its last version, the page is kept as it is
 now; the editor keeps the page before and after each of its changes, with what it did. In edit mode, Versions in the
-control at the bottom right lists them, newest first, with when, by whom and what; a page that changed while the chat's
-agent was working is said to have changed while it worked, which is all the dev server knows. One chosen shows what
-restoring it would change, line by line, a line that goes with −, one that comes with +. Restore asks first, writes it
-to the file as any change does, and keeps the page it replaces as a version, so that going forward again is as easy. A
-name, such as "before the rework", stays with a version; of the unnamed, the last 100 of each page stay. The versions
+control at the bottom right lists them by day, newest first, with when, by whom and what; a page that changed while the
+chat's agent was working is said to have changed while it worked, which is all the dev server knows. One opened in its
+row shows what restoring it would change: a line that goes with −, one that comes with +, and in a line changed for
+another the words that differ. Restore asks first, writes it to the file as any change does, and keeps the page it
+replaces as a version, so that going forward again is as easy. Keep gives a version a name, such as "before the
+rework", and a kept version stays; of the unnamed, the last 100 of each page stay. A version can be deleted, after a
+question, and so can every unnamed one at once; the page as it is never. The versions
 live in `.hadley/history/` of the site, each state once, never in its repository, and `hadley clean` leaves them; they
 need nothing but hadley, on any system. A page of more than 5,000 lines, or two versions that differ in too much of it,
 are not compared, only restored.

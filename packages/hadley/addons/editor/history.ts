@@ -75,8 +75,15 @@ export interface History {
   list(file: string): Promise<Version[]>
   /** The text of a version of `file`: only a hash its log names. */
   content(file: string, hash: string): Promise<string | undefined>
-  /** Names the newest version of `file` with `hash`, or takes its name with ''; false where there is none. */
-  name(file: string, hash: string, name: string): Promise<boolean>
+  /**
+   * Names the version of `file` made at `at` with `hash` (without `at`, the newest with `hash`), or takes its name
+   * with ''; false where there is none.
+   */
+  name(file: string, hash: string, name: string, at?: number): Promise<boolean>
+  /** Deletes the version of `file` made at `at` with `hash`, never the newest (the page as it is); false where none. */
+  remove(file: string, at: number, hash: string): Promise<boolean>
+  /** Deletes every unnamed version of `file` but the newest; how many went. */
+  removeUnnamed(file: string): Promise<number>
 }
 
 export function history(root: string): History {
@@ -152,7 +159,8 @@ export function history(root: string): History {
         const object = join(objects, hash)
         if ((await readFile(object, 'utf-8').catch(() => undefined)) !== content) await replace(object, content)
         const version: Version = {
-          at: Date.now(),
+          // strictly later than the one before: a version is named by its time and its hash
+          at: Math.max(Date.now(), (versions.at(-1)?.at ?? 0) + 1),
           hash,
           by,
           ...(more.what ? { what: more.what } : {}),
@@ -174,11 +182,13 @@ export function history(root: string): History {
         return readFile(join(objects, hash), 'utf-8').catch(() => undefined)
       })
     },
-    name(file, hash, name) {
+    name(file, hash, name, at) {
       return serial(async () => {
         const path = pathOf(file)
         const versions = await load(path)
-        const index = versions.findLastIndex((version) => version.hash === hash)
+        const index = versions.findLastIndex(
+          (version) => version.hash === hash && (at === undefined || version.at === at),
+        )
         if (index === -1) return false
         const { name: _old, ...rest } = versions[index]!
         const changed = [...versions]
@@ -187,6 +197,33 @@ export function history(root: string): History {
         await save(path, kept)
         await collect(dropped)
         return true
+      })
+    },
+    remove(file, at, hash) {
+      return serial(async () => {
+        const path = pathOf(file)
+        const versions = await load(path)
+        const index = versions.findIndex((version) => version.at === at && version.hash === hash)
+        if (index === -1 || index === versions.length - 1) return false
+        const dropped = versions[index]!
+        await save(
+          path,
+          versions.filter((_, i) => i !== index),
+        )
+        await collect([dropped])
+        return true
+      })
+    },
+    removeUnnamed(file) {
+      return serial(async () => {
+        const path = pathOf(file)
+        const versions = await load(path)
+        const keep = (version: Version, i: number) => version.name !== undefined || i === versions.length - 1
+        const dropped = versions.filter((version, i) => !keep(version, i))
+        if (dropped.length === 0) return 0
+        await save(path, versions.filter(keep))
+        await collect(dropped)
+        return dropped.length
       })
     },
   }

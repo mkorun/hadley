@@ -76,6 +76,49 @@ describe('the versions of a page', () => {
     assert.equal(await versions.name(page, hash('none\n'), 'x'), false)
   })
 
+  it('names the version it is given by its time, where the same text came back later', async () => {
+    const versions = history(root)
+    const early = await versions.record(page, 'a\n', 'outside')
+    await versions.record(page, 'b\n', 'editor', { what: 'edit' })
+    await versions.record(page, 'a\n', 'restore')
+    assert.ok(early)
+    assert.ok(await versions.name(page, early.hash, 'the early one', early.at))
+    assert.deepEqual(
+      (await versions.list(page)).map((v) => v.name ?? ''),
+      ['', '', 'the early one'],
+    )
+    assert.equal(await versions.name(page, early.hash, 'x', early.at + 1), false)
+  })
+
+  it('deletes one version or every unnamed one, never the newest, and the objects no log names', async () => {
+    const versions = history(root)
+    const first = await versions.record(page, 'a\n', 'outside')
+    await versions.record(page, 'b\n', 'editor', { what: 'edit' })
+    await versions.record(page, 'c\n', 'editor', { what: 'edit' })
+    const newest = await versions.record(page, 'd\n', 'editor', { what: 'edit' })
+    assert.ok(first && newest)
+    assert.ok(await versions.name(page, hash('b\n'), 'kept'))
+    // the newest is the page as it is: it never goes
+    assert.equal(await versions.remove(page, newest.at, newest.hash), false)
+    assert.equal(await versions.remove(page, first.at, hash('never\n')), false)
+    assert.ok(await versions.remove(page, first.at, first.hash))
+    assert.deepEqual(
+      (await versions.list(page)).map((v) => v.hash),
+      [hash('d\n'), hash('c\n'), hash('b\n')],
+    )
+    assert.equal(await versions.content(page, hash('a\n')), undefined)
+    assert.ok(!(await readdir(join(root, '.hadley', 'history', 'objects'))).includes(hash('a\n')))
+    // every unnamed one but the newest; the named stays
+    assert.equal(await versions.removeUnnamed(page), 1)
+    assert.deepEqual(
+      (await versions.list(page)).map((v) => v.name ?? v.hash),
+      [hash('d\n'), 'kept'],
+    )
+    assert.equal(await versions.removeUnnamed(page), 0)
+    // a history of its own reads what was deleted
+    assert.equal((await history(root).list(page)).length, 2)
+  })
+
   it('never drops the newest, the page as it is', () => {
     const one = (i: number): Version => ({ at: i, hash: String(i).padStart(64, '0'), by: 'editor' })
     const versions = [...Array.from({ length: KEEP }, (_, i) => one(i)), { ...one(KEEP), name: 'n' }]
@@ -181,6 +224,24 @@ describe('the routes of the time machine', () => {
         ['restore', 'first', ''],
         ['outside', 'second', ''],
         ['outside', 'first', 'start'],
+      ],
+    )
+
+    // deleting: one version by its time and hash, or every unnamed one; never the page as it is
+    const [now, left] = after.versions
+    assert.ok(now && left)
+    assert.equal((await post('/__hadley/history/delete', { path: '/a/', hash: now.hash, at: now.at })).status, 404)
+    assert.equal((await post('/__hadley/history/delete', { path: '/a/', hash: left.hash })).status, 400)
+    assert.equal((await post('/__hadley/history/delete', { path: '/b/', unnamed: true })).status, 404)
+    assert.equal((await post('/__hadley/history/delete', { path: '/a/', hash: left.hash, at: left.at })).status, 200)
+    const all = await post('/__hadley/history/delete', { path: '/a/', unnamed: true })
+    assert.deepEqual(await all.json(), { removed: 0 })
+    const rest = (await (await fetch(`${origin}/__hadley/history?path=/a/`)).json()) as { versions: Version[] }
+    assert.deepEqual(
+      rest.versions.map((v) => [v.by, v.name ?? '']),
+      [
+        ['restore', ''],
+        ['outside', 'start'],
       ],
     )
   })
