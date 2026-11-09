@@ -220,12 +220,13 @@ export function history(root: string): History {
       if (error.code === 'ENOENT') return ''
       throw error
     })
-    // in the order of their time, as they are written: one out of it is left out, so that the one before a version is
-    // older too
+    // in the order of their time, as they are written: one older than the one before it is left out, so that every step
+    // down the chain goes to an earlier line and ends. Two of the same time stay: an older log has them (Gemini Flash,
+    // d0 run 20261109-2135-rida)
     const versions: Version[] = []
     for (const line of text.split('\n')) {
       const version = versionOf(line)
-      if (version && (versions.length === 0 || version.at > versions.at(-1)!.at)) versions.push(version)
+      if (version && (versions.length === 0 || version.at >= versions.at(-1)!.at)) versions.push(version)
     }
     logs.set(path, versions)
     return versions

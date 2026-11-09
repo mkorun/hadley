@@ -143,6 +143,25 @@ describe('the versions of a page', () => {
     )
   })
 
+  it('keeps two versions of the same time, as an older log has them', async () => {
+    // Gemini Flash, d0 run 20261109-2135-rida: the second was left out as the log was read, and gone at the next write
+    const versions = history(root)
+    const a = await versions.record(page, 'a\n', 'outside')
+    await versions.record(page, 'b\n', 'editor', { what: 'edit' })
+    await versions.record(page, 'c\n', 'editor', { what: 'edit' })
+    assert.ok(a)
+    const logs = join(root, '.hadley', 'history', 'pages')
+    const [log] = await readdir(logs)
+    const lines = (await readFile(join(logs, log!), 'utf-8'))
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line))
+    lines[1].at = a.at
+    delete lines[1].after
+    await writeFile(join(logs, log!), lines.map((line) => JSON.stringify(line) + '\n').join(''))
+    assert.equal((await history(root).list(page)).length, 3)
+  })
+
   it('never drops the newest, the page as it is', () => {
     const one = (i: number): Version => ({ at: i, hash: String(i).padStart(64, '0'), by: 'editor' })
     const versions = [...Array.from({ length: KEEP }, (_, i) => one(i)), { ...one(KEEP), name: 'n' }]

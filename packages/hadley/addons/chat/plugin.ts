@@ -143,10 +143,11 @@ export function chatPlugin(options: {
     broadcast({ event: 'status', data: status() })
   }
 
-  /** Starts an agent in the background, in place of one that runs; false where a channel connected meanwhile. */
-  async function startAgent(name: AgentName, fresh: boolean): Promise<boolean> {
+  /** Starts an agent in the background, in place of one that runs; why not where the chat closed or a channel came. */
+  async function startAgent(name: AgentName, fresh: boolean): Promise<'started' | 'closed' | 'channel'> {
     await background?.stop()
-    if (closed || channel) return false
+    if (closed) return 'closed'
+    if (channel) return 'channel'
     const running = runAgent(
       { name, program: programs[name]!, root, fresh },
       {
@@ -182,7 +183,7 @@ export function chatPlugin(options: {
     )
     background = running
     broadcast({ event: 'status', data: status() })
-    return true
+    return 'started'
   }
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -324,7 +325,9 @@ export function chatPlugin(options: {
       if (!programs[request.run]) return send(res, 404, { error: `chat: ${AGENTS[request.run]} was not found` })
       if (channel) return send(res, 409, { error: 'chat: a session in a terminal is connected', channel: true })
       const name = request.run
-      if (!(await inTurn(() => startAgent(name, request.fresh === true))))
+      const started = await inTurn(() => startAgent(name, request.fresh === true))
+      if (started === 'closed') return send(res, 503, { error: 'chat: the dev server is stopping' })
+      if (started === 'channel')
         return send(res, 409, { error: 'chat: a session in a terminal is connected', channel: true })
       return send(res, 200, {})
     }
