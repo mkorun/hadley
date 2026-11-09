@@ -57,3 +57,117 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* a file and the button that takes it away, which shows as the pointer or the focus comes to the file */
+.hadley-file-item {
+  position: relative;
+  display: inline-flex;
+}
+
+.hadley-file-delete {
+  position: absolute;
+  top: -0.45rem;
+  right: -0.45rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  color: var(--he-danger);
+  background: var(--he-bg);
+  border: 1px solid var(--he-border);
+  border-radius: 50%;
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.hadley-file-item:hover .hadley-file-delete,
+.hadley-file-item:focus-within .hadley-file-delete {
+  opacity: 1;
+}
+
+.hadley-file-delete:hover {
+  background: var(--he-danger-hv);
+}
+
+.hadley-file-delete:focus-visible {
+  outline: 2px solid var(--he-accent-focus);
+  outline-offset: 1px;
+}
+
+.hadley-file-delete svg {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+
+/* the question before a file is taken away, at the top of its drawer */
+.hadley-file-ask {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  font:
+    0.8125rem/1.4 ui-sans-serif,
+    system-ui,
+    sans-serif;
+  color: var(--he-text);
+  background: color-mix(in srgb, var(--he-danger) 7%, var(--he-bg));
+  border: 1px solid color-mix(in srgb, var(--he-danger) 30%, var(--he-border));
+  border-radius: 5px;
+}
+
+.hadley-file-ask > span:first-child {
+  margin-right: auto;
+}
+
+.hadley-file-ask button {
+  padding: 0.2rem 0.65rem;
+  font: inherit;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.hadley-file-ask-yes {
+  color: var(--he-on-accent);
+  background: var(--he-danger);
+  border: 1px solid var(--he-danger);
+}
+
+.hadley-file-ask-no {
+  color: var(--he-text);
+  background: var(--he-bg);
+  border: 1px solid var(--he-border);
+}
+
+.hadley-file-ask-message:empty {
+  display: none;
+}
+
+/* a picture shown larger as the pointer rests on it (file-preview.ts): faded in, never moving */
+.hadley-file-preview {
+  position: fixed;
+  z-index: 10000;
+  padding: 0.3rem;
+  background: var(--he-bg);
+  border: 1px solid var(--he-border);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px var(--he-shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.hadley-file-preview.is-shown {
+  opacity: 1;
+}
+
+.hadley-file-preview img {
+  display: block;
+  max-width: 240px;
+  max-height: 240px;
+  border-radius: 3px;
+}

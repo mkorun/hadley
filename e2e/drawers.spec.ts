@@ -59,11 +59,18 @@ test('many files wrap into rows, and a second file goes in after the first, not 
   })
   const field = await openBlock(page, dev.origin)
   await unfold(page, 'Files (8)')
-  // nothing scrolls: not sideways, not down; every file in view
-  const hidden = await page.evaluate(
-    `(() => { const s = document.querySelector('.hadley-files'); return [s.scrollWidth - s.clientWidth, s.scrollHeight - s.clientHeight] })()`,
-  )
-  expect(hidden).toEqual([0, 0])
+  // nothing scrolls, not sideways, not down, and every file stands inside the drawer
+  const seen = await page.evaluate(`(() => {
+    const strip = document.querySelector('.hadley-files')
+    const style = getComputedStyle(strip)
+    const drawer = strip.closest('.hadley-drawer').getBoundingClientRect()
+    const inside = [...strip.querySelectorAll('.hadley-file')].every((f) => {
+      const r = f.getBoundingClientRect()
+      return r.left >= drawer.left && r.right <= drawer.right && r.bottom <= drawer.bottom
+    })
+    return [style.overflowX, style.overflowY, inside]
+  })()`)
+  expect(seen).toEqual(['visible', 'visible', true])
   await field.press('Control+End')
   await page.getByRole('button', { name: 'Insert picture-1.png', exact: true }).click()
   // the caret waits in the first one's alt text; the second goes after it

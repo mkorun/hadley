@@ -1349,13 +1349,15 @@ describe('the files of a bundle', () => {
   it('serves an image the list holds, and nothing else', async () => {
     await writeFile(join(bundle, 'photo.jpg'), 'jpeg')
     await writeFile(join(bundle, 'paper.pdf'), 'pdf')
+    // the page names the photo: the list says so, for the question before a file is taken away (trash.ts)
+    await writeFile(page, '# Page\n\nA photo: ![](photo.jpg).\n')
     blockIdMap.set('files-block', { filePath: page, start: 0, end: 5, fileHashAtRender: '' })
     const list = mockRes()
     await serveBundleFile(list, '/__hadley/files/files-block', 'en')
     assert.equal(list.statusCode, 200)
     assert.deepEqual(JSON.parse(list.body).files, [
-      { name: 'paper.pdf', image: false },
-      { name: 'photo.jpg', image: true },
+      { name: 'paper.pdf', image: false, used: false },
+      { name: 'photo.jpg', image: true, used: true },
     ])
     const image = mockRes()
     await serveBundleFile(image, '/__hadley/files/files-block/photo.jpg', 'en')
@@ -1379,7 +1381,7 @@ describe('the files of a bundle', () => {
     blockIdMap.set('files-block', { filePath: page, start: 0, end: 5, fileHashAtRender: '' })
     const list = mockRes()
     await serveBundleFile(list, '/__hadley/files/files-block', 'en')
-    assert.deepEqual(JSON.parse(list.body).files, [{ name: 'plain.constructor', image: false }])
+    assert.deepEqual(JSON.parse(list.body).files, [{ name: 'plain.constructor', image: false, used: false }])
     const file = mockRes()
     await serveBundleFile(file, '/__hadley/files/files-block/plain.constructor', 'en')
     assert.equal(file.statusCode, 404)

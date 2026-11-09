@@ -13,6 +13,8 @@ export interface Drawers {
   drawer(key: DrawerKey, label: string, symbol: Element): HTMLElement
   /** the drawer of `key` open, the others closed, as a click on its toggle would; not remembered */
   open(key: DrawerKey): void
+  /** the drawer of `key` and its toggle gone, as when nothing is left in it (the last file of a bundle) */
+  remove(key: DrawerKey): void
 }
 
 const remembered = (): string => {
@@ -45,6 +47,13 @@ export function drawers(toolbar: HTMLElement): Drawers {
 
   return {
     open: (key) => open(key),
+    remove(key) {
+      const known = made.get(key)
+      if (!known) return
+      known.toggle.remove()
+      known.panel.remove()
+      made.delete(key)
+    },
     drawer(key, text, symbol) {
       const known = made.get(key)
       if (known) {

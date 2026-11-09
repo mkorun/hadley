@@ -14,6 +14,7 @@ import { lookupDirs } from '../../lib/site-paths.ts'
 import { browserFile } from './browser-files.ts'
 import { siteHistory, type What } from './history.ts'
 import { historyRoute } from './history-routes.ts'
+import { handleTrash } from './trash.ts'
 import { resolveLang, t, type Lang } from './i18n.ts'
 
 // Lima's own reader, for the browser: the editor shows the front matter's keys where outline() finds them
@@ -238,8 +239,16 @@ export async function serveBundleFile(res: ServerResponse, url: string, lang: La
   const entry = blockIdMap.get(blockId)
   if (!entry) return send(res, 404, { error: t(lang, 'blockNotFound') })
   const files = await bundleFiles(entry.filePath)
-  if (rest.length === 0)
-    return send(res, 200, { files: [...files.keys()].map((name) => ({ name, image: imageType(name) !== undefined })) })
+  if (rest.length === 0) {
+    // whether the page's Markdown names it, so that taking it away warns (trash.ts)
+    const text = await readFile(entry.filePath, 'utf-8').catch(() => '')
+    const listed = [...files.keys()].map((name) => ({
+      name,
+      image: imageType(name) !== undefined,
+      used: text.includes(`(${name})`) || text.includes(`(${name} `),
+    }))
+    return send(res, 200, { files: listed })
+  }
   let name: string
   try {
     name = decodeURIComponent(rest.join('/'))
@@ -389,6 +398,9 @@ const identity = (path: string): string => {
     return 'gone'
   }
 }
+
+/** A file the editor took away (trash.ts): its going rebuilds nothing, as a picture it added (wroteItself). */
+export const tookAway = (path: string): void => void ownWrites.set(path, 'gone')
 
 /** Whether the file at `path` is as the editor left it (handleUpload): a change of its own, not someone else's. */
 export function wroteItself(path: string): boolean {
@@ -822,6 +834,9 @@ export function blockEditorPlugin(): Plugin {
           handler = oneAtATime(() => handleMerge(req, res))
         } else if (method === 'POST' && url.split('?')[0] === '/__hadley/upload') {
           handler = oneAtATime(() => handleUpload(req, res))
+        } else if (method === 'POST' && url.split('?')[0] === '/__hadley/trash') {
+          // a file of a page's bundle taken away, into the site's .hadley/trash/ (trash.ts)
+          handler = oneAtATime(() => handleTrash(req, res, lang))
         } else if (url.startsWith('/__hadley/history')) {
           // the time machine (history-routes.ts)
           handler = historyRoute(req, res, lang).then((answered) => {
