@@ -43,7 +43,8 @@ that is the design, not a phase. So:
   builds on copies. An intended difference is named in the commit message; only the human accepts it.
 - The comments service in production (`../addons/forms/server`) is not changed. Its Go replacement in `services/forms/`
   follows the written contract and must be a drop-in replacement.
-- Agents never deploy and never push; the human does.
+- Agents never deploy. An agent pushes `main` of this repository, fast-forward only, after a merge the human approved or
+  a fix merged under the rule above; tags, releases and every other repository or branch the human pushes.
 
 ## How we work
 
