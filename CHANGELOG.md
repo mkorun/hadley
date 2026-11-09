@@ -48,6 +48,7 @@ brings the page up to date in place.
   drawers; Save is on only where the text changed, and Cancel or Escape asks first where it did. A field being saved
   stays, locked, until the page shows its block.
 - A block is deleted, moved or merged without a question; a note offers to undo it.
+- The starters' `config.lima` holds the lines that turn comments on, and Getting started says how to try them.
 - Pictures no longer say where they were taken: those made in widths keep their colour profile, their XMP and the artist
   and copyright of their EXIF, but no other EXIF (location, camera, serial number); the XMP loses its location, as a
   position or a place by name, and a photo stands upright. A JPEG or PNG copied as it is loses the same, its IPTC its

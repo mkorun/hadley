@@ -93,6 +93,23 @@ is a problem, which stops publishing. The first heading is the page's title. The
 the home page and in the feed;
 `status: draft` keeps it to the dev server until it is ready ([docs/content.md](content.md)).
 
+## Comments
+
+hems and punch have a comment form under each article. The starter's `config.lima` holds the lines that turn it on;
+take out their `#`:
+
+```lima
+comments:
+  enabled: true
+  url: https://example.org
+```
+
+`url` is where the comments service answers once the site is online. The comments go to that small service of their
+own, `hadley-forms`: take it from the [release](https://github.com/mkorun/hadley/releases) of your hadley version, for
+Linux or macOS (on Windows it runs in WSL), and put it on your `PATH` ([docs/comments.md](comments.md), "Installing the
+service"). `hadley dev` then starts it with the site. Write a comment under an article; `hadley dev comments`
+moderates it, and an approved one shows on the page after the next build.
+
 ## Publish
 
 ```sh
