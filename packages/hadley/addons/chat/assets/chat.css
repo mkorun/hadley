@@ -395,16 +395,16 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
   flex-wrap: wrap;
 }
 
+/* a line of its own under Save and Cancel, as wide as the field: saving and rewriting are two things, and the way, the
+   instruction and the button with its word have room (Michael, 2026-11-09) */
 .hadley-rewrite {
+  container: hadley-rewrite / inline-size;
   display: flex;
-  flex: 1 1 22rem;
+  flex: 1 1 100%;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.375rem;
   min-width: 0;
-  margin-left: 0.25rem;
-  padding-left: 0.625rem;
-  border-left: 1px solid var(--he-border);
 }
 
 .hadley-rewrite select,
@@ -419,9 +419,10 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
   min-height: 2rem;
 }
 
+/* the instruction grows into what the way and the button leave */
 .hadley-rewrite input {
   flex: 1 1 10rem;
-  min-width: 8rem;
+  min-width: 6rem;
 }
 
 .hadley-rewrite button {
@@ -431,10 +432,27 @@ body.hadley-edit-mode .hadley-trigger:focus-visible {
   cursor: pointer;
 }
 
-.hadley-rewrite .hc-send,
 .hadley-rewrite .hc-undo {
   width: 2rem;
   padding: 0;
+}
+
+/* the star and the word "Rewrite"; only where the line is very narrow the star alone, and the instruction keeps its
+   room (Michael, 2026-11-09: no movement, by the room there is) */
+.hadley-rewrite .hc-send {
+  gap: 0.375rem;
+  padding: 0 0.7rem;
+  white-space: nowrap;
+}
+
+@container hadley-rewrite (width < 18rem) {
+  .hadley-rewrite .hc-send {
+    width: 2rem;
+    padding: 0;
+  }
+  .hadley-rewrite .hc-send-label {
+    display: none;
+  }
 }
 
 /* the send button wears the editor's accent: it is the one that asks Claude */

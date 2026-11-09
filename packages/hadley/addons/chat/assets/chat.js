@@ -786,8 +786,10 @@ function startPanel() {
   const icon = (d) =>
     `<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`
   const ICONS = {
+    // a large and a small star, as a sign of what an AI does; eight rays read as "loading" (Michael, 2026-11-09)
     sparkle: icon(
-      '<path d="M8 2v3M8 11v3M2 8h3M11 8h3M4.2 4.2l1.6 1.6M10.2 10.2l1.6 1.6M11.8 4.2l-1.6 1.6M5.8 10.2l-1.6 1.6"/>',
+      '<path fill="currentColor" d="M7 2.5c.4 2.6 1.4 3.6 4 4-2.6.4-3.6 1.4-4 4-.4-2.6-1.4-3.6-4-4 2.6-.4 3.6-1.4 4-4z"/>' +
+        '<path fill="currentColor" d="M12.5 10.5c.2 1 .5 1.3 1.5 1.5-1 .2-1.3.5-1.5 1.5-.2-1-.5-1.3-1.5-1.5 1-.2 1.3-.5 1.5-1.5z"/>',
     ),
     check: icon('<path d="M3.5 8.5l3 3 6-7"/>'),
     cross: icon('<path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/>'),
@@ -931,7 +933,9 @@ function startPanel() {
     const ask = () => (connected ? void rewrite(target, row, select.value) : setOpen(true))
     const send = button('', ask)
     send.className = 'hc-send'
+    // the star and the word, where the row has room; the star alone where it has not (chat.css)
     send.innerHTML = ICONS.sparkle
+    send.append(element('span', t.rewrite, 'hc-send-label'))
     // the editing field keeps the focus, and with it the selection the browser paints
     send.addEventListener('mousedown', (event) => event.preventDefault())
     const scope = element('span', undefined, 'hc-rewrite-scope')
@@ -980,7 +984,8 @@ function startPanel() {
     // is what it rewrites otherwise
     const showScope = () => {
       if (!connected) {
-        send.setAttribute('aria-label', t.noAgentRewrite)
+        // the name starts with the word the button shows, for voice control
+        send.setAttribute('aria-label', `${t.rewrite}: ${t.noAgentRewrite}`)
         send.title = t.noAgentRewrite
         scope.hidden = true
         return
