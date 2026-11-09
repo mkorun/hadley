@@ -1,9 +1,10 @@
 // The dev bar, bottom right: the dev overlay and one control, a pill. Edit mode at its left, kept in sessionStorage,
-// and the other language, one click away; the chat add-on puts its own half at its right (addons/chat).
+// and the editor's language, as it is, with a menu of the others (Michael, 2026-11-09: "EN" on a German editor,
+// the language it would switch to, was confusing); the chat add-on puts its own half at its right (addons/chat).
 import { el } from '../core/dom.ts'
 import { icon } from '../core/icons.ts'
 import { state, isEditMode } from '../core/state.ts'
-import { LANG, LANG_KEY, T } from '../core/texts.ts'
+import { LANG, LANG_KEY, LANG_NAMES, LANGS, T, type Lang } from '../core/texts.ts'
 
 const STORAGE_KEY = 'hadley-edit-mode'
 
@@ -60,27 +61,72 @@ export function bar(on: { leave(): void; changed(): void }): Bar {
   if (devOverlay) devBar.appendChild(devOverlay)
   const pill = el('div', 'hadley-pill')
   pill.appendChild(toggle)
-  // the other language, one click away; the page reloads in it, so an open block must be saved or cancelled first
+  // the editor's language and a menu of all it speaks; the page reloads in the one chosen, so an open block must be
+  // saved or cancelled first
   const langBtn = el('button')
   langBtn.type = 'button'
   langBtn.id = 'hadley-lang-toggle'
-  langBtn.textContent = LANG === 'de' ? 'EN' : 'DE'
-  langBtn.setAttribute('aria-label', T.langSwitch)
-  langBtn.title = T.langSwitch
+  langBtn.textContent = LANG.toUpperCase()
+  langBtn.append(Object.assign(el('span', 'hadley-lang-caret'), { textContent: '▾' }))
+  langBtn.setAttribute('aria-label', `${T.langMenu}: ${LANG_NAMES[LANG]}`)
+  langBtn.title = T.langMenu
+  langBtn.setAttribute('aria-haspopup', 'menu')
+  langBtn.setAttribute('aria-expanded', 'false')
+  langBtn.setAttribute('aria-controls', 'hadley-lang-menu')
+  const langMenu = el('div', 'hadley-lang-menu')
+  langMenu.id = 'hadley-lang-menu'
+  langMenu.setAttribute('role', 'menu')
+  langMenu.setAttribute('aria-label', T.langMenu)
+  langMenu.hidden = true
+  const choose = (lang: Lang) => {
+    if (lang === LANG) return showMenu(false)
+    try {
+      localStorage.setItem(LANG_KEY, lang)
+    } catch {
+      return showMenu(false)
+    }
+    location.reload()
+  }
+  for (const lang of LANGS) {
+    const item = el('button')
+    item.type = 'button'
+    item.setAttribute('role', 'menuitemradio')
+    item.setAttribute('aria-checked', String(lang === LANG))
+    item.lang = lang
+    item.textContent = LANG_NAMES[lang]
+    item.addEventListener('click', () => choose(lang))
+    langMenu.append(item)
+  }
+  const showMenu = (open: boolean) => {
+    langMenu.hidden = !open
+    langBtn.setAttribute('aria-expanded', String(open))
+    if (open) langMenu.querySelector<HTMLElement>('[aria-checked="true"]')?.focus()
+  }
   langBtn.addEventListener('click', () => {
     if (state.block) {
       langBtn.title = T.langSwitchBusy
       return
     }
-    try {
-      localStorage.setItem(LANG_KEY, LANG === 'de' ? 'en' : 'de')
-    } catch {
-      return
+    showMenu(langMenu.hidden !== false)
+  })
+  langMenu.addEventListener('keydown', (e) => {
+    const items = [...langMenu.querySelectorAll<HTMLElement>('[role="menuitemradio"]')]
+    const at = items.indexOf(document.activeElement as HTMLElement)
+    if (e.key === 'Escape') {
+      e.stopPropagation()
+      showMenu(false)
+      langBtn.focus()
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      items[(at + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus()
     }
-    location.reload()
+  })
+  document.addEventListener('click', (e) => {
+    if (!langMenu.hidden && !langMenu.contains(e.target as Node) && !langBtn.contains(e.target as Node)) showMenu(false)
   })
   pill.appendChild(langBtn)
-  devBar.appendChild(pill)
+  // above the pill, which clips what overflows it
+  devBar.append(langMenu, pill)
   document.body.appendChild(devBar)
 
   return {

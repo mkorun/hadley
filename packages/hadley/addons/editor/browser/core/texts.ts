@@ -5,6 +5,8 @@
 // from the root element's data-hadley-lang.
 
 export const LANGS = ['de', 'en'] as const
+// each language as it names itself, in the editor's language menu (features/bar.ts)
+export const LANG_NAMES: Record<(typeof LANGS)[number], string> = { de: 'Deutsch', en: 'English' }
 export type Lang = (typeof LANGS)[number]
 export const LANG_KEY = 'hadley-lang'
 
@@ -29,7 +31,7 @@ export const LANG = chooseLang()
 const de = {
   editLabel: 'Bearbeiten',
   limaUnavailable: 'Lima ließ sich nicht laden: Keys und Fehler zeigt erst das Speichern',
-  langSwitch: 'Editor auf Englisch',
+  langMenu: 'Sprache des Editors',
   langSwitchBusy: 'Erst den offenen Block speichern oder abbrechen',
   editToggleAriaLabel: 'Edit-Modus umschalten',
   blockActionsLabel: 'Block-Aktionen',
@@ -79,7 +81,7 @@ const de = {
 const en: typeof de = {
   editLabel: 'Edit',
   limaUnavailable: 'Lima could not be loaded: keys and errors show only when saving',
-  langSwitch: 'Editor in German',
+  langMenu: 'Editor language',
   langSwitchBusy: 'Save or cancel the open block first',
   editToggleAriaLabel: 'Toggle edit mode',
   blockActionsLabel: 'Block actions',

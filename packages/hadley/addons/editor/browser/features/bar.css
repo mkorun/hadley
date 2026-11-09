@@ -87,6 +87,80 @@ body.hadley-edit-mode #hadley-lang-toggle {
   display: inline-flex;
 }
 
+#hadley-lang-toggle .hadley-lang-caret {
+  margin-left: 0.15rem;
+  font-size: 0.625rem;
+}
+
+/* the editor's languages, above the pill, right-aligned with it */
+.hadley-lang-menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 8rem;
+  padding: 0.25rem;
+  background: var(--he-bg);
+  border: 1px solid var(--he-border);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px var(--he-shadow);
+}
+
+.hadley-lang-menu[hidden] {
+  display: none;
+}
+
+.hadley-lang-menu button {
+  padding: 0.4rem 0.6rem 0.4rem 1.6rem;
+  font:
+    0.8125rem/1.2 ui-sans-serif,
+    system-ui,
+    sans-serif;
+  text-align: left;
+  color: var(--he-text);
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.hadley-lang-menu button:hover,
+.hadley-lang-menu button:focus-visible {
+  background: var(--he-bg-hover);
+  outline: none;
+}
+
+.hadley-lang-menu button {
+  position: relative;
+}
+
+.hadley-lang-menu button[aria-checked='true'] {
+  font-weight: 600;
+}
+
+.hadley-lang-menu button[aria-checked='true']::before {
+  content: '✓';
+  position: absolute;
+  left: 0.55rem;
+}
+
+/* out of edit mode the pill steps back; it comes forward under the pointer, with the keyboard, and while the chat is
+   open or waits for the author (Michael, 2026-11-09) */
+body:not(.hadley-edit-mode)
+  .hadley-pill:not(:hover, :focus-within):not(
+    :has(#hadley-chat-toggle[aria-expanded='true'], .hc-dot[data-state='new'], .hc-dot[data-state='permission'])
+  ) {
+  opacity: 0.55;
+}
+
+.hadley-pill {
+  transition: opacity 0.15s;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  body:not(.hadley-edit-mode) .hadley-pill {
+    opacity: 1 !important;
+  }
+}
+
 #hadley-edit-toggle[aria-pressed='true'] {
   color: var(--he-on-accent);
   background: var(--he-accent);
@@ -97,6 +171,7 @@ body.hadley-edit-mode #hadley-lang-toggle {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .hadley-pill,
   .hadley-pill > button {
     transition: none;
   }

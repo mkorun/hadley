@@ -55,8 +55,8 @@ which Lima must read when it is saved; its lines are striped, its keys and comme
 line Lima refuses is marked as it is typed, with Lima's message below. Each change is saved to the page's Markdown file,
 and the page reloads; a file that changed since the page was built is not edited, the page reloads first. The editor is
 the author's tool, not part of the page: it speaks the first of the browser's languages it knows (German, English), else
-English, and the language button in its control at the bottom right switches to the other for the site. `hadley deploy`
-serves no editor.
+English; its control at the bottom right shows the language it speaks, and its menu keeps another for the site. Out of
+edit mode the control steps back, until the pointer or the keyboard comes to it. `hadley deploy` serves no editor.
 
 ## Chat
 
