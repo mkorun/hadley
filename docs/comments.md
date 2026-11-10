@@ -33,10 +33,10 @@ puts it beside the site's releases.
 
 ### Installing the service
 
-Each [release of hadley](https://github.com/mkorun/hadley/releases) has the service for Linux and macOS, on amd64 and
-arm64, as `hadley-forms-<version>-<os>-<arch>.tar.gz`, with `SHA256SUMS` to check a download with. The archive holds
-the program, hadley's licence and those of the Go code in the program, on Linux also the systemd unit. On a Linux
-server on amd64, in an empty directory:
+Each [release of hadley](https://github.com/mkorun/hadley/releases) has the service for Linux, macOS and Windows, on
+amd64 and arm64, as `hadley-forms-<version>-<os>-<arch>.tar.gz` (on Windows `.zip`), with `SHA256SUMS` to check a
+download with. The archive holds the program, hadley's licence and those of the Go code in the program, on Linux also
+the systemd unit. On a Linux server on amd64, in an empty directory:
 
 ```bash
 (
@@ -66,9 +66,9 @@ openssl rand -hex 32   # once for ADMIN_TOKEN, once for HMAC_SECRET
 the steps after a failed one do not run. On macOS, `shasum -a 256` takes the place of `sha256sum`. The unit starts
 `/usr/local/bin/hadley-forms` as `www-data`, one instance per site; its head comment says what the site's environment
 file `/etc/hadley-forms/<site>.env` holds, and `sudo systemctl enable --now hadley-forms@<site>` starts it. After an
-update, `sudo systemctl restart 'hadley-forms@*'` restarts them all. There is no program for Windows; there the
-service runs in WSL. To build it from the repository instead, see [dev-server.md](dev-server.md), "Comments";
-`scripts/build-forms.ts` builds the files of a release.
+update, `sudo systemctl restart 'hadley-forms@*'` restarts them all. A server runs it on Linux or macOS; the program
+for Windows is for `hadley dev`, which fetches it itself. To build it from the repository instead, see
+[dev-server.md](dev-server.md), "Comments"; `scripts/build-forms.ts` builds the files of a release.
 
 ## Moderating
 

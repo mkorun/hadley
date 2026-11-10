@@ -54,7 +54,7 @@ search:
 
 # Comments under each article: visitors write them in the theme's form, and you approve them on your own machine
 # (docs/comments.md). Take out the # of the three lines below to try them; hadley dev starts the comments service,
-# hadley-forms, where it is installed.
+# hadley-forms, and offers to download it the first time.
 # comments:
 #   enabled: true
 #   url: https://example.org

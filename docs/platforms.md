@@ -5,9 +5,10 @@ gate (`check.sh`) and the smoke test on Ubuntu 24.04, macOS 15 and Windows Serve
 push to `main`, every pull request and every release; each of the three must pass. The release files of the comments
 service are built on Linux only (`scripts/build-forms.ts`).
 
-The comments service, `hadley-forms`, runs on Linux and macOS; on Windows it does not start, and runs in WSL instead
-(`services/forms/lock_other.go`). The gate on Windows builds it and runs its Go checks, but leaves out its contract
-tests and the Go tests of what it does with the modes of its files and with a file it replaces while it is open.
+The comments service, `hadley-forms`, runs on Linux, macOS and Windows; on Windows for `hadley dev`, while a server
+runs it on Linux or macOS. Windows takes its lock with `LockFileEx` (`services/forms/lock_windows.go`) and keeps no
+file modes, so there the service does not check the mode of its dev secrets; the gate runs all its tests there but
+those of file modes.
 
 The programs of a release ([ADR 0005](adr/0005-release-program.md)) are built on Linux too, for Linux and macOS on x64
 and arm64 and for Windows on x64, and each runs the smoke test on its own system. On Linux they need glibc.

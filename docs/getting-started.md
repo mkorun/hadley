@@ -105,9 +105,9 @@ comments:
 ```
 
 `url` is where the comments service answers once the site is online. The comments go to that small service of their
-own, `hadley-forms`: take it from the [release](https://github.com/mkorun/hadley/releases) of your hadley version, for
-Linux or macOS (on Windows it runs in WSL), and put it on your `PATH` ([docs/comments.md](comments.md), "Installing the
-service"). `hadley dev` then starts it with the site. Write a comment under an article; `hadley dev comments`
+own, `hadley-forms`. The first time, `hadley dev` asks whether to download it from the release of your hadley
+version; `hadley comments install` does the same without asking ([docs/dev-server.md](dev-server.md), "Comments").
+`hadley dev` then starts it with the site. Write a comment under an article; `hadley dev comments`
 moderates it, and an approved one shows on the page after the next build.
 
 ## Publish

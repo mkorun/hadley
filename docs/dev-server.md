@@ -210,10 +210,14 @@ serves no chat.
 ## Comments
 
 With `comments.enabled: true` in `config.lima`, the dev server starts the comments service `hadley-forms`
-(`services/forms/`) on the next port (8001 for 8000) and passes `/api/comment/` and `/admin/` to it: the first
-`hadley-forms` on the `PATH`, or the program `dev.forms` of the user configuration names (below). Without one, comments
-are off and the dev server says so. The program of a release ([comments.md](comments.md), "Installing the service")
-in `~/.local/bin/` serves; or build it, in `services/forms/`:
+(`services/forms/`) on the next port (8001 for 8000) and passes `/api/comment/` and `/admin/` to it: the program
+`dev.forms` of the user configuration names (below), else the first `hadley-forms` on the `PATH`, else the one hadley
+fetched for its version. Without one, it asks in the terminal whether to download the program of this hadley
+version's release. The download must match the release's `SHA256SUMS` (which shows it is whole, not who made it), only
+the program is taken from it, and it must name its version; hadley keeps it as `hadley-forms-<version>` in
+`~/.local/share/hadley/bin/` (`$XDG_DATA_HOME/hadley/bin/`; on Windows `%LOCALAPPDATA%\hadley\bin\`), not on the
+`PATH`, and removes older versions there, never newer ones. `hadley comments install` does the same without asking.
+Without a terminal, or after a no, comments are off and the dev server says so. Or build it, in `services/forms/`:
 
 ```bash
 mise exec go -- go build -o ~/.local/bin/hadley-forms ./cmd/hadley-forms
