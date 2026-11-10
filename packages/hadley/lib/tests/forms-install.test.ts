@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { deflateRawSync, gzipSync } from 'node:zlib'
+import { crc32, deflateRawSync, gzipSync } from 'node:zlib'
 import {
   OFF,
   archiveName,
@@ -46,12 +46,14 @@ interface Entry {
   body?: Uint8Array
   type?: string
   link?: string
+  /** a header field as written, after the checksum: at, text */
+  spoil?: [number, string]
 }
 
 /** A ustar archive of `entries`, written by hand so that it can hold what tar would not write. */
 function tar(entries: Entry[]): Uint8Array {
   const blocks: Uint8Array[] = []
-  for (const { name, body = new Uint8Array(), type = '0', link = '' } of entries) {
+  for (const { name, body = new Uint8Array(), type = '0', link = '', spoil } of entries) {
     const header = new Uint8Array(512)
     const put = (at: number, text: string) => header.set(new TextEncoder().encode(text), at)
     put(0, name)
@@ -72,6 +74,7 @@ function tar(entries: Entry[]): Uint8Array {
         .toString(8)
         .padStart(6, '0') + '\0 ',
     )
+    if (spoil) put(...spoil)
     blocks.push(header, body, new Uint8Array((512 - (body.length % 512)) % 512))
   }
   blocks.push(new Uint8Array(1024))
@@ -79,32 +82,37 @@ function tar(entries: Entry[]): Uint8Array {
 }
 
 /** A zip of `entries`, deflated, with a Unix mode when one is given. */
-function zip(entries: { name: string; body: Uint8Array; mode?: number }[]): Uint8Array {
+function zip(
+  entries: { name: string; body: Uint8Array; mode?: number; dos?: number; localName?: string; crc?: number }[],
+): Uint8Array {
   const locals: Buffer[] = []
   const centrals: Buffer[] = []
   let offset = 0
-  for (const { name, body, mode = 0 } of entries) {
+  for (const { name, body, mode = 0, dos = 0, localName = name, crc = crc32(body) } of entries) {
     const packed = deflateRawSync(body)
     const nameBytes = Buffer.from(name)
+    const localBytes = Buffer.from(localName)
     const local = Buffer.alloc(30)
     local.writeUInt32LE(0x04034b50, 0)
     local.writeUInt16LE(20, 4)
     local.writeUInt16LE(8, 8)
+    local.writeUInt32LE(crc, 14)
     local.writeUInt32LE(packed.length, 18)
     local.writeUInt32LE(body.length, 22)
-    local.writeUInt16LE(nameBytes.length, 26)
+    local.writeUInt16LE(localBytes.length, 26)
     const central = Buffer.alloc(46)
     central.writeUInt32LE(0x02014b50, 0)
     central.writeUInt16LE(20, 6)
     central.writeUInt16LE(8, 10)
+    central.writeUInt32LE(crc, 16)
     central.writeUInt32LE(packed.length, 20)
     central.writeUInt32LE(body.length, 24)
     central.writeUInt16LE(nameBytes.length, 28)
-    central.writeUInt32LE((mode << 16) >>> 0, 38)
+    central.writeUInt32LE(((mode << 16) | dos) >>> 0, 38)
     central.writeUInt32LE(offset, 42)
-    locals.push(local, nameBytes, packed)
+    locals.push(local, localBytes, packed)
     centrals.push(central, nameBytes)
-    offset += 30 + nameBytes.length + packed.length
+    offset += 30 + localBytes.length + packed.length
   }
   const directory = Buffer.concat(centrals)
   const end = Buffer.alloc(22)
@@ -458,5 +466,120 @@ describe('hadley comments install', () => {
     const { source } = linuxRelease('0.3.0', goodArchive('0.3.0'))
     assert.equal(await installCommand({ version: '0.3.0', home, source, system: 'windows-arm64' }), 1)
     assert.equal(await installCommand({ version: '0.3.0', home, source, system: undefined }), 1)
+  })
+})
+
+// review 2026-11-10 (Astra, 20261110-0651-zodi): each of these got through before
+describe('the boundaries a review found open', () => {
+  const name = archiveName('0.3.0', 'linux-amd64')
+  const sumsOf = (text: string) => ({ [`${BASE}/v0.3.0/SHA256SUMS`]: { body: new TextEncoder().encode(text) } })
+
+  it('takes the checksum only from the line of exactly the archive’s name, and from one line', async () => {
+    const archive = goodArchive('0.3.0')
+    const other = release({
+      ...sumsOf(`${sha(archive)}  OTHER  ${name}\n`),
+      [`${BASE}/v0.3.0/${name}`]: { body: archive },
+    })
+    await assert.rejects(offer('0.3.0', 'linux-amd64', other.source), /no release v0\.3\.0 on GitHub for linux-amd64/)
+    const twice = release({
+      ...sumsOf(`${sha(archive)}  ${name}\n${sha(script('x'))} *${name}\n`),
+      [`${BASE}/v0.3.0/${name}`]: { body: archive },
+    })
+    await assert.rejects(
+      offer('0.3.0', 'linux-amd64', twice.source),
+      /SHA256SUMS names .* twice; nothing was installed/,
+    )
+  })
+
+  it('follows a redirect only to the hosts GitHub serves release files from', async () => {
+    const archive = goodArchive('0.3.0')
+    for (const host of ['raw.githubusercontent.com', 'avatars.githubusercontent.com']) {
+      const elsewhere = `https://${host}/someone/repo/main/archive`
+      const bad = linuxRelease('0.3.0', archive, sha(archive), {
+        [`${BASE}/v0.3.0/${name}`]: { status: 302, location: elsewhere },
+      })
+      await assert.rejects(offer('0.3.0', 'linux-amd64', bad.source), /redirected away from GitHub/)
+      assert.ok(!bad.asked.some((line) => line.endsWith(elsewhere)))
+    }
+  })
+
+  it('refuses a zip entry Windows marks as a folder', () => {
+    const exe = 'hadley-forms.exe'
+    assert.throws(() => fromZip(zip([{ name: exe, body: script('w'), dos: 0x10 }]), exe), /is no program but a link/)
+  })
+
+  it('refuses a tar whose header lies or that is cut off', () => {
+    const body = script('0.3.0')
+    assert.throws(
+      () => fromTar(tar([{ name: 'hadley-forms', body, spoil: [124, '0000000004x\0'] }]), 'hadley-forms'),
+      /broken/,
+    )
+    assert.throws(
+      () => fromTar(tar([{ name: 'hadley-forms', body, spoil: [0, 'hadley-formz'] }]), 'hadley-forms'),
+      /broken/,
+    )
+    assert.throws(
+      () => fromTar(tar([{ name: 'hadley-forms', body, spoil: [257, 'nostar'] }]), 'hadley-forms'),
+      /broken/,
+    )
+    const whole = tar([
+      { name: 'hadley-forms', body },
+      { name: 'LICENSE', body },
+    ])
+    assert.throws(() => fromTar(whole.subarray(0, 1024 + 300), 'hadley-forms'), /broken/)
+    assert.throws(() => fromTar(whole.subarray(0, whole.length - 1024), 'hadley-forms'), /broken/)
+  })
+
+  it('refuses a zip whose entries disagree or whose bytes do not match their checksum', () => {
+    const exe = 'hadley-forms.exe'
+    const body = script('w')
+    assert.throws(() => fromZip(zip([{ name: exe, body, localName: '../evil.binxxxx' }]), exe), /broken/)
+    assert.throws(() => fromZip(zip([{ name: exe, body, crc: 1 }]), exe), /broken/)
+  })
+
+  it('reads the version of a Windows prerelease without .exe, older than its release', () => {
+    mkdirSync(home, { recursive: true })
+    writeFileSync(join(home, 'hadley-forms-0.3.0-rc.1.exe'), '')
+    writeFileSync(join(home, 'hadley-forms-0.2.0'), '')
+    assert.deepEqual(installedVersions(home, 'win32'), ['0.3.0-rc.1'])
+    assert.ok(older('0.3.0-rc.1', '0.3.0'))
+  })
+
+  it('orders numbers of any length', () => {
+    assert.ok(older('0.3.0-9007199254740992.b', '0.3.0-9007199254740993.a'))
+    assert.ok(!older('0.3.0-9007199254740993.a', '0.3.0-9007199254740992.b'))
+  })
+
+  it('tells a release without the archive, and a failing server, from a wrong checksum', async () => {
+    const archive = goodArchive('0.3.0')
+    const gone = release({
+      ...sumsOf(`${sha(archive)}  ${name}\n`),
+      [`${BASE}/v0.3.0/${name}`]: { body: archive },
+    })
+    const offered = await offer('0.3.0', 'linux-amd64', gone.source)
+    const withoutArchive: Source = {
+      base: BASE,
+      fetch: (url, init) =>
+        init.method === 'HEAD' || !String(url).endsWith(name)
+          ? gone.source.fetch(url, init)
+          : Promise.resolve(new Response(null, { status: 404 })),
+    }
+    await assert.rejects(install(offered, home, withoutArchive), /no release v0\.3\.0 on GitHub for linux-amd64/)
+    const failing: Source = {
+      base: BASE,
+      fetch: (url, init) =>
+        init.method === 'HEAD' ? Promise.resolve(new Response(null, { status: 503 })) : gone.source.fetch(url, init),
+    }
+    await assert.rejects(offer('0.3.0', 'linux-amd64', failing), /could not reach GitHub \(.*: 503\)/)
+  })
+
+  it('tells what the file system refuses in one line', async () => {
+    writeFileSync(home, 'a file where the directory should be')
+    const { source } = linuxRelease('0.3.0', goodArchive('0.3.0'))
+    const offered = await offer('0.3.0', 'linux-amd64', source)
+    await assert.rejects(
+      install(offered, home, source),
+      /could not write to .*bin \((?:EEXIST|ENOTDIR)\); nothing was installed/,
+    )
   })
 })

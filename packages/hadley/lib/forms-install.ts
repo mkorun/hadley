@@ -11,7 +11,7 @@ import { mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:
 import { homedir } from 'node:os'
 import { join, sep } from 'node:path'
 import { createInterface } from 'node:readline/promises'
-import { gunzipSync, inflateRawSync } from 'node:zlib'
+import { crc32, gunzipSync, inflateRawSync } from 'node:zlib'
 import { FORMS_PROGRAM } from './forms-service.ts'
 import { isProgram } from './platform.ts'
 
@@ -24,8 +24,10 @@ const MAX_REDIRECTS = 5
 const FETCH_TIMEOUT_MS = 5 * 60_000
 const VERSION_TIMEOUT_MS = 10_000
 
-// the name a program fetched for a version has (programName)
-const INSTALLED = /^hadley-forms-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)(?:\.exe)?$/
+// the name a program fetched for a version has (programName), without .exe
+const INSTALLED = /^hadley-forms-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/
+// where GitHub serves the files of a release from, behind a redirect of github.com
+const RELEASE_HOSTS = new Set(['release-assets.githubusercontent.com', 'objects.githubusercontent.com'])
 
 /** Where a release is fetched from; a test gives its own `fetch`, nothing else can change it. */
 export interface Source {
@@ -53,15 +55,18 @@ export function installedForms(version: string, home: string, platform: string =
   return isProgram(path) ? path : undefined
 }
 
-/** The versions of the programs in `home`, by the names hadley gives them. */
-export function installedVersions(home: string): string[] {
+/** The versions of the programs in `home`, by the names hadley gives them on `platform`. */
+export function installedVersions(home: string, platform: string = process.platform): string[] {
   let names: string[]
   try {
     names = readdirSync(home)
   } catch {
     return []
   }
-  return names.flatMap((name) => INSTALLED.exec(name)?.[1] ?? [])
+  const exe = platform === 'win32' ? '.exe' : ''
+  return names.flatMap(
+    (name) => (name.endsWith(exe) && INSTALLED.exec(name.slice(0, name.length - exe.length))?.[1]) || [],
+  )
 }
 
 /** The system as a release names it (`linux-amd64`), or undefined for one a release has no program for. */
@@ -89,21 +94,23 @@ function compareFields(a: string[], b: string[]): number {
   for (let i = 0; i < Math.min(a.length, b.length); i++) {
     const [x, y] = [a[i]!, b[i]!]
     const [xn, yn] = [/^\d+$/.test(x), /^\d+$/.test(y)]
-    const order = xn && yn ? Number(x) - Number(y) : xn ? -1 : yn ? 1 : x < y ? -1 : x > y ? 1 : 0
+    // numbers of any length, as BigInt: Number would round two long ones to the same
+    const numeric = xn && yn ? BigInt(x) - BigInt(y) : 0n
+    const order = xn && yn ? (numeric < 0n ? -1 : numeric > 0n ? 1 : 0) : xn ? -1 : yn ? 1 : x < y ? -1 : x > y ? 1 : 0
     if (order !== 0) return order
   }
   return a.length - b.length
 }
 
 /**
- * A response of `url`, with the redirects followed by hand: each over https, to the host of the source or to one of
- * GitHub's hosts for release files.
+ * A response of `url`, with the redirects followed by hand: each over https, to the host of the source or to a host
+ * GitHub serves release files from (RELEASE_HOSTS).
  */
 async function request(source: Source, url: string, method: 'GET' | 'HEAD', signal: AbortSignal) {
   const allowed = new URL(source.base).host
   for (let hops = 0; ; hops++) {
     const at = new URL(url)
-    if (at.protocol !== 'https:' || (at.host !== allowed && !at.hostname.endsWith('.githubusercontent.com')))
+    if (at.protocol !== 'https:' || (at.host !== allowed && !RELEASE_HOSTS.has(at.host)))
       throw new InstallError(`the download was redirected away from GitHub (${at.origin}); nothing was installed`)
     let response: Response
     try {
@@ -122,18 +129,18 @@ async function request(source: Source, url: string, method: 'GET' | 'HEAD', sign
   }
 }
 
-/** The body of `url`, refused when it is longer than `limit`. */
+/** The body of `url`, refused when it is longer than `limit`; null when there is none (404). */
 async function download(
   source: Source,
   url: string,
   what: string,
   limit: number,
   signal: AbortSignal,
-): Promise<Uint8Array> {
+): Promise<Uint8Array | null> {
   const response = await request(source, url, 'GET', signal)
   if (response.status === 404) {
     await response.body?.cancel()
-    return new Uint8Array()
+    return null
   }
   if (!response.ok || !response.body) {
     await response.body?.cancel()
@@ -172,14 +179,24 @@ export async function offer(version: string, system: string, source: Source = gi
   const signal = AbortSignal.timeout(FETCH_TIMEOUT_MS)
   const base = `${source.base}/v${version}/`
   const none = noRelease(version, system)
-  const sums = new TextDecoder().decode(await download(source, `${base}SHA256SUMS`, 'SHA256SUMS', MAX_SUMS, signal))
+  const listed = await download(source, `${base}SHA256SUMS`, 'SHA256SUMS', MAX_SUMS, signal)
+  if (!listed) throw none
   const name = archiveName(version, system)
-  const line = sums.split('\n').find((l) => l.replace(/\r$/, '').endsWith(`  ${name}`))
-  const sum = line?.slice(0, 64)
-  if (!sum || !/^[0-9a-f]{64}$/.test(sum)) throw none
+  // the lines `<hash>  <name>` (or ` *<name>`) whose name is exactly the archive's
+  const sums = new TextDecoder()
+    .decode(listed)
+    .split('\n')
+    .flatMap((line) => {
+      const entry = /^([0-9a-f]{64}) [ *](.+?)\r?$/.exec(line)
+      return entry?.[2] === name ? [entry[1]!] : []
+    })
+  if (sums.length === 0) throw none
+  if (sums.length > 1) throw new InstallError(`SHA256SUMS names ${name} twice; nothing was installed`)
+  const sum = sums[0]!
   const head = await request(source, base + name, 'HEAD', signal)
   await head.body?.cancel()
   if (head.status === 404) throw none
+  if (!head.ok) throw new InstallError(`could not reach GitHub (${base + name}: ${head.status})`)
   const length = Number(head.headers.get('content-length'))
   return { version, system, url: base + name, sum, size: length > 0 ? length : undefined }
 }
@@ -191,12 +208,27 @@ export function fromTar(tar: Uint8Array, name: string): Uint8Array {
     const end = field.indexOf(0)
     return new TextDecoder().decode(end < 0 ? field : field.subarray(0, end))
   }
+  const broken = () => new InstallError('the download is broken; nothing was installed')
+  // a number as tar writes it: octal digits, ended by NUL or spaces
+  const octal = (at: number, length: number) => {
+    const digits = text(at, length).replace(/^ +| +$/g, '')
+    if (!/^[0-7]{1,11}$/.test(digits)) throw broken()
+    return parseInt(digits, 8)
+  }
   let found: Uint8Array | undefined
+  let ended = false
   for (let at = 0; at + 512 <= tar.length;) {
-    if (tar.subarray(at, at + 512).every((byte) => byte === 0)) break
-    const size = parseInt(text(at + 124, 12).trim() || '0', 8)
-    if (!Number.isSafeInteger(size) || size < 0 || at + 512 + size > tar.length)
-      throw new InstallError('the download is broken; nothing was installed')
+    const header = tar.subarray(at, at + 512)
+    if (header.every((byte) => byte === 0)) {
+      ended = true
+      break
+    }
+    // the header's own checksum: its bytes summed with the checksum field as spaces
+    let sum = 0
+    for (let i = 0; i < 512; i++) sum += i >= 148 && i < 156 ? 32 : header[i]!
+    if (text(at + 257, 6) !== 'ustar' || octal(at + 148, 8) !== sum) throw broken()
+    const size = octal(at + 124, 12)
+    if (at + 512 + size > tar.length) throw broken()
     const prefix = text(at + 345, 155)
     const path = prefix ? `${prefix}/${text(at, 100)}` : text(at, 100)
     const type = String.fromCharCode(tar[at + 156]!)
@@ -210,6 +242,7 @@ export function fromTar(tar: Uint8Array, name: string): Uint8Array {
     }
     at += 512 + Math.ceil(size / 512) * 512
   }
+  if (!ended) throw broken()
   if (!found) throw new InstallError(`the download has no ${name} in it; nothing was installed`)
   return found
 }
@@ -230,24 +263,31 @@ export function fromZip(zip: Uint8Array, name: string): Uint8Array {
   let found: Uint8Array | undefined
   for (let i = 0; i < count; i++) {
     if (at + 46 > zip.length || view.getUint32(at, true) !== 0x02014b50) throw broken()
+    const flags = view.getUint16(at + 8, true)
     const method = view.getUint16(at + 10, true)
+    const sum = view.getUint32(at + 16, true)
     const packed = view.getUint32(at + 20, true)
     const size = view.getUint32(at + 24, true)
     const nameLength = view.getUint16(at + 28, true)
     const extra = view.getUint16(at + 30, true)
     const comment = view.getUint16(at + 32, true)
-    const unixMode = view.getUint32(at + 38, true) >>> 16
+    const attributes = view.getUint32(at + 38, true)
+    const unixMode = attributes >>> 16
     const local = view.getUint32(at + 42, true)
     const path = new TextDecoder().decode(zip.subarray(at + 46, at + 46 + nameLength))
     if (path === name) {
-      // a Unix mode that is not a regular file (a link, a directory) is refused; Windows' zips carry none
-      if (unixMode !== 0 && (unixMode & 0o170000) !== 0o100000)
+      // a Unix mode that is not a regular file (a link, a directory), or the folder attribute of Windows, is refused
+      if ((unixMode !== 0 && (unixMode & 0o170000) !== 0o100000) || attributes & 0x10)
         throw new InstallError(`${name} in the download is no program but a link or a folder; nothing was installed`)
       if (found) throw new InstallError(`the download has ${name} twice in it; nothing was installed`)
       if (size > MAX_PROGRAM)
         throw new InstallError(`${name} in the download is larger than 50 MB; nothing was installed`)
-      if (local + 30 > zip.length || view.getUint32(local, true) !== 0x04034b50) throw broken()
-      const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true)
+      // the entry of the file itself must say the same: name, method, not encrypted
+      if (local + 30 > zip.length || view.getUint32(local, true) !== 0x04034b50 || flags & 1) throw broken()
+      const localName = view.getUint16(local + 26, true)
+      const sameName = new TextDecoder().decode(zip.subarray(local + 30, local + 30 + localName)) === path
+      if (!sameName || view.getUint16(local + 8, true) !== method) throw broken()
+      const start = local + 30 + localName + view.getUint16(local + 28, true)
       const data = zip.subarray(start, start + packed)
       if (data.length !== packed) throw broken()
       if (method === 0) found = data
@@ -258,7 +298,7 @@ export function fromZip(zip: Uint8Array, name: string): Uint8Array {
           throw broken()
         }
       } else throw new InstallError(`the download is packed in a way hadley cannot read; nothing was installed`)
-      if (found.length !== size) throw broken()
+      if (found.length !== size || crc32(found) !== sum) throw broken()
     }
     at += 46 + nameLength + extra + comment
   }
@@ -278,6 +318,7 @@ export interface Installed {
 export async function install(offered: Offer, home: string, source: Source = github(), platform = process.platform) {
   const signal = AbortSignal.timeout(FETCH_TIMEOUT_MS)
   const archive = await download(source, offered.url, 'the download', MAX_ARCHIVE, signal)
+  if (!archive) throw noRelease(offered.version, offered.system)
   if (createHash('sha256').update(archive).digest('hex') !== offered.sum)
     throw new InstallError('the download does not match SHA256SUMS; nothing was installed')
   const windows = offered.system.startsWith('windows-')
@@ -293,18 +334,36 @@ export async function install(offered: Offer, home: string, source: Source = git
     program = fromTar(tar, FORMS_PROGRAM)
   }
 
-  mkdirSync(home, { recursive: true })
+  // what the file system refuses (no room, no right, a file where the directory should be) is told like the rest
+  const written = <T>(write: () => T): T => {
+    try {
+      return write()
+    } catch (error) {
+      const { code, message } = error as NodeJS.ErrnoException
+      throw new InstallError(`could not write to ${shown(home, platform)} (${code ?? message}); nothing was installed`)
+    }
+  }
+  written(() => mkdirSync(home, { recursive: true }))
   const path = join(home, programName(offered.version, platform))
   // beside its place, so that the move cannot fail halfway; with .exe, which Windows runs a file by
   const temp = join(home, `.${FORMS_PROGRAM}-${randomBytes(6).toString('hex')}${platform === 'win32' ? '.exe' : ''}`)
   try {
-    writeFileSync(temp, program, { mode: 0o755 })
+    written(() => writeFileSync(temp, program, { mode: 0o755 }))
     let printed: string
     try {
-      printed = execFileSync(temp, ['-version'], { encoding: 'utf8', timeout: VERSION_TIMEOUT_MS, stdio: 'pipe' })
+      printed = execFileSync(temp, ['-version'], {
+        encoding: 'utf8',
+        timeout: VERSION_TIMEOUT_MS,
+        killSignal: 'SIGKILL',
+        stdio: 'pipe',
+      })
     } catch (error) {
+      // the reason without the temporary file's name, which says nothing to the user
+      const { code, status } = error as NodeJS.ErrnoException & { status?: number | null }
       throw new InstallError(
-        `the downloaded program does not run (${(error as Error).message.split('\n')[0]}); nothing was installed`,
+        code === 'ETIMEDOUT'
+          ? `the downloaded program did not answer -version within ${VERSION_TIMEOUT_MS / 1000} s; nothing was installed`
+          : `the downloaded program does not run (${code ?? `exit ${status}`}); nothing was installed`,
       )
     }
     if (printed.trim() !== `${FORMS_PROGRAM} ${offered.version}`)
@@ -313,13 +372,13 @@ export async function install(offered: Offer, home: string, source: Source = git
           ? `the downloaded program is ${printed.trim()}, not ${offered.version}; nothing was installed`
           : 'the downloaded program names no version; nothing was installed',
       )
-    renameSync(temp, path)
+    written(() => renameSync(temp, path))
   } finally {
     rmSync(temp, { force: true })
   }
 
   // a program still running (on Windows) stays; removing only frees space
-  const removed = installedVersions(home).filter((version) => {
+  const removed = installedVersions(home, platform).filter((version) => {
     if (!older(version, offered.version)) return false
     try {
       rmSync(join(home, programName(version, platform)))
