@@ -2,25 +2,35 @@
 
 > `0.3.0` is the latest release. The [changelog](CHANGELOG.md) names what it leaves open.
 
-A static site generator built to be understood as a whole. Content is written in
-[Markanto](https://markanto.org), metadata in [Lima](https://limaformat.dev), templates in
-[galley](https://www.npmjs.com/package/@mkorun/galley); [quad](https://www.npmjs.com/package/@mkorun/quad) formats the
-HTML it writes. [Vite](https://vite.dev), [sharp](https://sharp.pixelplumbing.com), [Shiki](https://shiki.style) and
-[Pagefind](https://pagefind.app) do what they do best.
+**Just write. Own your site.** A static site generator with an editor right on the page, every version kept without
+Git, and a comments service of its own: one program on your machine, open source, free, with no account and no
+tracking.
 
-- **Bundles:** a page is a folder with its text, its pictures and its other languages.
-- **Several languages** as one site, each page linked to its versions.
+- **An editor on the page:** in `hadley dev`, double-click a block in the browser and write; the Markdown stays in its
+  file.
+- **Versions without Git:** every state of a page is kept, whoever changed it (you, another editor, an agent); compare
+  them word by word, undo, restore.
+- **Comments of your own:** visitors write without an account, you approve them on your own machine, and they become
+  files of the article. `hadley dev` fetches the service the first time.
+- **Private by default:** the themes load nothing from other servers and set no cookies; photos lose their location
+  and camera before they are published.
+- **Bundles:** a page is a folder with its text, its pictures and its other languages; several languages are one site.
 - **Front matter in the author's language:** a field may have other names in `config.lima`, in any language and
-  gendered — `titel:`, `größe:`, `題名:`, `autor:in:`, `autor*in:` — so every author of a site writes the keys they would
-  write.
+  gendered — `titel:`, `größe:`, `題名:`, `autor:in:`, `autor*in:`.
 - **Images** in the widths and formats the theme asks for, with AI-generated pictures labelled from their metadata;
-  **drawings** written into the page, which the theme colours.
-- **Notes** beside articles and essays: short, dated pages of their own.
-- **Two themes** to start from, which become the site's own: hems, for writing, and punch, for a personal site.
-- **A dev server** with live reload and an editor for the page in the browser; **search**, a **feed**, a **sitemap**,
-  **og images** and **comments** (a small service of its own) when the site wants them.
+  **drawings** the theme colours; **notes** beside articles.
+- **Search**, a **feed**, a **sitemap**, **og images** and **`llms.txt`**, built in; **two themes** to start from,
+  hems for writing and punch for a personal site, which become the site's own.
+- **An agent with a safety net,** if you want one: the chat beside the page brings Claude Code or Codex; what it would
+  write, run or reach waits for your Allow, and every change it makes is a version you can take back.
 - **Content is untrusted:** what a page says is written escaped, and cannot make hadley read or write outside the
   site.
+
+Built to be understood as a whole: content is written in [Markanto](https://markanto.org), Markdown as you know it with
+a few things more; metadata in [Lima](https://limaformat.dev), the part of YAML that front matter needs; templates in
+[galley](https://www.npmjs.com/package/@mkorun/galley), and [quad](https://www.npmjs.com/package/@mkorun/quad) formats
+the HTML. [Vite](https://vite.dev), [sharp](https://sharp.pixelplumbing.com), [Shiki](https://shiki.style) and
+[Pagefind](https://pagefind.app) do what they do best.
 
 ## Quick start
 
