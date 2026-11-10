@@ -7,7 +7,18 @@ import type { AddressInfo } from 'node:net'
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { history, KEEP, pruned, seen, startHistory, steps, undone, without, type Version } from '../history.ts'
+import {
+  history,
+  KEEP,
+  pruned,
+  seen,
+  siteHistory,
+  startHistory,
+  steps,
+  undone,
+  without,
+  type Version,
+} from '../history.ts'
 import { historyRoute } from '../history-routes.ts'
 import { pageHeads } from '../blocks.ts'
 
@@ -191,10 +202,9 @@ describe('the versions of a page', () => {
     seen(page, 'by the agent\n')
     agent = undefined
     seen(page, 'by hand\n')
-    // seen() does not wait; a list after it does
-    const versions = history(root)
-    await new Promise((resolve) => setTimeout(resolve, 50))
-    const listed = await versions.list(page)
+    // seen() does not wait; a list of the same history waits for what was queued before it (no time to guess:
+    // 50 ms were too few on the macOS runner, CI 42778948819)
+    const listed = await siteHistory()!.list(page)
     assert.deepEqual(
       listed.map(({ by, agent: name }) => ({ by, name })),
       [
@@ -236,7 +246,7 @@ describe('the routes of the time machine', () => {
     seen(page, 'first\n')
     await writeFile(page, 'second\n')
     seen(page, 'second\n')
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    await siteHistory()!.list(page) // what seen() queued is written
     // a page the build did not register has none, whatever the browser names
     assert.equal((await fetch(`${origin}/__hadley/history?path=/a/`)).status, 404)
     pageHeads.set('/a/', { filePath: page })
@@ -311,7 +321,7 @@ describe('the routes of the time machine', () => {
   it('restores nothing where the page as it is cannot be kept as a version', async () => {
     await writeFile(page, 'first\n')
     seen(page, 'first\n')
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    await siteHistory()!.list(page) // what seen() queued is written
     pageHeads.set('/a/', { filePath: page })
     // review 2026-11-09: the history could not be written, and a restore overwrote a page no version held
     await writeFile(page, 'unkept\n')
@@ -332,7 +342,7 @@ describe('the routes of the time machine', () => {
     seen(page, 'one\n')
     await writeFile(page, 'two\n')
     seen(page, 'two\n')
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    await siteHistory()!.list(page) // what seen() queued is written
     pageHeads.set('/a/', { filePath: page })
     const ask = async () =>
       (await (await fetch(`${origin}/__hadley/history/steps?path=/a/`)).json()) as {
@@ -369,7 +379,7 @@ describe('the routes of the time machine', () => {
       seen(page, 'two\n')
       assert.equal((await ask()).redo, undefined)
     }
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    await siteHistory()!.list(page) // what seen() queued is written
     assert.equal((await list()).versions.length, 2)
     assert.equal((await list()).at, second.at)
   })
