@@ -27,7 +27,7 @@ import {
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
-import { gzipSync } from 'node:zlib'
+import { crc32, deflateRawSync, gzipSync } from 'node:zlib'
 
 const BUILD_TIMEOUT_MS = 10 * 60 * 1000
 const TEST_TIMEOUT_MS = 10 * 60 * 1000
@@ -35,12 +35,14 @@ const TOOL_TIMEOUT_MS = 60 * 1000
 const repo = join(import.meta.dirname, '..')
 const service = join(repo, 'services', 'forms')
 
-/** The systems a release has a program for. Not Windows: the service needs flock there (lock_other.go). */
+/** The systems a release has a program for. */
 export const TARGETS = [
   { os: 'linux', arch: 'amd64' },
   { os: 'linux', arch: 'arm64' },
   { os: 'darwin', arch: 'amd64' },
   { os: 'darwin', arch: 'arm64' },
+  { os: 'windows', arch: 'amd64' },
+  { os: 'windows', arch: 'arm64' },
 ] as const
 
 const UNIT = 'hadley-forms@.service'
@@ -48,7 +50,8 @@ const UNIT = 'hadley-forms@.service'
 /** A version as package.json gives it, which goes into the program and the file names as it is. */
 const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
 
-export const archiveName = (version: string, os: string, arch: string) => `hadley-forms-${version}-${os}-${arch}.tar.gz`
+export const archiveName = (version: string, os: string, arch: string) =>
+  `hadley-forms-${version}-${os}-${arch}.${os === 'windows' ? 'zip' : 'tar.gz'}`
 
 /** The linker flags of a release: no symbol table, no build id, and the version for `hadley-forms -version`. */
 export function ldflags(version: string): string {
@@ -128,6 +131,56 @@ export function archive(dir: string, files: string[], time: string): Uint8Array 
     { timeout: TOOL_TIMEOUT_MS },
   )
   return gzipSync(tar, { level: 9 })
+}
+
+/** A ZIP with deflated files, the given time in UTC (DOS precision: two seconds), no extra fields or comments. */
+export function zipArchive(dir: string, files: string[], time: string): Uint8Array {
+  const date = new Date(Number(time) * 1000)
+  const year = date.getUTCFullYear()
+  if (!Number.isFinite(date.getTime()) || year < 1980 || year > 2107)
+    throw new Error(`ZIP time ${time} is outside 1980–2107`)
+  if (files.length > 0xffff) throw new Error('too many files for ZIP without ZIP64')
+  const dosTime = (date.getUTCHours() << 11) | (date.getUTCMinutes() << 5) | (date.getUTCSeconds() >> 1)
+  const dosDate = ((year - 1980) << 9) | ((date.getUTCMonth() + 1) << 5) | date.getUTCDate()
+  const local: Buffer[] = []
+  const central: Buffer[] = []
+  let offset = 0
+  for (const file of files) {
+    const name = Buffer.from(file, 'utf8')
+    const data = readFileSync(join(dir, file))
+    const compressed = deflateRawSync(data, { level: 9 })
+    if (name.length > 0xffff || data.length > 0xffffffff || compressed.length > 0xffffffff)
+      throw new Error(`${file} is too large for ZIP without ZIP64`)
+    const header = Buffer.alloc(30)
+    header.writeUInt32LE(0x04034b50, 0)
+    header.writeUInt16LE(20, 4) // version needed: deflate
+    header.writeUInt16LE(0x800, 6) // UTF-8 names
+    header.writeUInt16LE(8, 8) // deflate
+    header.writeUInt16LE(dosTime, 10)
+    header.writeUInt16LE(dosDate, 12)
+    header.writeUInt32LE(crc32(data), 14)
+    header.writeUInt32LE(compressed.length, 18)
+    header.writeUInt32LE(data.length, 22)
+    header.writeUInt16LE(name.length, 26)
+    const entry = Buffer.alloc(46)
+    entry.writeUInt32LE(0x02014b50, 0)
+    entry.writeUInt16LE(20, 4) // made by DOS, no Unix attributes
+    header.copy(entry, 6, 4, 30)
+    entry.writeUInt32LE(offset, 42)
+    local.push(header, name, compressed)
+    central.push(entry, name)
+    offset += header.length + name.length + compressed.length
+    if (offset > 0xffffffff) throw new Error('archive is too large for ZIP without ZIP64')
+  }
+  const directory = Buffer.concat(central)
+  if (offset + directory.length > 0xffffffff) throw new Error('archive is too large for ZIP without ZIP64')
+  const end = Buffer.alloc(22)
+  end.writeUInt32LE(0x06054b50, 0)
+  end.writeUInt16LE(files.length, 8)
+  end.writeUInt16LE(files.length, 10)
+  end.writeUInt32LE(directory.length, 12)
+  end.writeUInt32LE(offset, 16)
+  return Buffer.concat([...local, directory, end])
 }
 
 /** SHA256SUMS in the form `sha256sum -c` reads: a line `<hash>  <name>` per file, by name. */
@@ -229,17 +282,19 @@ export function main(args: string[]): number {
     for (const { os, arch } of TARGETS) {
       const dir = join(scratch, `${os}-${arch}`)
       mkdirSync(dir)
-      const linked = build(version, os, arch, join(dir, 'hadley-forms'))
+      const program = os === 'windows' ? 'hadley-forms.exe' : 'hadley-forms'
+      const linked = build(version, os, arch, join(dir, program))
       writeFileSync(join(dir, 'LICENSE'), ownLicence)
       writeFileSync(join(dir, 'THIRD_PARTY_LICENSES'), thirdPartyLicences([goLicence, ...linked]))
-      const files = ['hadley-forms', 'LICENSE', 'THIRD_PARTY_LICENSES']
+      const files = [program, 'LICENSE', 'THIRD_PARTY_LICENSES']
       // the systemd unit the installation takes (docs/comments.md, "Installing the service")
       if (os === 'linux') {
         writeFileSync(join(dir, UNIT), readFileSync(join(service, 'systemd', UNIT)))
         files.push(UNIT)
       }
-      for (const file of files) chmodSync(join(dir, file), file === 'hadley-forms' ? 0o755 : 0o644)
-      archives.push({ name: archiveName(version, os, arch), bytes: archive(dir, files, time!) })
+      for (const file of files) chmodSync(join(dir, file), file === program ? 0o755 : 0o644)
+      const pack = os === 'windows' ? zipArchive : archive
+      archives.push({ name: archiveName(version, os, arch), bytes: pack(dir, files, time!) })
     }
 
     mkdirSync(out, { recursive: true })

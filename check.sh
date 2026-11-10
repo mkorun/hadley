@@ -63,6 +63,8 @@ TMPDIR="$test_tmp" node --test 'packages/hadley/**/tests/*.test.ts' 'scripts/tes
 # The comments service (docs/go.md, "Gate"); its contract tests run against the binary built
 # here, which lies outside TMPDIR. govulncheck reads the vulnerability database from the network.
 go_bin=$(mktemp -d)
+forms_program=hadley-forms
+if [[ "$OSTYPE" == msys || "$OSTYPE" == cygwin ]]; then forms_program=hadley-forms.exe; fi
 trap 'rm -rf "$test_tmp" "$go_bin"' EXIT
 (
   cd services/forms
@@ -81,15 +83,9 @@ trap 'rm -rf "$test_tmp" "$go_bin"' EXIT
   go tool -modfile=tools.mod staticcheck ./...
   TMPDIR="$test_tmp" go test -race -count=1 ./...
   if [[ -n "$has_mise" ]]; then go tool -modfile=tools.mod govulncheck ./...; fi
-  go build -o "$go_bin/hadley-forms" ./cmd/hadley-forms
+  go build -o "$go_bin/$forms_program" ./cmd/hadley-forms
 )
-# hadley-forms does not start on Windows (lock_other.go, docs/platforms.md), so its contract tests have nothing to
-# run against there.
-if [[ "$OSTYPE" == msys || "$OSTYPE" == cygwin ]]; then
-  echo 'check.sh: the contract tests of the comments service are left out on Windows, where hadley-forms does not run'
-else
-  FORMS_SERVICE="$go_bin/hadley-forms" TMPDIR="$test_tmp" bun test services/forms/tests/
-fi
+FORMS_SERVICE="$go_bin/$forms_program" TMPDIR="$test_tmp" bun test services/forms/tests/
 
 # The program of a release (docs/adr/0005-release-program.md): the rules of the comments service, with its tools; it
 # has no dependencies for govulncheck to look at. A release runs on what it installs with, so shellcheck reads that too.

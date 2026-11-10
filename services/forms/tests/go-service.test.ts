@@ -28,7 +28,7 @@ describe('the Go service', { skip: !goService && 'FORMS_SERVICE is the TypeScrip
     try {
       const first = await start(env, ['-dev'])
       const secrets = JSON.parse(readFileSync(join(dataDir, 'dev-secrets.json'), 'utf8'))
-      assert.equal(statSync(join(dataDir, 'dev-secrets.json')).mode & 0o777, 0o600)
+      if (process.platform !== 'win32') assert.equal(statSync(join(dataDir, 'dev-secrets.json')).mode & 0o777, 0o600)
       assert.equal((await admin(first, 'GET', secrets.adminToken)).status, 200)
       await first.stop()
       const second = await start(env, ['-dev'])

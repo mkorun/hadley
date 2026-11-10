@@ -32,17 +32,18 @@ func openReplayStore(dataDir string, now time.Time) (*replayStore, error) {
 		return nil, err
 	}
 	if err == nil {
-		defer file.Close()
 		lines := bufio.NewScanner(file)
 		for lines.Scan() {
 			nonce, expiry, ok := strings.Cut(lines.Text(), " ")
 			at, parseErr := strconv.ParseFloat(expiry, 64)
 			if !ok || parseErr != nil {
+				file.Close()
 				return nil, fmt.Errorf("%s: not a line \"<nonce> <expiry>\": %q", s.path, lines.Text())
 			}
 			s.used[nonce] = at
 		}
-		if err := lines.Err(); err != nil {
+		// Close before rewriting: Windows cannot replace a file still open for reading.
+		if err := errors.Join(lines.Err(), file.Close()); err != nil {
 			return nil, err
 		}
 	}

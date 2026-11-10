@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 // DevSecretsFile holds the secrets of a service started with -dev, in its data directory; the moderation CLI reads
@@ -21,7 +22,7 @@ type DevSecrets struct {
 }
 
 // LoadDevSecrets creates dataDir if it is missing and returns the secrets in it, making them first if there are none.
-// A file of secrets others can read is refused.
+// A file of secrets others can read is refused on Unix; on Windows its place in the user's profile protects it.
 func LoadDevSecrets(dataDir string) (DevSecrets, error) {
 	var secrets DevSecrets
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
@@ -38,7 +39,7 @@ func LoadDevSecrets(dataDir string) (DevSecrets, error) {
 	if err != nil {
 		return secrets, err
 	}
-	if info.Mode().Perm()&0o077 != 0 {
+	if runtime.GOOS != "windows" && info.Mode().Perm()&0o077 != 0 {
 		return secrets, fmt.Errorf("%s can be read by others (%v): chmod 600 it, or delete it to make new ones", path,
 			info.Mode().Perm())
 	}

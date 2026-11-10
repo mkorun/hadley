@@ -9,7 +9,6 @@ import (
 )
 
 func TestReplayStoreSurvivesARestartAndForgetsExpired(t *testing.T) {
-	notOnWindows(t)
 	dir, now := t.TempDir(), time.Unix(1_000, 0)
 	s, err := openReplayStore(dir, now)
 	if err != nil {

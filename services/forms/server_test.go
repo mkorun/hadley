@@ -15,8 +15,13 @@ import (
 
 func testService(t *testing.T) *Service {
 	t.Helper()
+	return testServiceAt(t, t.TempDir())
+}
+
+func testServiceAt(t *testing.T, dir string) *Service {
+	t.Helper()
 	s, err := New(Config{
-		DataDir: t.TempDir(), AdminToken: "admin", HMACSecret: "secret", Origins: []string{"https://a"}, Cost: 1,
+		DataDir: dir, AdminToken: "admin", HMACSecret: "secret", Origins: []string{"https://a"}, Cost: 1,
 		KeyPrefix: "0", RateLimitMax: 1e6, RateLimitWindow: 900, TokenTTL: 900, MaxQueueEntries: 1e6, MaxQueueBytes: 1e9,
 	})
 	if err != nil {

@@ -1,10 +1,10 @@
-//go:build !unix
+//go:build !unix && !windows
 
 package forms
 
 import "errors"
 
-// LockDataDir needs flock, which this system lacks; the service runs on Linux and macOS.
+// LockDataDir needs flock or LockFileEx, which this system lacks.
 func LockDataDir(string) error {
-	return errors.New("hadley-forms runs on Linux and macOS (on Windows: in WSL)")
+	return errors.New("hadley-forms runs on Linux, macOS and Windows")
 }

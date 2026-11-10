@@ -15,6 +15,7 @@ import {
   outside,
   sha256sums,
   thirdPartyLicences,
+  zipArchive,
 } from '../build-forms.ts'
 
 // The release files of the comments service (scripts/build-forms.ts): what goes into the program and the archives,
@@ -30,6 +31,7 @@ describe('the release of the comments service', () => {
 
   it('names an archive by version and system', () => {
     assert.equal(archiveName('0.1.0-rc.1', 'linux', 'arm64'), 'hadley-forms-0.1.0-rc.1-linux-arm64.tar.gz')
+    assert.equal(archiveName('1.2.3', 'windows', 'arm64'), 'hadley-forms-1.2.3-windows-arm64.zip')
   })
 
   it('builds with the Go version go.mod names', () => {
@@ -38,9 +40,11 @@ describe('the release of the comments service', () => {
     assert.throws(() => goVersion('module m\n'), /names no Go version/)
   })
 
-  // a program for Windows would only say that the service needs WSL there (services/forms/lock_other.go)
   it('has programs for the systems the service runs on', () => {
-    assert.ok(TARGETS.every(({ os }) => os === 'linux' || os === 'darwin'))
+    assert.deepEqual(
+      TARGETS.map(({ os, arch }) => `${os}/${arch}`),
+      ['linux/amd64', 'linux/arm64', 'darwin/amd64', 'darwin/arm64', 'windows/amd64', 'windows/arm64'],
+    )
   })
 
   it("lists each licence of the code linked in under the project's name", () => {
@@ -86,6 +90,44 @@ describe('the release of the comments service', () => {
 
   // build-forms.ts makes the archives with GNU tar, so on Linux; the tar of macOS has no --mtime
   const GNU_TAR = { skip: process.platform !== 'linux' && 'the archives are made with GNU tar, on Linux' }
+  it(
+    'makes the same ZIP twice, readable with standard ZIP tools, with the program and licences',
+    {
+      skip: process.platform !== 'linux' && 'the release ZIP is checked with unzip on Linux',
+    },
+    () => {
+      const root = mkdtempSync(join(tmpdir(), 'hadley-build-forms-'))
+      try {
+        const files = ['hadley-forms.exe', 'LICENSE', 'THIRD_PARTY_LICENSES']
+        const contents = [Buffer.from([0, 0xff, 1, 0x80]), Buffer.from('licence'), Buffer.from('third party')]
+        const make = (name: string) => {
+          const dir = join(root, name)
+          mkdirSync(dir)
+          for (const [i, file] of files.entries()) writeFileSync(join(dir, file), contents[i]!)
+          return zipArchive(dir, files, '1800000000')
+        }
+        const first = make('first')
+        assert.deepEqual(make('second'), first)
+        const zip = join(root, 'list.zip')
+        writeFileSync(zip, first)
+        const listing = spawnSync('unzip', ['-l', zip], { encoding: 'utf8', timeout: 10_000 })
+        assert.equal(listing.status, 0, listing.stderr)
+        assert.match(listing.stdout, /2027-01-15 08:00/)
+        assert.doesNotMatch(listing.stdout, /service/)
+        for (const [i, file] of files.entries()) {
+          assert.ok(listing.stdout.includes(file))
+          const extracted = spawnSync('unzip', ['-p', zip, file], { timeout: 10_000 })
+          assert.equal(extracted.status, 0, extracted.stderr.toString())
+          assert.deepEqual(extracted.stdout, contents[i])
+        }
+        const verified = spawnSync('unzip', ['-t', zip], { encoding: 'utf8', timeout: 10_000 })
+        assert.equal(verified.status, 0, verified.stdout + verified.stderr)
+        assert.throws(() => zipArchive(root, [], '0'), /outside 1980/)
+      } finally {
+        rmSync(root, { recursive: true, force: true })
+      }
+    },
+  )
   it('writes a file linked twice as two files', GNU_TAR, () => {
     const root = mkdtempSync(join(tmpdir(), 'hadley-build-forms-'))
     try {

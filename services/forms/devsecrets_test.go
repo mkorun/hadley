@@ -3,19 +3,19 @@ package forms
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 )
 
 func TestDevSecretsAreMadeOnceAndKept(t *testing.T) {
-	notOnWindows(t)
 	dir := filepath.Join(t.TempDir(), "forms")
 	first, err := LoadDevSecrets(dir)
 	if err != nil || len(first.AdminToken) != 64 || len(first.HMACSecret) != 64 || first.AdminToken == first.HMACSecret {
 		t.Fatalf("%+v %v", first, err)
 	}
 	info, _ := os.Stat(filepath.Join(dir, DevSecretsFile))
-	if info.Mode().Perm() != 0o600 {
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
 		t.Errorf("mode %v", info.Mode().Perm())
 	}
 	if again, err := LoadDevSecrets(dir); err != nil || again != first {
@@ -32,6 +32,7 @@ func TestDevSecretsRefuseABrokenFile(t *testing.T) {
 }
 
 func TestDevSecretsRefuseAFileOthersCanRead(t *testing.T) {
+	unixModesOnly(t)
 	dir := t.TempDir()
 	if _, err := LoadDevSecrets(dir); err != nil {
 		t.Fatal(err)
@@ -44,7 +45,6 @@ func TestDevSecretsRefuseAFileOthersCanRead(t *testing.T) {
 
 // review 2026-10-27 (second): starts at the same time get the same secrets, never a half-written file
 func TestDevSecretsMadeOnceUnderConcurrency(t *testing.T) {
-	notOnWindows(t)
 	dir := t.TempDir()
 	results := make([]DevSecrets, 20)
 	errs := make([]error, 20)
