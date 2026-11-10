@@ -12,6 +12,13 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
   documentation to read for what. `CLAUDE.md` beside it imports them for Claude Code; Codex and the agent of the
   editor's chat read `AGENTS.md` itself ([docs/init.md](docs/init.md)).
 
+### Fixed
+
+- hems and punch build a note: each has a note template, with the note's kind and date and the address it points to.
+  Before, a note stopped the build.
+- hems and punch keep the site's own light or dark when they show no button for it: a choice the reader's browser kept
+  from before no longer overrides it.
+
 ## [0.3.0] — 2026-11-10
 
 The chat with an agent beside the page, versions with undo and redo, a block editor rebuilt in TypeScript that brings
