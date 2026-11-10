@@ -4,13 +4,17 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.4.0] — 2026-11-10
+
+A guide for the agent in every new site, a note template in hems and punch, and a site's own light or dark kept.
 
 ### Added
 
 - `hadley init` writes `AGENTS.md`, notes for a coding agent working in the site: its folders, its commands and which
   documentation to read for what. `CLAUDE.md` beside it imports them for Claude Code; Codex and the agent of the
   editor's chat read `AGENTS.md` itself ([docs/init.md](docs/init.md)).
+- Deploying to Apache web hosting with a `.htaccess`: the same headers, Content Security Policy and error pages as with
+  Caddy ([docs/deploy.md](docs/deploy.md), "Apache").
 
 ### Fixed
 
@@ -18,6 +22,8 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
   Before, a note stopped the build.
 - hems and punch keep the site's own light or dark when they show no button for it: a choice the reader's browser kept
   from before no longer overrides it.
+- The HTML has no space hadley made up where wrapped text runs straight into an inline element, such as a link after a
+  word (quad 0.1.5).
 
 ## [0.3.0] — 2026-11-10
 

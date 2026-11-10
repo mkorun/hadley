@@ -1,30 +1,49 @@
 # hadley
 
-> `0.3.0` is the latest release. The [changelog](CHANGELOG.md) names what it leaves open.
+> `0.4.0` is the latest release. The [changelog](CHANGELOG.md) names what it leaves open.
 
-**Just write. Own your site.** A static site generator with an editor right on the page, every version kept without
-Git, and a comments service of its own: one program on your machine, open source, free, with no account and no
-tracking.
+**Just write. Own your site.** For people who write — authors, bloggers, anyone with a site of their own — who would
+rather write than tinker.
 
-- **An editor on the page:** in `hadley dev`, double-click a block in the browser and write; the Markdown stays in its
-  file.
-- **Versions without Git:** every state of a page is kept, whoever changed it (you, another editor, an agent); compare
+hadley is a static site generator with an editor right on the page, every version of your pages kept without Git, and
+a comments service of its own: one program on your machine, open source, free, with no account and no tracking.
+
+## Just write.
+
+- **An editor on the page:** in `hadley dev`, switch on edit mode, double-click a block and write; the Markdown stays
+  in its file.
+- **Versions without Git:** each page keeps its versions, whoever changed it (you, another editor, an agent); compare
   them word by word, undo, restore.
-- **Comments of your own:** visitors write without an account, you approve them on your own machine, and they become
-  files of the article. `hadley dev` fetches the service the first time.
-- **Private by default:** the themes load nothing from other servers and set no cookies; photos lose their location
-  and camera before they are published.
-- **Bundles:** a page is a folder with its text, its pictures and its other languages; several languages are one site.
-- **Front matter in the author's language:** a field may have other names in `config.lima`, in any language and
-  gendered — `titel:`, `größe:`, `題名:`, `autor:in:`, `autor*in:`.
-- **Images** in the widths and formats the theme asks for, with AI-generated pictures labelled from their metadata;
-  **drawings** the theme colours; **notes** beside articles.
-- **Search**, a **feed**, a **sitemap**, **og images** and **`llms.txt`**, built in; **two themes** to start from,
-  hems for writing and punch for a personal site, which become the site's own.
-- **An agent with a safety net,** if you want one: the chat beside the page brings Claude Code or Codex; what it would
-  write, run or reach waits for your Allow, and every change it makes is a version you can take back.
-- **Content is untrusted:** what a page says is written escaped, and cannot make hadley read or write outside the
-  site.
+- **Comments of your own:** visitors write without an account and without a captcha service; you approve them on your
+  own machine, and they become part of the article. `hadley dev` fetches the service the first time.
+- **Front matter in your language:** a field may have other names in `config.lima`, in any language and gendered —
+  `titel:`, `größe:`, `題名:`, `autor:in:`.
+- **Everything else included:** search, several languages as one site, pictures in the widths the theme asks for
+  (AI-generated ones labelled from their metadata), drawings the theme colours, notes beside articles, a feed, a
+  sitemap, og images, and two themes to start from — hems for writing, punch for a personal site — which become the
+  site's own.
+
+## Bring your AI. If you want.
+
+- **Small enough to read whole:** an agent can read all of hadley's documentation, Markanto and Lima included: about
+  26,000 tokens. Given only that, an agent did five everyday tasks on a new site in under four minutes
+  ([how it was measured](https://hadley.sh/agent-test/)).
+- **A guide for your agent:** every new site gets an `AGENTS.md` that tells an agent which documentation to read for
+  what; `CLAUDE.md` imports it for Claude Code.
+- **Ready for language models:** every site publishes `llms.txt`, with its pages as Markdown if you like.
+- **An agent with a safety net:** the chat beside the page brings Claude Code or Codex. Before it writes a file, runs
+  a command or reaches the network, it asks you; every change it makes to a page is a version you can take back. What
+  you give it goes to its provider.
+
+## Own your site.
+
+- **Open:** hadley and its own packages are ISC-licensed. Your pages are files in folders, in formats with a public
+  specification.
+- **Free:** no paid tier, no plugins to buy. A small server for the comments costs about an espresso a month, and it
+  carries several sites.
+- **Private:** the themes load nothing from other servers and set no cookies; photos lose their location and camera
+  data by default; the server has no editor and no login.
+- **Content is untrusted:** what a page says is written escaped, and cannot make hadley read or write outside the site.
 
 Built to be understood as a whole: content is written in [Markanto](https://markanto.org), Markdown as you know it with
 a few things more; metadata in [Lima](https://limaformat.dev), the part of YAML that front matter needs; templates in

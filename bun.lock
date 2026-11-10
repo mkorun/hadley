@@ -21,7 +21,7 @@
     },
     "packages/hadley": {
       "name": "@mkorun/hadley",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "bin": {
         "hadley": "./hadley.ts",
       },
