@@ -221,14 +221,17 @@ describe('reading an archive', () => {
 
   it('never takes a link, a second program or a path with ..; it writes nothing of the archive’s names', () => {
     const link = tar([{ name: 'hadley-forms', type: '2', link: '/bin/sh' }])
-    assert.throws(() => fromTar(link, 'hadley-forms'), /hadley-forms in the archive is no file/)
+    assert.throws(
+      () => fromTar(link, 'hadley-forms'),
+      /hadley-forms in the download is no program but a link or a folder/,
+    )
     const twice = tar([
       { name: 'hadley-forms', body: script('a') },
       { name: 'hadley-forms', body: script('b') },
     ])
-    assert.throws(() => fromTar(twice, 'hadley-forms'), /holds hadley-forms twice/)
+    assert.throws(() => fromTar(twice, 'hadley-forms'), /the download has hadley-forms twice in it/)
     const outside = tar([{ name: '../hadley-forms', body: script('0.3.0') }])
-    assert.throws(() => fromTar(outside, 'hadley-forms'), /holds no hadley-forms/)
+    assert.throws(() => fromTar(outside, 'hadley-forms'), /the download has no hadley-forms in it/)
     assert.throws(() => fromTar(new Uint8Array(512).fill(55), 'hadley-forms'), /broken/)
   })
 
@@ -239,7 +242,10 @@ describe('reading an archive', () => {
       { name: exe, body: script('w') },
     ])
     assert.deepEqual(new Uint8Array(fromZip(both, exe)), script('w'))
-    assert.throws(() => fromZip(zip([{ name: exe, body: script('w'), mode: 0o120777 }]), exe), /no file/)
+    assert.throws(
+      () => fromZip(zip([{ name: exe, body: script('w'), mode: 0o120777 }]), exe),
+      /is no program but a link/,
+    )
     assert.throws(
       () =>
         fromZip(
@@ -251,7 +257,7 @@ describe('reading an archive', () => {
         ),
       /twice/,
     )
-    assert.throws(() => fromZip(zip([{ name: `../${exe}`, body: script('w') }]), exe), /holds no/)
+    assert.throws(() => fromZip(zip([{ name: `../${exe}`, body: script('w') }]), exe), /has no hadley-forms\.exe in it/)
     assert.throws(() => fromZip(new Uint8Array(100), exe), /broken/)
   })
 })
@@ -304,13 +310,16 @@ describe('fetching', () => {
     const big = new Uint8Array(21 << 20)
     const { source } = linuxRelease('0.3.0', big)
     const offered = await offer('0.3.0', 'linux-amd64', source)
-    await assert.rejects(install(offered, home, source), /larger than 20 MB; nothing was installed/)
+    await assert.rejects(install(offered, home, source), /the download is larger than 20 MB; nothing was installed/)
   })
 
   it('installs nothing that does not name the version it was fetched for', runs, async () => {
     const { source } = linuxRelease('0.3.0', goodArchive('0.2.9'))
     const offered = await offer('0.3.0', 'linux-amd64', source)
-    await assert.rejects(install(offered, home, source), /says it is hadley-forms 0\.2\.9; nothing was installed/)
+    await assert.rejects(
+      install(offered, home, source),
+      /the downloaded program is hadley-forms 0\.2\.9, not 0\.3\.0; nothing was installed/,
+    )
     assert.deepEqual(readdirSync(home), [])
   })
 
@@ -328,7 +337,10 @@ describe('fetching', () => {
       const bad = linuxRelease('0.3.0', archive, sha(archive), {
         [`${BASE}/v0.3.0/${name}`]: { status: 302, location: elsewhere },
       })
-      await assert.rejects(offer('0.3.0', 'linux-amd64', bad.source), /sent the download to .*; nothing was installed/)
+      await assert.rejects(
+        offer('0.3.0', 'linux-amd64', bad.source),
+        /the download was redirected away from GitHub \(https?:\/\/[^)]+\); nothing was installed/,
+      )
       assert.ok(!bad.asked.some((line) => line.endsWith(elsewhere)))
     }
   })
@@ -422,10 +434,12 @@ describe('the question of hadley dev', () => {
       system: 'linux-amd64',
     })
     await formsOnRequest({ version: '0.3.0', interactive: true, ...out, home, source, system: 'windows-arm64' })
+    await formsOnRequest({ version: '0.3.0', interactive: true, ...out, home, source, system: undefined })
     assert.deepEqual(out.said, [
       'warn hadley-forms: could not reach GitHub (getaddrinfo ENOTFOUND); comments are off',
       'warn hadley-forms: the download does not match SHA256SUMS; nothing was installed, comments are off',
       'warn hadley-forms: no release v0.3.0 on GitHub for windows-arm64; comments are off',
+      `warn hadley-forms: no release v0.3.0 on GitHub for ${process.platform}-${process.arch}; comments are off`,
     ])
   })
 })

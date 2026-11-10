@@ -104,7 +104,7 @@ async function request(source: Source, url: string, method: 'GET' | 'HEAD', sign
   for (let hops = 0; ; hops++) {
     const at = new URL(url)
     if (at.protocol !== 'https:' || (at.host !== allowed && !at.hostname.endsWith('.githubusercontent.com')))
-      throw new InstallError(`the release sent the download to ${at.origin}; nothing was installed`)
+      throw new InstallError(`the download was redirected away from GitHub (${at.origin}); nothing was installed`)
     let response: Response
     try {
       response = await source.fetch(at, { method, redirect: 'manual', signal, headers: { 'user-agent': 'hadley' } })
@@ -114,7 +114,7 @@ async function request(source: Source, url: string, method: 'GET' | 'HEAD', sign
     const next = response.headers.get('location')
     if (response.status >= 300 && response.status < 400 && next) {
       await response.body?.cancel()
-      if (hops >= MAX_REDIRECTS) throw new InstallError(`${url}: too many redirects; nothing was installed`)
+      if (hops >= MAX_REDIRECTS) throw new InstallError(`the download was redirected too often; nothing was installed`)
       url = new URL(next, at).href
       continue
     }
@@ -123,7 +123,13 @@ async function request(source: Source, url: string, method: 'GET' | 'HEAD', sign
 }
 
 /** The body of `url`, refused when it is longer than `limit`. */
-async function download(source: Source, url: string, limit: number, signal: AbortSignal): Promise<Uint8Array> {
+async function download(
+  source: Source,
+  url: string,
+  what: string,
+  limit: number,
+  signal: AbortSignal,
+): Promise<Uint8Array> {
   const response = await request(source, url, 'GET', signal)
   if (response.status === 404) {
     await response.body?.cancel()
@@ -138,7 +144,8 @@ async function download(source: Source, url: string, limit: number, signal: Abor
   try {
     for await (const part of response.body) {
       length += part.length
-      if (length > limit) throw new InstallError(`${url} is larger than ${limit >> 20} MB; nothing was installed`)
+      if (length > limit)
+        throw new InstallError(`${what} is larger than ${limit / (1 << 20)} MB; nothing was installed`)
       parts.push(part)
     }
   } catch (error) {
@@ -157,12 +164,15 @@ export interface Offer {
   size: number | undefined
 }
 
+const noRelease = (version: string, system: string) =>
+  new InstallError(`no release v${version} on GitHub for ${system}`)
+
 /** The archive of `version` for `system` in its release, or an InstallError that says why there is none. */
 export async function offer(version: string, system: string, source: Source = github()): Promise<Offer> {
   const signal = AbortSignal.timeout(FETCH_TIMEOUT_MS)
   const base = `${source.base}/v${version}/`
-  const none = new InstallError(`no release v${version} on GitHub for ${system}`)
-  const sums = new TextDecoder().decode(await download(source, `${base}SHA256SUMS`, MAX_SUMS, signal))
+  const none = noRelease(version, system)
+  const sums = new TextDecoder().decode(await download(source, `${base}SHA256SUMS`, 'SHA256SUMS', MAX_SUMS, signal))
   const name = archiveName(version, system)
   const line = sums.split('\n').find((l) => l.replace(/\r$/, '').endsWith(`  ${name}`))
   const sum = line?.slice(0, 64)
@@ -186,27 +196,28 @@ export function fromTar(tar: Uint8Array, name: string): Uint8Array {
     if (tar.subarray(at, at + 512).every((byte) => byte === 0)) break
     const size = parseInt(text(at + 124, 12).trim() || '0', 8)
     if (!Number.isSafeInteger(size) || size < 0 || at + 512 + size > tar.length)
-      throw new InstallError('the archive is broken; nothing was installed')
+      throw new InstallError('the download is broken; nothing was installed')
     const prefix = text(at + 345, 155)
     const path = prefix ? `${prefix}/${text(at, 100)}` : text(at, 100)
     const type = String.fromCharCode(tar[at + 156]!)
     if (path === name || path === `./${name}`) {
       if (type !== '0' && type !== '\0')
-        throw new InstallError(`${name} in the archive is no file; nothing was installed`)
-      if (found) throw new InstallError(`the archive holds ${name} twice; nothing was installed`)
-      if (size > MAX_PROGRAM) throw new InstallError(`${name} is larger than 50 MB; nothing was installed`)
+        throw new InstallError(`${name} in the download is no program but a link or a folder; nothing was installed`)
+      if (found) throw new InstallError(`the download has ${name} twice in it; nothing was installed`)
+      if (size > MAX_PROGRAM)
+        throw new InstallError(`${name} in the download is larger than 50 MB; nothing was installed`)
       found = tar.subarray(at + 512, at + 512 + size)
     }
     at += 512 + Math.ceil(size / 512) * 512
   }
-  if (!found) throw new InstallError(`the archive holds no ${name}; nothing was installed`)
+  if (!found) throw new InstallError(`the download has no ${name} in it; nothing was installed`)
   return found
 }
 
 /** The bytes of `name` in a zip archive: the one regular file of that name, else an InstallError. */
 export function fromZip(zip: Uint8Array, name: string): Uint8Array {
   const view = new DataView(zip.buffer, zip.byteOffset, zip.byteLength)
-  const broken = () => new InstallError('the archive is broken; nothing was installed')
+  const broken = () => new InstallError('the download is broken; nothing was installed')
   let end = -1
   for (let at = zip.length - 22; at >= Math.max(0, zip.length - 22 - 0xffff); at--)
     if (view.getUint32(at, true) === 0x06054b50) {
@@ -231,9 +242,10 @@ export function fromZip(zip: Uint8Array, name: string): Uint8Array {
     if (path === name) {
       // a Unix mode that is not a regular file (a link, a directory) is refused; Windows' zips carry none
       if (unixMode !== 0 && (unixMode & 0o170000) !== 0o100000)
-        throw new InstallError(`${name} in the archive is no file; nothing was installed`)
-      if (found) throw new InstallError(`the archive holds ${name} twice; nothing was installed`)
-      if (size > MAX_PROGRAM) throw new InstallError(`${name} is larger than 50 MB; nothing was installed`)
+        throw new InstallError(`${name} in the download is no program but a link or a folder; nothing was installed`)
+      if (found) throw new InstallError(`the download has ${name} twice in it; nothing was installed`)
+      if (size > MAX_PROGRAM)
+        throw new InstallError(`${name} in the download is larger than 50 MB; nothing was installed`)
       if (local + 30 > zip.length || view.getUint32(local, true) !== 0x04034b50) throw broken()
       const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true)
       const data = zip.subarray(start, start + packed)
@@ -245,12 +257,12 @@ export function fromZip(zip: Uint8Array, name: string): Uint8Array {
         } catch {
           throw broken()
         }
-      } else throw new InstallError(`${name} is packed in a way hadley does not read; nothing was installed`)
+      } else throw new InstallError(`the download is packed in a way hadley cannot read; nothing was installed`)
       if (found.length !== size) throw broken()
     }
     at += 46 + nameLength + extra + comment
   }
-  if (!found) throw new InstallError(`the archive holds no ${name}; nothing was installed`)
+  if (!found) throw new InstallError(`the download has no ${name} in it; nothing was installed`)
   return found
 }
 
@@ -265,7 +277,7 @@ export interface Installed {
  */
 export async function install(offered: Offer, home: string, source: Source = github(), platform = process.platform) {
   const signal = AbortSignal.timeout(FETCH_TIMEOUT_MS)
-  const archive = await download(source, offered.url, MAX_ARCHIVE, signal)
+  const archive = await download(source, offered.url, 'the download', MAX_ARCHIVE, signal)
   if (createHash('sha256').update(archive).digest('hex') !== offered.sum)
     throw new InstallError('the download does not match SHA256SUMS; nothing was installed')
   const windows = offered.system.startsWith('windows-')
@@ -276,7 +288,7 @@ export async function install(offered: Offer, home: string, source: Source = git
     try {
       tar = gunzipSync(archive, { maxOutputLength: MAX_PROGRAM + (10 << 20) })
     } catch {
-      throw new InstallError('the archive is broken or too large; nothing was installed')
+      throw new InstallError('the download is broken or larger than 60 MB unpacked; nothing was installed')
     }
     program = fromTar(tar, FORMS_PROGRAM)
   }
@@ -291,11 +303,15 @@ export async function install(offered: Offer, home: string, source: Source = git
     try {
       printed = execFileSync(temp, ['-version'], { encoding: 'utf8', timeout: VERSION_TIMEOUT_MS, stdio: 'pipe' })
     } catch (error) {
-      throw new InstallError(`the program of the release does not run (${(error as Error).message.split('\n')[0]})`)
+      throw new InstallError(
+        `the downloaded program does not run (${(error as Error).message.split('\n')[0]}); nothing was installed`,
+      )
     }
     if (printed.trim() !== `${FORMS_PROGRAM} ${offered.version}`)
       throw new InstallError(
-        `the program of the release says it is ${printed.trim() || 'nothing'}; nothing was installed`,
+        printed.trim()
+          ? `the downloaded program is ${printed.trim()}, not ${offered.version}; nothing was installed`
+          : 'the downloaded program names no version; nothing was installed',
       )
     renameSync(temp, path)
   } finally {
@@ -364,8 +380,12 @@ export interface OnRequest {
 export async function formsOnRequest(options: OnRequest): Promise<string | undefined> {
   const { version, say, warn, ask = askYes, home = formsHome(), source = github() } = options
   const system = 'system' in options ? options.system : releaseSystem()
-  if (!options.interactive || !system) {
+  if (!options.interactive) {
     warn(OFF)
+    return undefined
+  }
+  if (!system) {
+    warn(offLine(noRelease(version, `${process.platform}-${process.arch}`)))
     return undefined
   }
   try {
@@ -406,11 +426,11 @@ export async function installCommand(options: {
   const { version, home = formsHome(), source = github() } = options
   const system = 'system' in options ? options.system : releaseSystem()
   if (installedForms(version, home)) {
-    console.log(`${FORMS_PROGRAM} ${version} is already installed in ${shown(home)}`)
+    console.log(`${FORMS_PROGRAM} ${version} is already installed in ${shown(home)}; nothing to download`)
     return 0
   }
   if (!system) {
-    console.error(`${FORMS_PROGRAM}: a release has no program for ${process.platform}-${process.arch}`)
+    console.error(`${FORMS_PROGRAM}: ${noRelease(version, `${process.platform}-${process.arch}`).message}`)
     return 1
   }
   try {
