@@ -11,6 +11,12 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 - Notes of one day are listed by their time, where their `publishFrom` gives one, before those that give none; then by
   id as before ([docs/themes.md](docs/themes.md), "Notes").
 
+### Fixed
+
+- Code and math blocks in a list item keep the indentation of their content, also without a blank line before them,
+  and a nested list on its parent's content column, such as three spaces under `1. `, is read instead of refused
+  (Markanto 0.2.3).
+
 ## [0.4.0] — 2026-11-10
 
 A guide for the agent in every new site, a note template in hems and punch, and a site's own light or dark kept.

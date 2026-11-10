@@ -5,7 +5,7 @@
     "": {
       "name": "crossguard",
       "devDependencies": {
-        "@markantolang/parser": "0.2.2",
+        "@markantolang/parser": "0.2.3",
         "@playwright/test": "1.64.1",
         "@types/node": "^26.5.1",
         "bun-types": "^1.4.2",
@@ -27,7 +27,7 @@
       },
       "dependencies": {
         "@limaformat/lima": "^0.8.1",
-        "@markantolang/parser": "0.2.2",
+        "@markantolang/parser": "0.2.3",
         "@mkorun/galley": "^0.3.4",
         "@mkorun/quad": "^0.1.5",
         "esbuild": "0.28.2",
@@ -152,7 +152,7 @@
 
     "@limaformat/lima": ["@limaformat/lima@0.8.1", "", {}, "sha512-WdRdL52Bt590/F1e3KhKcBy3wCLoCWLiYeZiVlQtbuyaBWflrvVyMHwTDNZrJOms7RdKmYYfqTFs4GytuAfUKg=="],
 
-    "@markantolang/parser": ["@markantolang/parser@0.2.2", "", { "peerDependencies": { "mdast-util-from-markdown": "2.0.2", "mdast-util-gfm": "3.1.0", "micromark-extension-gfm": "3.0.0" }, "optionalPeers": ["mdast-util-from-markdown", "mdast-util-gfm", "micromark-extension-gfm"], "bin": { "markanto": "dist/cli.js" } }, "sha512-VyTyeg3fG0YpD4tr0gd0lQNvPzDtlPFRbBgVBi7rkHHJnPNc2rvQqwyCSFzB2PjZUlxhR+WqtquBsFPOZmz96Q=="],
+    "@markantolang/parser": ["@markantolang/parser@0.2.3", "", { "peerDependencies": { "mdast-util-from-markdown": "2.0.2", "mdast-util-gfm": "3.1.0", "micromark-extension-gfm": "3.0.0" }, "optionalPeers": ["mdast-util-from-markdown", "mdast-util-gfm", "micromark-extension-gfm"], "bin": { "markanto": "dist/cli.js" } }, "sha512-gDWZ8n6ohjdD/dA8g2PLkAiUx3BqhzM8cw94LfeHSKWJ/TlJyODFaDZ91Am8BM11Ygo2fFTNCZZHLx9HeU3I2w=="],
 
     "@mkorun/galley": ["@mkorun/galley@0.3.4", "", {}, "sha512-fFIdR6XpGyf5EzjDUOonFCREMqplDIpiPg6RDYUf3DOkVhrmOrYGAhOspkaOtd4keTKliUgCCABAQKs2H4usqQ=="],
 
