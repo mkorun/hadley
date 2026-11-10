@@ -66,6 +66,7 @@ brings the page up to date in place.
 
 ### Fixed
 
+- hems: the home page's large title is its `<h1>`; the page had none.
 - A page with a container name the parser refuses, such as `::: A|B`, hung `hadley dev` and every build (Markanto
   0.2.2); its text now stays, in the error block.
 - The editor saves a block with one blank line between its parts: Enter pressed for a new paragraph left two.

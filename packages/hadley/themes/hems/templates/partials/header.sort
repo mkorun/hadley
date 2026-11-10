@@ -35,7 +35,7 @@
 </header>
 {#if template === 'home'}
 <div class="title-page" data-pagefind-ignore>
-  <p class="title-page-title">{ site.title }</p>
+  <h1 class="title-page-title">{ site.title }</h1>
   {#if site.claim}<p class="site-claim">{ site.claim }</p>{/if}
 </div>
 {:else if site.claim}<p class="site-claim" data-pagefind-ignore>{ site.claim }</p>{/if}
