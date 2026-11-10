@@ -144,6 +144,9 @@ export async function namesOf(dir: string): Promise<string[]> {
 /** The starter without sample content, which goes with every theme; any other is its theme's own, named after it. */
 export const BLANK = 'blank'
 
+/** The notes for a coding agent every new site gets as its AGENTS.md (docs/init.md), the same for every starter. */
+export const AGENTS = join(STARTERS, 'site-agents.md')
+
 /** The starter of `theme`: its own, or with `blank` the blank one (docs/init.md). */
 export async function starterOf(theme: string, blank: boolean): Promise<string> {
   const themes = await namesOf(THEMES)
@@ -169,6 +172,9 @@ export async function init(dir: string, languages: readonly string[], theme: str
   const themeLima = lf(await readFile(join(themeDir, 'theme.lima'), 'utf-8').catch(() => ''))
   const config = lf(await readFile(join(starterDir, 'config.lima'), 'utf-8'))
   await writeFile(join(dir, 'config.lima'), configFor(config, languages, written, themeLima, new Date().getFullYear()))
+  // the site's own from now on, as its theme is: init writes them once, and nothing of hadley again
+  await copyFile(AGENTS, join(dir, 'AGENTS.md'))
+  await writeFile(join(dir, 'CLAUDE.md'), '@AGENTS.md\n')
 
   const dropped = written.filter((language) => !languages.includes(language))
   const content = join(starterDir, 'content')

@@ -4,6 +4,14 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `hadley init` writes `AGENTS.md`, notes for a coding agent working in the site: its folders, its commands and which
+  documentation to read for what. `CLAUDE.md` beside it imports them for Claude Code; Codex and the agent of the
+  editor's chat read `AGENTS.md` itself ([docs/init.md](docs/init.md)).
+
 ## [0.3.0] — 2026-11-10
 
 The chat with an agent beside the page, versions with undo and redo, a block editor rebuilt in TypeScript that brings

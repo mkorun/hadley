@@ -12,6 +12,11 @@ imprint, a feed page and a 404 page, and nothing to delete. A theme hadley does 
 does. The blocks of the theme's `starter:` (`theme.lima`) go into the new `config.lima`, and the year `init` runs in
 as `site.since`, the first year of the copyright line ([config.md](config.md)).
 
+`init` also writes `AGENTS.md`: notes for a coding agent working in the site, naming its folders, its commands and
+which documentation to read for what. `CLAUDE.md` beside it imports it for Claude Code. Codex reads `AGENTS.md` itself,
+and so does the agent the editor's chat starts in the site. Both belong to the site, as its theme does: hadley writes
+them once and never again.
+
 `--language` names the site's languages, its default first: `de` for German alone, `de,en` for German with English.
 `all` stands for all the starter is written in, `en,de,fr,es,it` for every one. Without it the site is English. A
 language the starter is not written in stops it, naming those it is.

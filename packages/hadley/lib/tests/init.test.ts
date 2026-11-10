@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { build } from '../../index.ts'
 import {
+  AGENTS,
   BLANK,
   STARTERS,
   THEMES,
@@ -115,6 +116,13 @@ describe('what hadley init writes', () => {
     await assert.rejects(init(join(dir, 'new'), ['en'], 'nowhere', 'hems'), /hadley brings hems, punch/)
     await assert.rejects(init(join(dir, 'new'), ['en'], 'hems', 'punch'), /the starter punch is not the theme hems's/)
     await assert.rejects(starterOf('nowhere', true), /hadley brings hems, punch/)
+  })
+
+  it('writes AGENTS.md for a coding agent, and CLAUDE.md that imports it for Claude Code', async () => {
+    const site = join(dir, 'agents')
+    await init(site, ['en'], 'hems', BLANK)
+    assert.equal(await readFile(join(site, 'AGENTS.md'), 'utf-8'), await readFile(AGENTS, 'utf-8'))
+    assert.equal(await readFile(join(site, 'CLAUDE.md'), 'utf-8'), '@AGENTS.md\n')
   })
 
   it('gives a theme its own starter, or the blank one', async () => {
