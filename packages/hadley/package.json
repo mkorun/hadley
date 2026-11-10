@@ -28,7 +28,7 @@
     "@limaformat/lima": "^0.8.1",
     "@markantolang/parser": "0.2.2",
     "@mkorun/galley": "^0.3.4",
-    "@mkorun/quad": "^0.1.4",
+    "@mkorun/quad": "^0.1.5",
     "esbuild": "0.28.2",
     "pagefind": "^1.6.0",
     "sharp": "^0.35.4",

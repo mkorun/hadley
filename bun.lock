@@ -21,7 +21,7 @@
     },
     "packages/hadley": {
       "name": "@mkorun/hadley",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "bin": {
         "hadley": "./hadley.ts",
       },
@@ -29,7 +29,7 @@
         "@limaformat/lima": "^0.8.1",
         "@markantolang/parser": "0.2.2",
         "@mkorun/galley": "^0.3.4",
-        "@mkorun/quad": "^0.1.4",
+        "@mkorun/quad": "^0.1.5",
         "esbuild": "0.28.2",
         "pagefind": "^1.6.0",
         "sharp": "^0.35.4",
@@ -158,7 +158,7 @@
 
     "@mkorun/hadley": ["@mkorun/hadley@workspace:packages/hadley"],
 
-    "@mkorun/quad": ["@mkorun/quad@0.1.4", "", {}, "sha512-rET3sDoPQ/+I8EXAGc3s/ixg70vi8GTmTz3/38b18dT3qgYwyCLZf6isTDLvIJDqhqYMXvSh0Tk0nNj0AhzQRQ=="],
+    "@mkorun/quad": ["@mkorun/quad@0.1.5", "", {}, "sha512-emCDLi0tmjkq1H4n00mEf8/wsgd7a1aJ64nj4HHKvMGhZBRJ0g8DkfEOoVMpItyQBUAakvBeLnfijurmfMYBBg=="],
 
     "@oxc-parser/binding-android-arm-eabi": ["@oxc-parser/binding-android-arm-eabi@0.155.0", "", { "os": "android", "cpu": "arm" }, "sha512-A6xv7hDtnTm+xlZ7utn6rRQpRMJHRhVr3gjRGqlx0RUX84mNk0pAsy6YN/wWhuOTkaZhRrrzaLxf0NfbH77j2w=="],
 
