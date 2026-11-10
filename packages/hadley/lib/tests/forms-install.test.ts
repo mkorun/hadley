@@ -210,7 +210,8 @@ describe('where and which', () => {
 
   it('finds only the version hadley asks for, by its name', () => {
     mkdirSync(home, { recursive: true })
-    writeFileSync(join(home, 'hadley-forms-0.2.0'), '', { mode: 0o755 })
+    // the name hadley gives a program on this system: on Windows with .exe
+    writeFileSync(join(home, `hadley-forms-0.2.0${windows ? '.exe' : ''}`), '', { mode: 0o755 })
     writeFileSync(join(home, 'notes.txt'), '')
     assert.equal(installedForms('0.3.0', home), undefined)
     assert.deepEqual(installedVersions(home), ['0.2.0'])
