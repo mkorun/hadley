@@ -109,6 +109,41 @@ The error pages answer 503 as well, for a site under maintenance ("Maintenance")
 A page that embeds another site's video needs that site in `frame-src`; one that shows pictures from elsewhere, in
 `img-src`.
 
+## Apache
+
+Most web hosting serves with Apache, which reads a site's rules from a file `.htaccess` at its root. The theme's
+`static/` puts it there, as it does `robots.txt`:
+
+```apache
+Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+Header always set X-Content-Type-Options "nosniff"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+Header always set Content-Security-Policy "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; media-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'"
+
+<FilesMatch "\.svg$">
+    Header always add Content-Security-Policy "sandbox"
+</FilesMatch>
+
+<If "%{REQUEST_URI} =~ m#^/assets/(css|js)/#">
+    Header always set Cache-Control "public, max-age=31536000, immutable"
+</If>
+<Else>
+    Header always set Cache-Control "no-cache"
+</Else>
+
+# the error page of the language the path begins with, else the default language's
+ErrorDocument 404 /errors/404/index.html
+<If "%{REQUEST_URI} =~ m#^/de/#">
+    ErrorDocument 404 /de/errors/404/index.html
+</If>
+```
+
+Each language other than the default has a block like the one for `de`. The host must allow these rules
+(`AllowOverride FileInfo`); where it allows less, Apache answers every request with an error 500. Where it allows
+none, Apache ignores the file without a word: after the first upload, `curl -I https://example.org/` should show the
+`Content-Security-Policy`. Web hosting runs no service that keeps running, so a site there has no comments
+([comments.md](comments.md)).
+
 ## Static hosts
 
 A host that serves the folder as it is, with no rules of its own, answers a missing page with a file `404.html`:
