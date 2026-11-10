@@ -42,6 +42,8 @@ export const WRITERS: Record<string, string> = {
   'packages/hadley/lib/generate-og-image.ts': "a page's og image, claimed",
   'packages/hadley/lib/generate-og-default.ts': 'og-default.jpg, claimed, and its store in .hadley/cache/images',
   'packages/hadley/lib/dev-server.ts': 'the output directory it serves, made when missing',
+  'packages/hadley/lib/forms-install.ts':
+    "the comments service it fetches, in hadley's own directory (not the PATH), and the older versions it removes there",
   'packages/hadley/lib/dev-https.ts':
     "the directory of the certificate mkcert makes for --https, in the user configuration's",
   'packages/hadley/hadley.ts': "the command line's config, a site's dist link, and what `hadley clean` empties",

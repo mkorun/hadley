@@ -12,10 +12,12 @@ import { refusal } from './dev-guard.ts'
 import { devCertificate } from './dev-https.ts'
 import { clearScreen, logger } from './logger.ts'
 import { changedSince, isSystemFile } from './platform.ts'
-import { FORMS_PROGRAM, devServiceEnv, formsDataDir, formsProgram } from './forms-service.ts'
+import { devServiceEnv, formsDataDir, formsProgram } from './forms-service.ts'
+import { formsHome, formsOnRequest, installedForms } from './forms-install.ts'
 import { siteLabel } from './site-root.ts'
 import { readUserConfig } from './user-config.ts'
 import { startVite } from './vite-start.ts'
+import pkg from '../package.json' with { type: 'json' }
 
 // what the dev server hands to the comments service instead of serving it
 const COMMENTS_PATHS = ['/api/comment/', '/admin/']
@@ -97,11 +99,19 @@ export async function startDevServer({
   const configRaw = await readFile(join(siteDir, 'config.lima'), 'utf-8').catch(() => '')
   const siteConfig = configRaw ? (limaparse(configRaw) as any) : null
 
-  // the comments service, when config.lima enables comments and there is one (lib/forms-service.ts)
+  // the comments service, when config.lima enables comments: the user's own (lib/forms-service.ts), else the one
+  // hadley fetched for its version, else, asked in a terminal, fetched now (lib/forms-install.ts)
   const commentsEnabled = siteConfig?.comments?.enabled === true
-  const forms = commentsEnabled ? formsProgram(userConfig.dev.forms) : undefined
+  let forms = commentsEnabled
+    ? (formsProgram(userConfig.dev.forms) ?? installedForms(pkg.version, formsHome()))
+    : undefined
   if (commentsEnabled && !forms)
-    devWarn(`comments.enabled is true, but ${FORMS_PROGRAM} is not on the PATH: comments are off (docs/dev-server.md)`)
+    forms = await formsOnRequest({
+      version: pkg.version,
+      interactive: hasKeyboard && isTTY,
+      say: devLog,
+      warn: devWarn,
+    })
   const hasComments = forms !== undefined
   // the block editor, loaded only when config.lima turns it on, and only for `hadley dev`
   const editor = outputMode === 'dev' && siteEditor(siteConfig) ? await import('../addons/editor/index.ts') : undefined

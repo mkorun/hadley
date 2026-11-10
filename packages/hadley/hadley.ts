@@ -74,6 +74,7 @@ Commands:
   deploy             Publish build + local server
   clean              Clear all build directories of the site
   comments           Comment moderation TUI against production (docs/comments.md)
+  comments install   Fetch the comments service for hadley dev from this version's release
   version            Print version
   upgrade            Replace the program with the latest release (docs/cli.md)
 
@@ -103,8 +104,9 @@ hadley dev — Development server
 
   Output:  <site>/.hadley/dev/
 
-  Starts hadley-forms (on the PATH, or dev.forms of the user configuration) if config.lima sets comments.enabled:
-  true; the dev server passes /api/comment/ and /admin/ to it (docs/comments.md).
+  Starts hadley-forms if config.lima sets comments.enabled: true (dev.forms of the user configuration, else on the
+  PATH, else the one hadley comments install fetched; without one it offers to fetch it); the dev server passes
+  /api/comment/ and /admin/ to it (docs/comments.md).
   Run "hadley clean" first if pages were deleted (stale output is not removed).`.trim(),
 
   deploy: `
@@ -143,6 +145,9 @@ hadley comments — Comment moderation TUI (production)
   ~/.config/hadley/comments/<host of site.origin>.token (mode 600); keeps its decisions in comments.archive.
 
   hadley dev comments   → the comments service of the dev server (its port + 1), with the token it made.
+  hadley comments install
+                        → fetches hadley-forms of this version's release for hadley dev, checked against its
+                          SHA256SUMS, into hadley's own directory (not the PATH; docs/comments.md).
 
   Keys:  a approve   r reject   e edit   n note   c reply   m mail   q quit   (docs/comments.md)`.trim(),
 }
@@ -230,6 +235,11 @@ try {
     }
 
     case 'comments': {
+      if (rest[0] === 'install') {
+        const { installCommand } = await import('./lib/forms-install.ts')
+        process.exitCode = await installCommand({ version: pkg.version })
+        break
+      }
       const root = site()
       const { runCommentsCli } = await import('./addons/forms/index.ts')
       await runCommentsCli(root, { dev: false })

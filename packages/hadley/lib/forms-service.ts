@@ -1,6 +1,7 @@
 /**
  * The comments service `hadley dev` starts (services/forms/CONTRACT.md C11): `dev.forms` of the user configuration,
- * else `hadley-forms` on the PATH. Its data and the secrets it makes lie in the site's `.hadley/forms/`.
+ * else `hadley-forms` on the PATH, else the one hadley fetched for its version (lib/forms-install.ts). Its data and the
+ * secrets it makes lie in the site's `.hadley/forms/`.
  */
 import { join, resolve } from 'node:path'
 import { isProgram, onPath } from './platform.ts'
