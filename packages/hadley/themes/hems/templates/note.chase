@@ -1,0 +1,38 @@
+<galley:config>
+{
+  "images": {
+    "default": {
+      "widths": [720, 1440],
+      "formats": ["webp"],
+      "sizes": "(max-width: 46rem) calc(100vw - 2.5rem), 42rem",
+      "quality": 80
+    }
+  }
+}
+</galley:config>
+<!DOCTYPE html>
+<html lang="{ meta.lang }"{#if site.theme.colorScheme !== 'auto'} data-color-scheme="{ site.theme.colorScheme }"{/if}>
+{@partial partials/head.sort}
+<body>
+{@partial partials/header.sort}
+
+<main id="main" data-pagefind-body data-pagefind-filter="lang:{ meta.lang }">
+  <article>
+    <header class="title-block">
+      <p class="entry-meta" data-pagefind-ignore>
+        {#if categoryLabel}<span data-pagefind-meta="category">{ categoryLabel }</span>{/if}
+        {#if meta.publishFrom}<time datetime="{ meta.publishFrom | isoDate }" data-pagefind-meta="date[datetime]">{ meta.publishFrom | dateFormat('yyyy-MM-dd') }</time>{/if}
+        {#if showBadge}<span class="badge">{#if status === 'draft'}{ t.status.draft }{:else if status === 'seed'}{ t.status.seed }{:else if status === 'scheduled'}{ t.status.scheduled }{:else}{ t.status.archived }{/if}</span>{/if}
+      </p>
+      <h1{#if isDevBuild} data-hadley-head="title"{/if}>{ meta.title }</h1>
+    </header>
+    <div class="prose">
+      {@raw html.markup}
+      {#if meta.link}<p><a href="{ meta.link }">{ meta.link | replace('https://', '') }</a></p>{/if}
+    </div>
+  </article>
+</main>
+
+{@partial partials/footer.sort}
+</body>
+</html>

@@ -1,6 +1,6 @@
 import { after, before, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { build } from '../../index.ts'
@@ -178,4 +178,28 @@ describe('a page of a site', () => {
       process.stdout.write = write
     }
   })
+
+  // read-whole runs 2026-11-10: a note in hems or punch stopped the build, as neither theme had a note template
+  for (const theme of themes)
+    it(`builds a note in ${theme}, with its date and the address it points to`, async () => {
+      const site = join(dir, `note-${theme}`)
+      await init(site, ['en'], theme, BLANK)
+      await mkdir(join(site, 'content', 'notes'), { recursive: true })
+      const note =
+        '---\npublishFrom: 2026-11-10\ndescription: Where hadley lives.\nlink: https://github.com/mkorun/hadley\n---\n'
+      await writeFile(join(site, 'content', 'notes', 'source.md'), `${note}# The source\n\nAll of it, in one place.\n`)
+      const write = process.stdout.write.bind(process.stdout)
+      process.stdout.write = () => true
+      try {
+        await build(site, 'publish')
+      } finally {
+        process.stdout.write = write
+      }
+      const html = await readFile(join(site, '.hadley', 'publish', 'notes', 'source', 'index.html'), 'utf-8')
+      assert.ok(html.includes('<time datetime="2026-11-10'), 'the note shows its date')
+      assert.ok(
+        html.includes('<a href="https://github.com/mkorun/hadley">github.com/mkorun/hadley</a>'),
+        'and its link',
+      )
+    })
 })
