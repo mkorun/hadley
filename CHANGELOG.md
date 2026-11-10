@@ -4,10 +4,10 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.3.0] — 2026-11-10
 
-The chat with an agent beside the page, versions with undo and redo, and a block editor rebuilt in TypeScript that
-brings the page up to date in place.
+The chat with an agent beside the page, versions with undo and redo, a block editor rebuilt in TypeScript that brings
+the page up to date in place, and the comments service fetched on request, on Windows too.
 
 ### Added
 
