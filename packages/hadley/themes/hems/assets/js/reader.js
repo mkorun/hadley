@@ -26,11 +26,14 @@ if (language && language !== root.lang) {
   if (version) location.replace(new URL(version.href).pathname)
 }
 
-// light or dark: the reader's choice, else the site's (theme.colorScheme, data-color-scheme) or the system's
+// light or dark: the reader's choice, else the site's (theme.colorScheme, data-color-scheme) or the system's. Only a
+// site with the button (theme.colorToggle, data-color-toggle) takes the reader's choice: without it, a choice kept
+// from before could not be changed back.
 const site = root.dataset.colorScheme ?? 'auto'
 const system = matchMedia('(prefers-color-scheme: dark)')
+const toggle = document.currentScript?.hasAttribute('data-color-toggle') ?? false
 const choice = () => {
-  const chosen = stored(SCHEME)
+  const chosen = toggle ? stored(SCHEME) : null
   return chosen === 'light' || chosen === 'dark' ? chosen : 'auto'
 }
 const apply = (chosen) => {

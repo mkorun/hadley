@@ -9,7 +9,7 @@
   <link rel="canonical" href="{ canonicalUrl }">
   {#each translations as url, lang}<link rel="alternate" hreflang="{ lang }" href="{ site.origin }{ url }">
   {/each}
-  {#if site.theme.colorToggle || hasTranslations}<script src="{ assets['/assets/js/reader.js'] }"></script>{/if}
+  {#if site.theme.colorToggle || hasTranslations}<script src="{ assets['/assets/js/reader.js'] }"{#if site.theme.colorToggle} data-color-toggle{/if}></script>{/if}
 
   <link rel="preload" href="{ assets['/assets/fonts/newsreader-latin-opsz-normal.woff2'] }" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{ assets['/assets/css/style.css'] }">

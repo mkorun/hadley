@@ -10,7 +10,7 @@
   {#if cover}<meta data-pagefind-meta="image[content]" content="{ cover.src }">{/if}
   {#each translations as url, lang}<link rel="alternate" hreflang="{ lang }" href="{ site.origin }{ url }">
   {/each}
-  {#if site.theme.colorToggle || hasTranslations}<script src="{ assets['/assets/js/reader.js'] }"></script>{/if}
+  {#if site.theme.colorToggle || hasTranslations}<script src="{ assets['/assets/js/reader.js'] }"{#if site.theme.colorToggle} data-color-toggle{/if}></script>{/if}
   <script src="{ assets['/assets/js/transitions.js'] }"></script>
   {#if template === 'home'}<link rel="expect" href="#colophon" blocking="render">{/if}
 
