@@ -97,7 +97,10 @@ const listEntry = (page: Page, locale: Locale) => ({
   coverAiTool: page.coverAiTool ?? '',
 })
 
-/** Notes in the page's language, ordered by publication day and then id (docs/themes.md, "Notes"). */
+/**
+ * Notes in the page's language, newest first by publication time and then by id (docs/themes.md, "Notes"). A date
+ * without a time is the start of its day, so a note that gives its time comes before the others of that day.
+ */
 export function notesFor(site: Site, lang: string, isPublish: boolean) {
   const locale = site.locales[lang] ?? {}
   const today = Date.parse(site.today)
@@ -105,9 +108,10 @@ export function notesFor(site: Site, lang: string, isPublish: boolean) {
     .flatMap((page) => {
       // A missing date is already a problem of the note; a dev build cannot order or age it.
       if (page.type !== 'note' || !page.metadata.publishFrom || (isPublish && page.state !== 'published')) return []
-      return [{ page, day: page.metadata.publishFrom.toISOString().slice(0, 10) }]
+      const at = page.metadata.publishFrom
+      return [{ page, at: at.getTime(), day: at.toISOString().slice(0, 10) }]
     })
-    .sort((a, b) => b.day.localeCompare(a.day) || (a.page.id < b.page.id ? -1 : a.page.id > b.page.id ? 1 : 0))
+    .sort((a, b) => b.at - a.at || (a.page.id < b.page.id ? -1 : a.page.id > b.page.id ? 1 : 0))
     .map(({ page, day }) => ({
       ...listEntry(page, locale),
       tags: page.metadata.tags ?? [],

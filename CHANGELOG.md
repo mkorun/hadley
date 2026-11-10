@@ -4,6 +4,13 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Notes of one day are listed by their time, where their `publishFrom` gives one, before those that give none; then by
+  id as before ([docs/themes.md](docs/themes.md), "Notes").
+
 ## [0.4.0] — 2026-11-10
 
 A guide for the agent in every new site, a note template in hems and punch, and a site's own light or dark kept.

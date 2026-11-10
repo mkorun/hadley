@@ -602,16 +602,18 @@ describe('notes review round 2', () => {
       assert.match(await output(path), /<title>/)
   })
 
-  it('orders notes on the same calendar day by id, regardless of publication time', async () => {
+  it('orders notes of one day by their time, a note without one last, and then by id', async () => {
     await put('content/notes/aaa.md', page('publishFrom: "2020-03-01T08:00:00Z"\ntitle: AAA\n'))
     await put('content/notes/zzz.md', page('publishFrom: "2020-03-01T20:00:00Z"\ntitle: ZZZ\n'))
+    await put('content/notes/bbb.md', page('publishFrom: 2020-03-01\ntitle: BBB\n'))
+    await put('content/notes/ccc.md', page('publishFrom: 2020-03-01\ntitle: CCC\n'))
     const site = await load(true)
     const entries = notesFor(site, 'en', true)
     assert.deepEqual(
       entries.map((entry) => entry.title),
-      ['AAA', 'ZZZ'],
+      ['ZZZ', 'AAA', 'BBB', 'CCC'],
     )
-    assert.equal(entries[0]!.ageDays, entries[1]!.ageDays)
+    assert.equal(entries[0]!.ageDays, entries[3]!.ageDays)
   })
 
   it('keeps only articles and essays in a series shared across roots', async () => {

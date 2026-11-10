@@ -110,10 +110,10 @@ An entry of a list (`featuredList`, `articleList`, `feed.items`, `newer`, `older
 ## Notes
 
 A note is a page with the template `note` (`templates/note.chase`), as an article has `article`. Every template reads
-the notes of its page's language (content.md, "Notes") as `noteList`, newest first by `publishFrom` and, on the same
-day, by `id`: a publish build the published ones, a dev build drafts and seeds as well. An entry holds what an entry
-of a list holds ("What a template reads"), and `tags`, `ageDays` (the days from its `publishFrom` to the day of the
-build) and `isDraft`.
+the notes of its page's language (content.md, "Notes") as `noteList`, newest first by `publishFrom`, its time included
+where it gives one, and then by `id`: a publish build the published ones, a dev build drafts and seeds as well. An entry
+holds what an entry of a list holds ("What a template reads"), and `tags`, `ageDays` (the days from its `publishFrom` to
+the day of the build) and `isDraft`.
 
 ```
 {#each noteList as note}<li><a href="{#if note.link}{ note.link }{:else}{ note.urlPath }{/if}">{ note.title }</a> { note.description }</li>{/each}
