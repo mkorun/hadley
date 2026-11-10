@@ -4,6 +4,12 @@ A site takes comments when its `config.lima` says so; visitors write them in the
 service (`hadley-forms`, `services/forms/`) keeps them, and the site's owner moderates them on their own machine with
 `hadley comments`, which writes the approved ones into their article's bundle. The next build shows them.
 
+Visitors need no account and solve no puzzle: the form's own script does a small proof of work (ALTCHA) in the
+browser, and nothing is loaded from another server. A comment needs a name and its text; an email address only when
+the visitor asks to hear of a reply, and it is never published. The service counts a visitor's address in memory for
+its rate limit and does not keep it with the comment. Once moderated, the comments are deleted on the service, email
+addresses included; the owner's archive keeps them on their own machine.
+
 ```lima
 comments:
   enabled:    true
