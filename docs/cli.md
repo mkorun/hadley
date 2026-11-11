@@ -19,8 +19,8 @@ what a step reports goes on the line below it when it does not fit beside it.
 | `hadley init [dir]` | a new site in `dir` (default: here), which must be empty or not exist | [init.md](init.md) |
 | `hadley dev` | builds the site, watches its files and serves it, with live reload | [dev-server.md](dev-server.md) |
 | `hadley dev comments` | moderates the comments the dev server's comments service took | [comments.md](comments.md) |
-| `hadley deploy` | builds the site for publishing and serves that build locally | [deploy.md](deploy.md) |
-| `hadley clean` | empties the site's `.hadley/dev/`, `.hadley/publish/` and `.hadley/cache/` |  |
+| `hadley deploy` | builds a preview of the site for publishing into `.hadley/preview/` and serves it | [deploy.md](deploy.md) |
+| `hadley clean` | empties the site's `.hadley/dev/`, `.hadley/preview/`, `.hadley/publish/` and `.hadley/cache/` |  |
 | `hadley comments` | moderates the comments of the site in production | [comments.md](comments.md) |
 | `hadley comments install` | fetches the comments service for `hadley dev` from this version's release, checked against its `SHA256SUMS`, into hadley's own directory | [dev-server.md](dev-server.md#comments) |
 | `hadley channel` | the chat's channel for Claude Code: a server Claude Code starts, not you | [dev-server.md](dev-server.md#chat) |
@@ -55,4 +55,5 @@ deleting a page, `hadley clean` removes its old output.
 | `--build` | builds into `.hadley/publish/` only, for copying to the server |
 | `--port`, `--https`, `--host` | as for `dev`, for the local server |
 
-Without `--build`, comments go to the local server, so that the preview can be tried as it is.
+Without `--build`, the preview goes to `.hadley/preview/` and its comments to the local server, so that it can be tried
+as it is.

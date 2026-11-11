@@ -33,7 +33,7 @@ export const textContentType = (path: string): string | undefined =>
 
 export interface DevServerOptions {
   siteDir: string // the site's directory (lib/site-root.ts)
-  outputMode: 'dev' | 'publish'
+  outputMode: 'dev' | 'preview' // the preview of `hadley deploy`, built before
   serve: DevOptions // port, HTTPS (lib/dev-options.ts)
   noWatch?: boolean
   noBuild?: boolean
@@ -468,7 +468,8 @@ export async function startDevServer({
     if (lastBuildOk) clearScreen()
     devLog(`Rebuilding (${reason})...`)
     try {
-      const built = await build(siteDir, outputMode, {
+      const built = await build(siteDir, outputMode === 'dev' ? 'dev' : 'publish', {
+        localServer: true,
         ...(editor
           ? {
               blockEditorHook: (blocks, filePath, rawDoc, page) =>

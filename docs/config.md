@@ -24,7 +24,7 @@ site:
     description: Die Site von Ada, die über Schrift und Werkzeuge schreibt.
 ```
 
-Each language of the site is a block named after it: its `title`, `claim`, `tagline`, `description` and `locale`;
+A language of the site may have a block named after it: its `title`, `claim`, `tagline`, `description` and `locale`;
 what a block leaves out comes from `default`. `origin` is the site's, `site.origin`, unless a language block gives its
 own; `default` gives none. Templates read the values of
 the page's language as `site.title`, `site.claim` and so on. `issn` names the site's ISSN, which `llms.txt` and the
@@ -70,7 +70,7 @@ navigations as `navigations.main`, `navigations.footer`, the featured articles a
 | `templates` | a template for every page of a root: `templates: articles: post` (site.md) |
 | `sources` | pages from another git repository, at a commit ([sources.md](sources.md)) |
 | `theme` | the theme's settings (themes.md, "Settings") |
-| `dev` | the dev server: `port`, `https`, `editor`, `chat` and more ([dev-server.md](dev-server.md)) |
+| `dev` | the dev server: `port`, `editor` and `chat`; HTTPS is an option, the rest the user configuration's ([dev-server.md](dev-server.md)) |
 
 ### robots
 
@@ -105,8 +105,8 @@ description (`dc:description`).
 
 ## Fields of a page
 
-`metadata` declares the front matter fields a page may have beyond hadley's own (content.md), and what a field must
-be, one of hadley's too, and the other names it may have:
+`metadata` declares the fields a page's front matter may have beyond hadley's own (content.md), with their rules. It
+also gives rules and other names to hadley's own fields:
 
 ```lima
 metadata:
@@ -114,8 +114,9 @@ metadata:
     allowed: [notes, essays, tools]     # any other value is a problem of the page
   mood:
     required: true                       # a page without it is a problem
-    defaultValue: calm
     aliases: [stimmung]                  # another name of the field
+  tone:
+    defaultValue: calm                   # a page without it has this value
   author:
     aliases: [autor, autorin, autor:in]  # other names of one of hadley's fields
   vgwort_pixel:

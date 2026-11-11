@@ -11,14 +11,21 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 - `hadley init` writes a `.gitignore`, which keeps `.hadley/` out of git with the secrets of the local comments
   service, and a `.gitattributes`, which checks text out with `\n`. `--git` makes the new site a git repository, with
   the site as its first commit ([docs/init.md](docs/init.md)).
+- hems and punch name a page's Markdown twin in its head (`<link rel="alternate" type="text/markdown">`), for an agent
+  that reads the HTML page rather than `llms.txt`.
 
 ### Changed
 
+- `hadley deploy` without `--build` builds its preview into `.hadley/preview/`, so that `.hadley/publish/` only ever
+  holds the site to upload, never one whose comments go to the local service ([docs/deploy.md](docs/deploy.md)).
 - Notes of one day are listed by their time, where their `publishFrom` gives one, before those that give none; then by
   id as before ([docs/themes.md](docs/themes.md), "Notes").
 
 ### Fixed
 
+- The documentation, after a review against the code: `dev.https` does not exist; comments on another device need
+  HTTPS; `llms.txt` lists the default language; `linktext`, notes, a page's file name and the site's languages as the
+  code has them; what to back up.
 - Code and math blocks in a list item keep the indentation of their content, also without a blank line before them,
   and a nested list on its parent's content column, such as three spaces under `1. `, is read instead of refused
   (Markanto 0.2.3).

@@ -11,7 +11,8 @@ the bold line right after that heading (`__Subtitle__`) is then its subtitle, un
 heading or bold line that is the title or subtitle is taken out of the text, so the page shows it once. A page with
 both a `title` and such a heading gives its title twice: that is a problem, which stops a publish build of the page.
 An empty `title` is a problem too.
-`linktext` is the shorter name navigations and `llms.txt` show for a page; without it, they show its title.
+`linktext` is the shorter name navigations show for a page, and `llms.txt` for a page that is no article or essay;
+without it, they show its title.
 
 ## Front matter
 
@@ -29,7 +30,7 @@ author: $(persons/ada)
 | Field |  |
 | --- | --- |
 | `title`, `subtitle` | the title and subtitle, where the text does not give them (above) |
-| `linktext` | the shorter name navigations and `llms.txt` show |
+| `linktext` | the shorter name navigations show, and `llms.txt` for a page that is no article or essay |
 | `htmlTitle` | the title of the browser's tab, where it is not the page's title |
 | `description` | one or two sentences on the page: lists, search engines, the feed |
 | `publishFrom` | the day the page is published; an article without one is undated |
@@ -111,11 +112,12 @@ A picture labelled as AI-generated in its metadata (XMP) carries the theme's lab
 The pictures hadley publishes say nothing of where they were taken. One made in widths keeps its colour profile, its XMP
 and, of its EXIF, who made it and who holds its rights: no location, camera or serial number, and the XMP loses its
 location too, as a position or as a place by name (a city, a country); it stands upright, as its camera meant. A JPEG or
-PNG copied as it is (`native`, linked, or sized in the text) loses the same, its IPTC its places by name, its pixels as
-they are and of its EXIF only the orientation and the rights. Another kind of picture, a WebP or AVIF say, that carries
-EXIF or a location fails the build, since hadley cannot take them out of it. `<m data-exif=keep>` around a picture
-publishes all of it, location included, where that is wanted, as for a photo with its camera settings. The build says
-how many pictures it published without their location; the file in the bundle stays as it is.
+PNG copied as it is (`native`, linked, or sized in the text) keeps its pixels as they are and, of its EXIF, only the
+orientation and the rights; its XMP loses its location as above, and its IPTC its places by name. Another kind of
+picture, a WebP or AVIF say, that carries EXIF or a location fails the build, since hadley cannot take them out of it.
+`<m data-exif=keep>` around a picture publishes all of it, location included, where that is wanted, as for a photo with
+its camera settings. The build says how many pictures it published without their location; the file in the bundle stays
+as it is.
 
 **Drawings.** `<m data-svg=inline>![Right answers by method](accuracy.svg)</m>` writes an SVG of the bundle into the
 page instead of an `<img>`, so that it takes its colours from the theme ([themes.md](themes.md), "Drawings"). A

@@ -43,19 +43,19 @@ dev:
   editor: true
 ```
 
-With it, every page loads the editor: a right click on a block of its Markdown edits it, and in edit mode a double click
-too, the field's cursor where the pointer was; the menu beside the block adds a new block below it, moves, merges and
-deletes blocks. In the field Enter is a new line, as lists, tables and code need; Ctrl+Enter or Ctrl+S (Cmd on a Mac)
-saves it. In edit mode a link in a block leads away only with Ctrl or Cmd, so that a double click on it opens its block.
-The field keeps its text in view and folds its seldom needed tools under its toolbar: a toggle at the right opens one,
-Files or Rewrite, and the field opens next time with the one open last. Save is on only where the text changed; Cancel,
-or Escape, closes the field, and asks first where it changed. Under Files the files of the page's bundle wait (not its
-Markdown, nothing hidden, no other bundle): a click puts one in at the caret, an image as `![](name)` with the caret in
-its alt text. A picture shows larger once the pointer rests on it or the keyboard comes to it. The bin beside a file
-takes it away, after a question, which warns if the text still uses it: the file moves to `.hadley/trash/` of the site,
-under its path, from where it can be brought back by hand. A PNG or JPEG dropped on the field, or pasted into it, is
-added to the page's bundle: the editor asks for its name first, and before it replaces a file of that name, then puts it
-in at the caret. The file is saved as it is; one that says where it was taken is marked, and the site publishes it
+With it, every page loads the editor. A right click on a block of its Markdown edits it; in edit mode a double click
+does too, with the cursor where the pointer was. The menu beside the block adds a new block below it, and moves, merges
+and deletes blocks. In the field Enter is a new line, as lists, tables and code need; Ctrl+Enter or Ctrl+S (Cmd on a
+Mac) saves it. In edit mode a link in a block leads away only with Ctrl or Cmd, so that a double click on it opens its
+block. The field keeps its text in view and folds its seldom needed tools under its toolbar: a toggle at the right opens
+one, Files or Rewrite, and the field opens next time with the one open last. Save is on only where the text changed;
+Cancel, or Escape, closes the field, and asks first where it changed. Under Files the files of the page's bundle wait
+(not its Markdown, nothing hidden, no other bundle): a click puts one in at the caret, an image as `![](name)` with the
+caret in its alt text. A picture shows larger once the pointer rests on it or the keyboard comes to it. The bin beside a
+file takes it away, after a question, which warns if the text still uses it: the file moves to `.hadley/trash/` of the
+site, under its path, from where it can be brought back by hand. A PNG or JPEG dropped on the field, or pasted into it,
+is added to the page's bundle: the editor asks for its name first, and before it replaces a file of that name, then puts
+it in at the caret. The file is saved as it is; one that says where it was taken is marked, and the site publishes it
 without that (content.md, "Pictures"). A page that is one `.md` file has no bundle, and so no files. A right click or a
 double click on the page's title or subtitle, where the theme marks it (themes.md, "Editor"), edits its text, while its
 `#` or `__` stays as it is, or the front matter where that gives it; they are never moved, merged or deleted. In edit
@@ -225,8 +225,9 @@ mise exec go -- go build -o ~/.local/bin/hadley-forms ./cmd/hadley-forms
 ```
 
 The local service keeps its comments, and the secrets it makes on its first start, in the site's `.hadley/forms/`. A
-local build sends comments to the page's own origin, so the comment widget works on any port, over HTTPS and from
-other devices; `config.lima` names only the production service (`comments.url`). `hadley dev comments` moderates the
+local build sends comments to the page's own origin, so the comment widget works on any port and over HTTPS. On another
+device it needs HTTPS: a browser computes its proof of work only on `localhost` or over HTTPS. `config.lima` names
+only the production service (`comments.url`). `hadley dev comments` moderates the
 local service (`--port` as for `hadley dev`), with the admin token from `.hadley/forms/dev-secrets.json`.
 
 ## HTTPS
@@ -248,7 +249,8 @@ Without either, `hadley dev --https` stops and says how to get one.
 configuration gives this machine (`dev.hostname`, or `HADLEY_DEV_HOST`), then each IPv4 address, the first one also
 as a QR code when the optional package `uqr` is installed. Vite answers to addresses and to that name; any other name
 needs `dev.allowedHosts`. With `--https`, a phone trusts the certificate only when it names the address the phone
-uses and the phone trusts its authority; HTTP is simpler on a home network.
+uses and the phone trusts its authority. HTTP is simpler on a home network, but there the comments work only on this
+machine.
 
 On WSL, other devices reach Linux only in mirrored networking mode, and the Hyper-V firewall must let the port in
 ([WSL networking](https://learn.microsoft.com/windows/wsl/networking)); in NAT mode, `hadley dev --host` says so

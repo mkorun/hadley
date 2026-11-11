@@ -46,7 +46,9 @@ export async function build(
   opts?: { localServer?: boolean; blockEditorHook?: BlockEditorHook; deferSearch?: boolean },
 ): Promise<{ searchable: string[]; planned: string[]; search?: () => Promise<void> }> {
   const isPublish = outputMode === 'publish'
-  const outputDir = `.hadley/${outputMode}`
+  // a publish build for the local server is a preview, kept apart from what goes to the server (docs/deploy.md)
+  const outputName = isPublish && opts?.localServer === true ? 'preview' : outputMode
+  const outputDir = `.hadley/${outputName}`
   const outDir = joinPath(siteDir, outputDir)
 
   logger.header(outputMode, await siteHost(siteDir))
@@ -295,7 +297,7 @@ export async function build(
 
   const writeSearch = async () => {
     const doneSearch = logger.step('build search index', 'search index')
-    await runPagefind(outDir, pages.searchable, joinPath(cacheDir, 'search', outputMode))
+    await runPagefind(outDir, pages.searchable, joinPath(cacheDir, 'search', outputName))
     doneSearch(`${pages.searchable.length} pages`)
   }
   if (search && !opts?.deferSearch) await writeSearch()

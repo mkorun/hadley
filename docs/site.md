@@ -18,16 +18,16 @@ content/
   meta/
     persons/ada.lima         a person (themes.md, "Persons"), and other Lima the pages refer to
 theme/                       the site's theme (themes.md)
-.hadley/                     what hadley builds and caches; not part of the site
+.hadley/                     what hadley builds and caches, and the pages' versions (below, "Backup")
 ```
 
 ## Bundles
 
-A bundle is a folder named by its id in brackets, `[first-steps]`. It holds its page in the site's default language,
-`<id>.md`; the same page in another language in a folder named after the language, `de/<slug>.md`; and the files its
-pages name, pictures and downloads. A file of the bundle that no page names is not published. A file whose name is all
-capitals, such as `README.md` or `NOTES.md`, is no page. An id names one bundle across all roots and languages;
-a second bundle with that id stops the build.
+A bundle is a folder named by its id in brackets, `[first-steps]`. It holds its page in the site's default language, a
+Markdown file whose name is the page's URL path, as a rule the id: `first-steps.md`; the same page in another language
+in a folder named after the language, `de/<slug>.md`; and the files its pages name, pictures and downloads. A file of
+the bundle that no page names is not published. A file whose name is all capitals, such as `README.md` or `NOTES.md`, is
+no page. An id names one bundle across all roots and languages; a second bundle with that id stops the build.
 
 A file `_<name>.md` beside the page, or in a language's folder, is a variant: another page of the same piece, at
 `/<name>/` (`/de/<name>/` in German), with the id `<id>_<name>`. It shares the comments of its bundle's page, needs no
@@ -64,7 +64,8 @@ own URL path (`/errors/503/loft-960w.webp`), never beside it.
 
 ## Languages
 
-The site's languages are the blocks of `site:` in `config.lima`, its default language `site.default.language`. A
+The site's default language is `site.default.language` in `config.lima`; any other is the site's once a page is
+written in it. A block of `site:` named after a language gives that language's title, claim and the like (config.md). A
 page in the default language lies in the bundle, in another language in the bundle's folder of that language. Its URL
 path is its file's name, `/first-steps/`, and `/de/erste-schritte/` in German; a note's lies under `notes/`,
 `/notes/first-issue/` and `/de/notes/erstes-issue/`. The front matter's `urlPath` sets another one.
@@ -79,8 +80,19 @@ path is its file's name, `/first-steps/`, and `/de/erste-schritte/` in German; a
 | `seed` | written, marked | not written; an idea, not yet a draft |
 | `archived` | written, marked | written under its URL, linked and listed nowhere, not indexed |
 
+A scheduled page is written by the first publish build on or after its day, by the date of the machine that builds.
+Nothing runs in the background: build and upload the site again that day.
+
 ## Categories and tags
 
 A page's `category` is one word; the theme names it in each language (`categories` in its `i18n` files), and
 `config.lima` may name the words a page may use (`metadata.category.allowed`). `tags` is a list. Templates read the
 pages of each as `site.taxonomy`.
+
+## Backup
+
+The site is its folder. Of `.hadley/`, hadley builds `dev/`, `preview/`, `publish/` and `cache/` again; it cannot make
+again `history/`, the versions of the pages (dev-server.md, "Versions"), `trash/`, the files the editor took away, and
+`forms/`, the comments and secrets of the local comments service. A backup holds the site with those three. A git
+repository of the site (init.md, `--git`) holds the site without `.hadley/`. The comments of the site online lie on
+its server and in the archive `comments.archive` names (comments.md).

@@ -16,24 +16,27 @@ builds the site for publishing into `.hadley/publish/`:
 | `pagefind/` | the search index, when `search` is on |
 | `sitemap.xml`, `llms.txt` | the published pages that search engines and language models may read |
 | `robots.txt` | allows crawling and points to `sitemap.xml`; a site or theme file at this path is published unchanged instead; optional content signals come from [config.lima](config.md#robots) |
-| `<path>/index.html.md` | each page in `llms.txt` as Markdown, when `markdown` is on (below) |
+| `<path>/index.html.md` | a page as Markdown, when `markdown` is on (below) |
 | the theme's `static/` | at the root: `favicon.svg`, `robots.txt` and the like |
 
 ## Markdown for language models
 
-`llms.txt` lists every published page except home and error pages, unless `sitemap: false` leaves it out. With
-`markdown: enabled: true` in `config.lima`, each of them also gets a Markdown twin, which `llms.txt` links instead of
-the HTML page: the twin of `/notes/example/` is `/notes/example/index.html.md`. `markdown: false` in a page's front
-matter leaves its twin out, and `llms.txt` links its HTML page. The dev server also shows the twin of a page that is
-not published yet, such as a draft, as it will be.
+`llms.txt` lists the published pages of the site's default language, except home and error pages and a page that
+`sitemap: false` leaves out. With `markdown: enabled: true` in `config.lima`, each such page, in every language, also
+gets a Markdown twin: the twin of `/notes/example/` is `/notes/example/index.html.md`. `llms.txt` links the twin instead
+of the HTML page, and hems and punch name it in the page's head (`markdownUrl`, themes.md). `markdown: false` in a
+page's front matter leaves its twin out, and `llms.txt` links its HTML page. The dev server also shows the twin of a
+page that is not published yet, such as a draft, as it will be.
 
 A twin contains public front matter — `title`, `description`, `url`, `language`, `published`, `updated`, `author` and
 `tags`, where present — followed by its title and canonical Markanto content. Its links and files use their absolute
 URLs on the site's origin; external and fragment-only destinations stay as written.
 
 Beside it, `.hadley/meta.json` holds the titles and paths of the articles, for the comments service's notifications
-(comments.md), and is not published. `hadley deploy` without `--build` serves the same build at
-<http://localhost:8000> first.
+(comments.md), and is not published.
+
+`hadley deploy` without `--build` builds a preview into `.hadley/preview/` and serves it at <http://localhost:8000>:
+the same site, with its comments going to the local service. Upload `.hadley/publish/`, never the preview.
 
 ## The server
 

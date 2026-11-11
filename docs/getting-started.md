@@ -61,6 +61,7 @@ hadley dev
 ```
 
 builds the site, watches its files and serves it at <http://localhost:8000>, reloading the browser as a file changes.
+It runs until `q` or Ctrl+C stops it.
 With `dev: editor: true` in `config.lima`, a right click on a block of a page edits it in the browser, and in edit
 mode a double click.
 [docs/dev-server.md](dev-server.md) has the rest: the editor, another port, HTTPS, a phone on the same network.
@@ -112,6 +113,9 @@ moderates it, and an approved one shows on the page after the next build.
 
 ## Publish
 
+Before the first upload, make the site yours in `config.lima`: `site.origin`, its address on the web, its title, and
+the owner, a person file in `content/meta/persons/` ([docs/config.md](config.md)); and replace the starter's pages.
+
 ```sh
 hadley deploy --build
 ```
@@ -119,4 +123,5 @@ hadley deploy --build
 writes the site to `.hadley/publish/`: the pages, their pictures, the theme's stylesheets and scripts under the hash
 of their bytes and its other files,
 the sitemap, the feed and the search index. Copy the folder to any web server; [docs/deploy.md](deploy.md) has a
-server's configuration. `hadley deploy` without `--build` serves the same files locally first.
+server's configuration. `hadley deploy` without `--build` shows a preview at <http://localhost:8000> first, built into
+`.hadley/preview/`; upload only `.hadley/publish/`.

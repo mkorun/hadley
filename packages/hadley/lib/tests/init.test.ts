@@ -253,6 +253,49 @@ describe('a site hadley init makes', () => {
 })
 
 // review 2026-10-28 (C.5): a page whose template the theme lacks stopped the build over its cover's image config
+describe('the preview of hadley deploy', () => {
+  it('builds into .hadley/preview/ and leaves .hadley/publish/, what goes to the server, as it was', async () => {
+    const site = join(dir, 'preview')
+    await init(site, ['en'], 'hems', BLANK)
+    const write = process.stdout.write.bind(process.stdout)
+    process.stdout.write = () => true
+    try {
+      await build(site, 'publish')
+      const published = await readFile(join(site, '.hadley', 'publish', 'index.html'), 'utf-8')
+      await build(site, 'publish', { localServer: true })
+      assert.equal(await readFile(join(site, '.hadley', 'publish', 'index.html'), 'utf-8'), published)
+      assert.ok((await readdir(join(site, '.hadley', 'preview'))).includes('index.html'))
+    } finally {
+      process.stdout.write = write
+    }
+  })
+})
+
+describe('the themes hadley brings', () => {
+  for (const theme of themes)
+    it(`${theme}: a page with a Markdown twin names it in its head, for an agent that reads the HTML`, async () => {
+      const site = join(dir, `twin-${theme}`)
+      await init(site, ['en'], theme, BLANK)
+      const config = await readFile(join(site, 'config.lima'), 'utf-8')
+      await writeFile(join(site, 'config.lima'), `${config}\nmarkdown:\n  enabled: true\n`)
+      const write = process.stdout.write.bind(process.stdout)
+      process.stdout.write = () => true
+      try {
+        await build(site, 'publish')
+      } finally {
+        process.stdout.write = write
+      }
+      const publish = join(site, '.hadley', 'publish')
+      const twins = (await readdir(publish, { recursive: true })).filter((path) => path.endsWith('index.html.md'))
+      assert.ok(twins.length > 0, 'the site has twins')
+      for (const twin of twins.map((path) => slashed(path))) {
+        const html = await readFile(join(publish, twin.slice(0, -'.md'.length)), 'utf-8')
+        const link = /<link rel="alternate" type="text\/markdown" href="([^"]+)">/.exec(html)?.[1]
+        assert.ok(link?.endsWith(`/${twin}`), `${twin}: ${link}`)
+      }
+    })
+})
+
 describe('a page of a site', () => {
   it('stops the build when the theme has no template it names', async () => {
     const site = join(dir, 'no-template')

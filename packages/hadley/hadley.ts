@@ -113,22 +113,22 @@ hadley dev — Development server
   deploy: `
 hadley deploy — Publish build + local server
 
-  hadley deploy             Publish build + static server (local preview; --https, --port, --host as for dev)
+  hadley deploy             A preview of the publish build + static server (--https, --port, --host as for dev)
   hadley deploy --build     Publish build only (no server, for deployment)
 
-  Output: <site>/.hadley/publish/
+  Output: <site>/.hadley/publish/ with --build, the preview in <site>/.hadley/preview/
 
   One publish build: production URLs, no dev indicators, the theme's stylesheets and scripts minified under the
   hash of their bytes, and the Pagefind search index when config.lima sets search.enabled: true.
 
   --build is the deployment flag: no server, production URLs, writes meta.json.
-  Without --build: comments go to the local server (local testing).`.trim(),
+  Without --build: comments go to the local server (local testing); upload publish/, never preview/.`.trim(),
 
   clean: `
 hadley clean — Clear build directories
 
   Clears and recreates for the site:
-    .hadley/dev/   .hadley/publish/   .hadley/cache/
+    .hadley/dev/   .hadley/preview/   .hadley/publish/   .hadley/cache/
 
   Use after deleting content pages to remove stale build output.`.trim(),
 
@@ -226,19 +226,19 @@ try {
 
     case 'deploy': {
       const root = site()
-      const publishDir = join(root, '.hadley', 'publish')
-
-      // Build directly to publish/ (no intermediate preview/ directory)
+      // what goes to the server in publish/; the preview, whose comments go to the local server, in preview/
+      const outDir = join(root, '.hadley', hasBuildFlag ? 'publish' : 'preview')
       const serve = await serving(root)
       if (hasBuildFlag) await build(root, 'publish') // production URLs
-      else await build(root, 'publish', { localServer: true }) // comments go to the local server
+      else await build(root, 'publish', { localServer: true })
 
       // relative where it lies within the current directory, as the build's own lines name it
-      const shown = relative(process.cwd(), publishDir)
-      logger.success('Published →', `${shown && !shown.startsWith('..') && !isAbsolute(shown) ? shown : publishDir}/`)
+      const shown = relative(process.cwd(), outDir)
+      const where = `${shown && !shown.startsWith('..') && !isAbsolute(shown) ? shown : outDir}/`
+      logger.success(hasBuildFlag ? 'Published →' : 'Preview →', where)
 
       if (!hasBuildFlag) {
-        await startDevServer({ siteDir: root, outputMode: 'publish', serve, noWatch: true, noBuild: true })
+        await startDevServer({ siteDir: root, outputMode: 'preview', serve, noWatch: true, noBuild: true })
       }
       break
     }
@@ -257,7 +257,7 @@ try {
 
     case 'clean': {
       const root = site()
-      const dirs = ['dev', 'publish', 'cache']
+      const dirs = ['dev', 'preview', 'publish', 'cache']
       for (const dir of dirs) {
         await rm(join(root, '.hadley', dir), { recursive: true, force: true })
         await mkdir(join(root, '.hadley', dir), { recursive: true })
