@@ -8,7 +8,8 @@
  * and show on the page. It does so four times: with hadley from
  * the clone on Bun and on Node.js, and with the package scripts/pack.ts builds, packed and installed with npm into a
  * project of its own, on Node.js and on Bun. Needs `node` and `npm` on the PATH, and the npm registry. With --binary it
- * does so once and with nothing else: with a program scripts/build-binary.ts built.
+ * does so once and with nothing else: with a program scripts/build-binary.ts built; then that program also makes a
+ * site of each starter with `hadley init` (INITS) and builds it for publishing, which needs `git` on the PATH.
  *
  *   bun scripts/smoke.ts [--keep] [--binary <program>]
  *
@@ -119,6 +120,31 @@ export const SERVED: [path: string, status: number][] = [
   // the block editor is off without dev.editor in config.lima
   ['/__hadley/editor/main.ts', 404],
 ]
+
+/**
+ * The sites `hadley init` makes with --binary, each built with `hadley deploy --build`: every starter, the theme's own
+ * and blank, and with --git a repository whose first commit the build leaves clean (its .gitignore keeps .hadley/ out).
+ * `pages` are files the build must write, by their path in .hadley/publish/.
+ */
+export const INITS: { dir: string; args: string[]; pages: string[]; git?: true }[] = [
+  {
+    dir: 'init-hems',
+    args: ['--git', '--language', 'all'],
+    pages: ['index.html', 'de/index.html', 'sitemap.xml'],
+    git: true,
+  },
+  { dir: 'init-punch', args: ['--theme', 'punch', '--git'], pages: ['index.html', 'sitemap.xml'], git: true },
+  { dir: 'init-blank', args: ['--blank'], pages: ['index.html'] },
+  { dir: 'init-blank-punch', args: ['--blank', '--theme', 'punch'], pages: ['index.html'] },
+]
+
+// a runner may have no git identity, without which `hadley init --git` makes the repository but no commit (init.md)
+const GIT_IDENTITY = {
+  GIT_AUTHOR_NAME: 'Smoke',
+  GIT_AUTHOR_EMAIL: 'smoke@example.invalid',
+  GIT_COMMITTER_NAME: 'Smoke',
+  GIT_COMMITTER_EMAIL: 'smoke@example.invalid',
+}
 
 type Step = { name: string; command: string; args: string[]; cwd: string; timeout: number }
 
@@ -266,6 +292,48 @@ async function smokeSite(site: string, hadley: Hadley): Promise<void> {
   console.log(`✓ the site builds: ${EXPECTED.length} files and the link to the article are there`)
 }
 
+/** Makes a site of each starter with `hadley init` in `root` and builds it for publishing (INITS). */
+function smokeInits(root: string, hadley: Hadley): void {
+  console.log(`— ${hadley.name}: hadley init`)
+  const identity = { ...env, ...GIT_IDENTITY }
+  for (const { dir, args, pages, git } of INITS) {
+    const name = `hadley init ${[dir, ...args].join(' ')}`
+    const init = spawnSync(hadley.command, [...hadley.args, 'init', dir, ...args], {
+      cwd: root,
+      env: identity,
+      encoding: 'utf-8',
+      timeout: 60_000,
+    })
+    if (init.error || init.status !== 0) {
+      console.error(
+        `✗ ${name}: ${init.error?.message ?? `exit ${init.status}`}\n${init.stdout ?? ''}${init.stderr ?? ''}`,
+      )
+      throw new SmokeFailure()
+    }
+    const site = join(root, dir)
+    run({
+      name: `${name}, then deploy --build`,
+      command: hadley.command,
+      args: [...hadley.args, 'deploy', '--build'],
+      cwd: site,
+      timeout: 120_000,
+    })
+    const wrong = pages.filter((page) => !existsSync(join(site, '.hadley', 'publish', page)))
+    if (git) {
+      const gitOut = (gitArgs: string[]) =>
+        spawnSync('git', gitArgs, { cwd: site, env: identity, encoding: 'utf-8', timeout: 30_000 }).stdout?.trim()
+      if (gitOut(['log', '-1', '--format=%s']) !== 'hadley init') wrong.push('the commit "hadley init"')
+      const dirty = gitOut(['status', '--porcelain'])
+      if (dirty !== '') wrong.push(`a clean tree after the build (git status: ${dirty})`)
+    }
+    if (wrong.length > 0) {
+      console.error(`✗ ${dir}: missing ${wrong.join(', ')}`)
+      throw new SmokeFailure()
+    }
+  }
+  console.log(`✓ hadley init makes ${INITS.length} sites that build`)
+}
+
 async function main(args: string[]): Promise<number> {
   const keep = args.includes('--keep')
   const rest = args.filter((arg) => arg !== '--keep')
@@ -292,7 +360,9 @@ async function main(args: string[]): Promise<number> {
   const bun = process.execPath
   try {
     if (binary) {
-      await smokeSite(join(root, 'program'), { name: 'the program', command: binary, args: [] })
+      const program = { name: 'the program', command: binary, args: [] }
+      await smokeSite(join(root, 'program'), program)
+      smokeInits(root, program)
       return 0
     }
     run({
