@@ -8,6 +8,8 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ### Added
 
+- `docs/dev-server.md` says where the editor's spelling check comes from: the browser's dictionary for the page's
+  language, which Firefox adds as an add-on.
 - `docs/comments.md` says how a web server passes the comments to its instance, how a second site on the same server
   runs its own, and what a theme other than hems and punch needs for comments.
 

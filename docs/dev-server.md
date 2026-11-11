@@ -70,6 +70,11 @@ site. Out of edit mode the control steps back, until the pointer or the keyboard
 changed since the dev server started, a warning above the control asks to restart it, and the terminal says so once.
 `hadley deploy` serves no editor.
 
+The field checks spelling with the browser's own dictionary, in the language of the page (its `lang`). Where the browser
+has no dictionary for that language, it checks with another one, and nearly every word is underlined. Firefox adds one
+as an add-on (right click in the field, Languages, Add Dictionaries; a language pack alone translates only Firefox
+itself); Chrome and Edge in their settings under Languages, Spell check.
+
 ### Up to date in place
 
 With the block editor, when only the Markdown of pages changed, by the editor, the chat's agent or another program, each
