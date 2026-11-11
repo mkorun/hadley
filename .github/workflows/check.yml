@@ -39,8 +39,15 @@ jobs:
       - uses: ./.github/actions/tools
         timeout-minutes: 10
       - if: runner.os == 'Linux'
-        run: sudo apt-get install -y libimage-exiftool-perl fonts-noto-core
-        timeout-minutes: 5
+        # the runners' Azure mirror of Ubuntu did not resolve for hours (2026-11-11): give up on it quickly, and install
+        # once more from Ubuntu's own archive
+        run: |
+          apt() { sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=15 "$@"; }
+          apt install -y libimage-exiftool-perl fonts-noto-core || {
+            sudo sed -i 's|http://azure.archive.ubuntu.com|http://archive.ubuntu.com|g' /etc/apt/sources.list.d/ubuntu.sources
+            apt update && apt install -y libimage-exiftool-perl fonts-noto-core
+          }
+        timeout-minutes: 8
       - if: runner.os == 'macOS'
         run: brew install exiftool && brew install --cask font-noto-sans
         timeout-minutes: 10
