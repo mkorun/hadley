@@ -4,7 +4,10 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.5.1] — 2026-11-11
+
+Corrections to `hadley dev` and its editor, to messages that now say what is wrong, and documentation for comments
+behind a web server and for the editor's spelling check.
 
 ### Added
 

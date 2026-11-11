@@ -47,7 +47,7 @@ the systemd unit. On a Linux server on amd64, in an empty directory:
 ```bash
 (
   set -e
-  version=0.5.0
+  version=0.5.1
   file=hadley-forms-$version-linux-amd64.tar.gz
   base=https://github.com/mkorun/hadley/releases/download/v$version
   curl -fL --remote-name-all "$base/$file" "$base/SHA256SUMS"
