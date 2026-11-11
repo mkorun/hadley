@@ -159,12 +159,14 @@ export async function startDevServer({
     })
     const prefix = (line: string) => console.log(`${dim}[forms]${reset} ${line.trimEnd()}`)
     commentsProcess.stdout?.on('data', (d: Buffer) => d.toString().split('\n').filter(Boolean).forEach(prefix))
+    // the service logs everything on stderr, as Go does, its start line too; console.error would print it red on Bun,
+    // as if it were an error, so it goes to stderr as it is (an exit says itself that something is wrong, below)
     commentsProcess.stderr?.on('data', (d: Buffer) =>
       d
         .toString()
         .split('\n')
         .filter(Boolean)
-        .forEach((l) => console.error(`${dim}[forms]${reset} ${l.trimEnd()}`)),
+        .forEach((l) => process.stderr.write(`${dim}[forms]${reset} ${l.trimEnd()}\n`)),
     )
     commentsProcess.on('exit', (code) => {
       if (!shuttingDown) devWarn(`! Comment service exited unexpectedly (code ${code})`)

@@ -19,6 +19,10 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
   `2026-11-10T09:00`.
 - An autolink on the site's own origin is refused with how to write it as a checked link, no longer as "not an
   absolute URL".
+- `hadley dev` no longer shows the comments service's ordinary lines, its start line among them, in red as if they
+  were errors.
+- In a terminal that reports no width (0 columns), a build no longer stops with "String.prototype.repeat argument
+  must be greater than or equal to 0".
 
 ## [0.5.0] — 2026-11-11
 

@@ -49,7 +49,8 @@ const c = {
 
 /** Below this many columns a build's steps take their short names. */
 const NARROW = 70
-const columns = () => (isTTY ? (process.stdout.columns ?? Infinity) : Infinity)
+// a terminal without a size (a pty nobody set one for) says 0 columns: as wide as no terminal, not as narrow as nothing
+const columns = () => (isTTY ? process.stdout.columns || Infinity : Infinity)
 const sep = () => c.muted + '─'.repeat(Math.min(54, columns() - 1)) + c.reset
 
 export const formatMs = (ms: number) => (ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(2)} s`)
