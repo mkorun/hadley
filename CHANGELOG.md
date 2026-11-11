@@ -24,6 +24,11 @@ names its Markdown twin, and the documentation was checked against the code.
 - Notes of one day are listed by their time, where their `publishFrom` gives one, before those that give none; then by
   id as before ([docs/themes.md](docs/themes.md), "Notes").
 
+### Security
+
+- The comments service is built with Go 1.27.4, whose `net/http` no longer crashes an HTTP/1 server through a race in
+  `MaxBytesReader` (GO-2026-6859).
+
 ### Fixed
 
 - The documentation, after a review against the code: `dev.https` does not exist; comments on another device need
