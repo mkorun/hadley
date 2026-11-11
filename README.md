@@ -1,6 +1,6 @@
 # hadley
 
-> `0.4.0` is the latest release. The [changelog](CHANGELOG.md) names what it leaves open.
+> `0.5.0` is the latest release. The [changelog](CHANGELOG.md) names what it leaves open.
 
 **Just write. Own your site.** For people who write — authors, bloggers, anyone with a site of their own — who would
 rather write than tinker.

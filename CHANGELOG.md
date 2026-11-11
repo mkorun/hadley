@@ -4,7 +4,10 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.5.0] — 2026-11-11
+
+A new site can start as a git repository, the preview of `hadley deploy` stays apart from the site to upload, a page
+names its Markdown twin, and the documentation was checked against the code.
 
 ### Added
 
