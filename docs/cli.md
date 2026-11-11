@@ -34,6 +34,7 @@ what a step reports goes on the line below it when it does not fit beside it.
 | `--theme <theme>` | `hems` (default) or `punch`, each with its own starter |
 | `--blank` | the starter without sample content instead: home, imprint, feed and 404 |
 | `--language <languages>` | `de`, `de,en` (the first is the default), or `all` the starter is written in |
+| `--git` | makes the site a git repository, with the new site as its first commit |
 
 ## dev
 

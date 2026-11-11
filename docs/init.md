@@ -1,7 +1,7 @@
 # hadley init
 
 ```
-hadley init [dir] [--language <languages>] [--theme <theme>] [--blank]
+hadley init [dir] [--language <languages>] [--theme <theme>] [--blank] [--git]
 ```
 
 Makes a new site in `dir`, by default the current directory, which must be empty or not exist: a theme as its
@@ -12,10 +12,25 @@ imprint, a feed page and a 404 page, and nothing to delete. A theme hadley does 
 does. The blocks of the theme's `starter:` (`theme.lima`) go into the new `config.lima`, and the year `init` runs in
 as `site.since`, the first year of the copyright line ([config.md](config.md)).
 
-`init` also writes `AGENTS.md`: notes for a coding agent working in the site, naming its folders, its commands and
-which documentation to read for what. `CLAUDE.md` beside it imports it for Claude Code. Codex reads `AGENTS.md` itself,
-and so does the agent the editor's chat starts in the site. Both belong to the site, as its theme does: hadley writes
-them once and never again.
+`init` also writes four files for working on the site:
+
+- `AGENTS.md`: notes for a coding agent, naming the site's folders, its commands and which documentation to read for
+  what. Codex reads it, and so does the agent the editor's chat starts.
+- `CLAUDE.md`: imports `AGENTS.md` for Claude Code.
+- `.gitignore`: keeps `.hadley/` out of git, the folder of what hadley builds and caches and of the secrets of the
+  local comments service.
+- `.gitattributes`: makes git check out text with `\n` on every system ([platforms.md](platforms.md)).
+
+They belong to the site, as its theme does: hadley writes them once and never again.
+
+`--git` also makes the site a git repository, with all `init` wrote as its first commit, "hadley init", on the branch
+git starts with:
+
+- Without git on the machine, `init` stops before it writes anything.
+- In a directory inside a repository already, `init` makes the site but no repository of its own, and names the one
+  around it.
+- While git knows no name and email, the commit fails: the repository is there with the files added, `init` shows what
+  git said, and `git commit -m "hadley init"` makes the commit once git knows them.
 
 `--language` names the site's languages, its default first: `de` for German alone, `de,en` for German with English.
 `all` stands for all the starter is written in, `en,de,fr,es,it` for every one. Without it the site is English. A

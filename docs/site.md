@@ -3,6 +3,7 @@
 ```
 config.lima                  what the site is and how it is built (config.md)
 AGENTS.md                    notes for a coding agent, which CLAUDE.md imports (init.md)
+.gitignore                   keeps .hadley/ out of git; .gitattributes beside it (init.md)
 content/
   articles/                  the folders of the content, each a root: articles, essays, pages, notes
     [first-steps]/           a bundle: one page, its files, its languages

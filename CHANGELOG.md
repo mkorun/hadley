@@ -6,6 +6,12 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ## [Unreleased]
 
+### Added
+
+- `hadley init` writes a `.gitignore`, which keeps `.hadley/` out of git with the secrets of the local comments
+  service, and a `.gitattributes`, which checks text out with `\n`. `--git` makes the new site a git repository, with
+  the site as its first commit ([docs/init.md](docs/init.md)).
+
 ### Changed
 
 - Notes of one day are listed by their time, where their `publishFrom` gives one, before those that give none; then by

@@ -3,6 +3,7 @@
  * starter is a site in English with every other language in the bundles' language folders and in blocks or keys named
  * after it in its Lima files; init keeps the languages named and makes the first the default.
  */
+import { spawnSync } from 'node:child_process'
 import { copyFile, cp, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { isSystemFile, lf, pathsBelow } from './platform.ts'
@@ -147,6 +148,38 @@ export const BLANK = 'blank'
 /** The notes for a coding agent every new site gets as its AGENTS.md (docs/init.md), the same for every starter. */
 export const AGENTS = join(STARTERS, 'site-agents.md')
 
+/** The `.gitignore` and `.gitattributes` every new site gets (docs/init.md). */
+export const GITIGNORE = join(STARTERS, 'site-gitignore')
+export const GITATTRIBUTES = join(STARTERS, 'site-gitattributes')
+
+/** What `--git` made (docs/init.md): a repository with the site as its first commit, one without, or none. */
+export type GitOutcome =
+  | { made: 'commit' }
+  | { made: 'repository'; git: string } // what git said of the commit that failed
+  | { made: 'nothing'; inside: string } // the repository the site is inside already
+
+const GIT_TIMEOUT_MS = 60_000
+
+function git(dir: string, args: string[]) {
+  const run = spawnSync('git', ['-C', dir, ...args], { timeout: GIT_TIMEOUT_MS, encoding: 'utf-8' })
+  return { ok: run.status === 0, out: run.stdout?.trim() ?? '', said: run.error?.message ?? run.stderr?.trim() ?? '' }
+}
+
+/** Makes `dir` a git repository with all in it as its first commit, unless it is inside one already. */
+function gitRepository(dir: string): GitOutcome {
+  const top = git(dir, ['rev-parse', '--show-toplevel'])
+  if (top.ok) return { made: 'nothing', inside: top.out }
+  for (const args of [
+    ['init', '--quiet'],
+    ['add', '--all'],
+  ]) {
+    const run = git(dir, args)
+    if (!run.ok) throw new Error(`--git: git ${args[0]}: ${run.said}`)
+  }
+  const commit = git(dir, ['commit', '--quiet', '--message', 'hadley init'])
+  return commit.ok ? { made: 'commit' } : { made: 'repository', git: commit.said }
+}
+
 /** The starter of `theme`: its own, or with `blank` the blank one (docs/init.md). */
 export async function starterOf(theme: string, blank: boolean): Promise<string> {
   const themes = await namesOf(THEMES)
@@ -156,10 +189,23 @@ export async function starterOf(theme: string, blank: boolean): Promise<string> 
   return theme
 }
 
-/** Makes the site in `dir` from `theme` and its `starter` (starterOf), in `languages` (docs/init.md). */
-export async function init(dir: string, languages: readonly string[], theme: string, starter: string): Promise<void> {
+/**
+ * Makes the site in `dir` from `theme` and its `starter` (starterOf), in `languages`, and with `git` a git repository
+ * of it (docs/init.md).
+ */
+export async function init(
+  dir: string,
+  languages: readonly string[],
+  theme: string,
+  starter: string,
+  { git: withGit = false } = {},
+): Promise<GitOutcome | undefined> {
   if (starter !== (await starterOf(theme, starter === BLANK)))
     throw new Error(`the starter ${starter} is not the theme ${theme}'s: a theme comes with its own or the blank one`)
+  if (withGit) {
+    const version = git('.', ['--version'])
+    if (!version.ok) throw new Error(`--git: there is no git on this machine (${version.said})`)
+  }
   const written = await starterLanguages(starter)
   const starterDir = join(STARTERS, starter)
   if ((await exists(dir)) && (await readdir(dir)).length > 0)
@@ -175,6 +221,8 @@ export async function init(dir: string, languages: readonly string[], theme: str
   // the site's own from now on, as its theme is: init writes them once, and nothing of hadley again
   await copyFile(AGENTS, join(dir, 'AGENTS.md'))
   await writeFile(join(dir, 'CLAUDE.md'), '@AGENTS.md\n')
+  await copyFile(GITIGNORE, join(dir, '.gitignore'))
+  await copyFile(GITATTRIBUTES, join(dir, '.gitattributes'))
 
   const dropped = written.filter((language) => !languages.includes(language))
   const content = join(starterDir, 'content')
@@ -190,6 +238,7 @@ export async function init(dir: string, languages: readonly string[], theme: str
       await writeFile(to, withoutLanguages(lf(await readFile(join(content, path), 'utf-8')), dropped))
     } else await copyFile(join(content, path), to)
   }
+  return withGit ? gitRepository(dir) : undefined
 }
 
 /**

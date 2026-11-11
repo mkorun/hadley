@@ -126,7 +126,8 @@ page it was sent from. The agent's answers and its requests to use a tool appear
 request. Escape or the chat's half closes the panel. Its open state, its size and the unsent draft survive a page
 reload in this tab; what was said stays while the dev server runs. Each message names `root`, the absolute directory
 the dev server serves; `file` is relative to `root`. The agent works in that directory and nowhere else for that
-message.
+message. Versions (above) keep the pages' Markdown files alone; what else the agent changes, `config.lima`, the theme,
+a picture, only a git repository of the site keeps as it was before (`hadley init --git`, [init.md](init.md)).
 
 The chat answers only a browser that holds the site's key. A page's origin, which a browser cannot fake, a program on
 the same machine can: without the key it could read the conversation, send messages and allow what the agent asks to do.

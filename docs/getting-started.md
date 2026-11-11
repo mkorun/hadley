@@ -43,8 +43,8 @@ hadley init my-site
 makes `my-site/` with the theme hems and its starter, Feather Cat: a small blog with articles, a series, pictures and
 an about page, to read and make one's own. `hadley init my-site --theme punch` makes a personal site instead,
 Noa Varela's, with a few posts; `--blank` gives either theme a home page, an imprint, a feed page and a 404 page, and
-nothing to delete. The site is English; `--language de` makes it German, `--language de,en` German and English
-([docs/init.md](init.md)).
+nothing to delete. The site is English; `--language de` makes it German, `--language de,en` German and English.
+`--git` makes it a git repository too ([docs/init.md](init.md)).
 
 ```
 my-site/

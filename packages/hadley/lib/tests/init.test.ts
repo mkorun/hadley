@@ -1,4 +1,5 @@
 import { after, before, describe, it } from 'node:test'
+import { spawnSync } from 'node:child_process'
 import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -7,6 +8,8 @@ import { build } from '../../index.ts'
 import {
   AGENTS,
   BLANK,
+  GITATTRIBUTES,
+  GITIGNORE,
   STARTERS,
   THEMES,
   configFor,
@@ -125,10 +128,99 @@ describe('what hadley init writes', () => {
     assert.equal(await readFile(join(site, 'CLAUDE.md'), 'utf-8'), '@AGENTS.md\n')
   })
 
+  it('writes .gitignore, which keeps .hadley/ out of git, and .gitattributes, which checks text out with \\n', async () => {
+    const site = join(dir, 'gitfiles')
+    assert.equal(await init(site, ['en'], 'hems', BLANK), undefined)
+    assert.equal(await readFile(join(site, '.gitignore'), 'utf-8'), await readFile(GITIGNORE, 'utf-8'))
+    assert.match(await readFile(join(site, '.gitignore'), 'utf-8'), /^\.hadley\/$/m)
+    assert.equal(await readFile(join(site, '.gitattributes'), 'utf-8'), await readFile(GITATTRIBUTES, 'utf-8'))
+    assert.match(await readFile(join(site, '.gitattributes'), 'utf-8'), /^\* text=auto eol=lf$/m)
+  })
+
   it('gives a theme its own starter, or the blank one', async () => {
     assert.equal(await starterOf('punch', false), 'punch')
     assert.equal(await starterOf('punch', true), 'blank')
     assert.deepEqual(starters, [BLANK, ...themes])
+  })
+})
+
+describe('hadley init --git', () => {
+  // git as on a machine of its own: no configuration of the human's, an identity only where a test gives one
+  const IDENTITY = ['GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME', 'GIT_COMMITTER_EMAIL', 'EMAIL']
+  async function withGit<T>(env: Record<string, string | undefined>, run: () => Promise<T>): Promise<T> {
+    const empty = join(dir, 'empty.gitconfig')
+    await writeFile(empty, '')
+    const given: Record<string, string | undefined> = {
+      ...Object.fromEntries(IDENTITY.map((name) => [name, undefined])),
+      GIT_CONFIG_GLOBAL: empty,
+      GIT_CONFIG_NOSYSTEM: '1',
+      GIT_CONFIG_COUNT: undefined,
+      ...env,
+    }
+    const before = Object.fromEntries(Object.keys(given).map((name) => [name, process.env[name]]))
+    const set = (values: Record<string, string | undefined>) => {
+      for (const [name, value] of Object.entries(values))
+        if (value === undefined) delete process.env[name]
+        else process.env[name] = value
+    }
+    set(given)
+    try {
+      return await run()
+    } finally {
+      set(before)
+    }
+  }
+  const ada = { GIT_AUTHOR_NAME: 'Ada', GIT_AUTHOR_EMAIL: 'ada@example.org' }
+  const asCommitter = { GIT_COMMITTER_NAME: 'Ada', GIT_COMMITTER_EMAIL: 'ada@example.org' }
+  const git = (cwd: string, ...args: string[]) =>
+    spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf-8', timeout: 60_000 })
+
+  it('makes the site a repository with the new site as its first commit', async () => {
+    const site = join(dir, 'git-commit')
+    assert.deepEqual(
+      await withGit({ ...ada, ...asCommitter }, () => init(site, ['en'], 'hems', BLANK, { git: true })),
+      {
+        made: 'commit',
+      },
+    )
+    assert.equal(git(site, 'log', '--format=%s').stdout, 'hadley init\n')
+    assert.equal(git(site, 'status', '--porcelain').stdout, '')
+    const tracked = git(site, 'ls-files').stdout.split('\n')
+    assert.ok(tracked.includes('.gitignore') && tracked.includes('config.lima'), tracked.join(' '))
+  })
+
+  it('leaves the repository without a commit while git knows no name and email, and passes on what git said', async () => {
+    const site = join(dir, 'git-nobody')
+    const nobody = { GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: 'user.useConfigOnly', GIT_CONFIG_VALUE_0: 'true' }
+    const made = await withGit(nobody, () => init(site, ['en'], 'hems', BLANK, { git: true }))
+    assert.equal(made?.made, 'repository')
+    assert.ok(made?.made === 'repository' && made.git !== '')
+    assert.notEqual(git(site, 'rev-parse', '--verify', '--quiet', 'HEAD').status, 0)
+    assert.match(git(site, 'status', '--porcelain').stdout, /^A {2}config\.lima$/m)
+  })
+
+  it('makes no repository inside one, and names the one it is in', async () => {
+    const outer = join(dir, 'git-outer')
+    await mkdir(outer)
+    assert.equal(git(outer, 'init', '--quiet').status, 0)
+    const top = git(outer, 'rev-parse', '--show-toplevel').stdout.trim()
+    const made = await withGit({}, () => init(join(outer, 'site'), ['en'], 'hems', BLANK, { git: true }))
+    assert.deepEqual(made, { made: 'nothing', inside: top })
+    // the site's files belong to the repository around it, with no .git of their own
+    assert.equal(git(join(outer, 'site'), 'rev-parse', '--show-toplevel').stdout.trim(), top)
+  })
+
+  it('stops before it writes anything without git on the machine', async () => {
+    const site = join(dir, 'git-none')
+    const paths = Object.fromEntries(
+      Object.keys(process.env)
+        .filter((name) => name.toUpperCase() === 'PATH')
+        .map((name) => [name, join(dir, 'no-such-folder')]),
+    )
+    await withGit(paths, () =>
+      assert.rejects(init(site, ['en'], 'hems', BLANK, { git: true }), /--git: there is no git on this machine/),
+    )
+    assert.equal(await readdir(site).catch(() => 'none'), 'none')
   })
 })
 

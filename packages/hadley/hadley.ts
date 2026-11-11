@@ -67,7 +67,7 @@ The site is the directory --root names, else the one HADLEY_ROOT names, else the
 directory upwards, that holds a config.lima.
 
 Commands:
-  init [dir]         A new site: a theme with its starter (--language, --theme, --blank)
+  init [dir]         A new site: a theme with its starter (--language, --theme, --blank, --git)
   channel            Chat channel for Claude Code (stdio; started from .mcp.json)
   dev                Dev server + file watcher (http://localhost:8000, or dev.port of config.lima)
   dev comments       Comment moderation TUI against local dev service
@@ -89,6 +89,7 @@ hadley init — A new site
   hadley init --language de,en       In German and English, German the default (the first)
   hadley init --language all         In all the starter is written in (each: en, de, fr, es, it)
   hadley init --blank                Without sample content: home, imprint, feed and 404 only
+  hadley init --git                  And a git repository, with the new site as its first commit
 
   dir must be empty or not exist (docs/init.md).`.trim(),
 
@@ -174,8 +175,9 @@ try {
         return given
       }
       const named = new Set(['--language', '--theme'])
+      const flags = new Set(['--blank', '--git'])
       const unknown = rest.find(
-        (arg, i) => arg.startsWith('--') && arg !== '--blank' && !named.has(arg) && !named.has(rest[i - 1] ?? ''),
+        (arg, i) => arg.startsWith('--') && !flags.has(arg) && !named.has(arg) && !named.has(rest[i - 1] ?? ''),
       )
       if (unknown) fail(`hadley init has no option ${unknown} (hadley init --help)`)
       const positional = rest.filter((arg, i) => !arg.startsWith('--') && !named.has(rest[i - 1] ?? ''))
@@ -185,8 +187,15 @@ try {
         const theme = value('--theme') ?? 'hems'
         const starter = await starterOf(theme, rest.includes('--blank'))
         const languages = parseLanguages(value('--language'), await starterLanguages(starter))
-        await init(dir, languages, theme, starter)
+        const git = await init(dir, languages, theme, starter, { git: rest.includes('--git') })
         logger.success(`A new site in ${dir}: ${theme} with the starter ${starter}, in ${languages.join(', ')}`)
+        if (git?.made === 'commit') console.log('  A git repository, with the site as its first commit, "hadley init"')
+        if (git?.made === 'repository') {
+          logger.warn('A git repository without a commit, which git refused:')
+          console.error(git.git.replace(/^/gm, '     '))
+          console.error('     Then, in the site: git commit -m "hadley init"')
+        }
+        if (git?.made === 'nothing') logger.warn(`No git repository of its own: the site is inside ${git.inside}`)
         console.log(`  Next: ${positional[0] ? `cd ${positional[0]} && ` : ''}hadley dev`)
       } catch (error) {
         fail(error)
