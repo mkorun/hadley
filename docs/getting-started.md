@@ -125,3 +125,7 @@ of their bytes and its other files,
 the sitemap, the feed and the search index. Copy the folder to any web server; [docs/deploy.md](deploy.md) has a
 server's configuration. `hadley deploy` without `--build` shows a preview at <http://localhost:8000> first, built into
 `.hadley/preview/`; upload only `.hadley/publish/`.
+
+## Stuck?
+
+Ask in [Discussions](https://github.com/mkorun/hadley/discussions) or write to michael@mko.run, in English or German.

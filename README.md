@@ -81,6 +81,12 @@ hadley deploy --build                 # the site to publish, in .hadley/publish/
 | [Dev server](docs/dev-server.md) | working on a site, and the editor in the browser |
 | [Comments](docs/comments.md) · [Highlighting](docs/highlighting.md) · [Platforms](docs/platforms.md) | the rest |
 
+## Questions and help
+
+hadley is made by one person, Michael Kortstiege. If you are trying it, I am glad to help, and no question is too
+small: ask in [Discussions](https://github.com/mkorun/hadley/discussions), where the answer helps others too, or write
+to michael@mko.run, in English or German. Answers may take a few days.
+
 ## Contributing
 
 [CONTRIBUTING.md](CONTRIBUTING.md) says how to work on hadley, [SECURITY.md](SECURITY.md) how to report a
