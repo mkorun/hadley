@@ -76,6 +76,24 @@ update, `sudo systemctl restart 'hadley-forms@*'` restarts them all. A server ru
 for Windows is for `hadley dev`, which fetches it itself. To build it from the repository instead, see
 [dev-server.md](dev-server.md), "Comments"; `scripts/build-forms.ts` builds the files of a release.
 
+### The web server
+
+The web server passes two paths of the site to its instance, `/api/comment/*` and `/admin/comments`. With Caddy, in the
+site's block:
+
+```caddy
+handle /api/comment/* {
+    reverse_proxy 127.0.0.1:9001
+}
+handle /admin/comments {
+    reverse_proxy 127.0.0.1:9001
+}
+```
+
+A second site on the same server runs an instance of its own, `hadley-forms@<site>`, with its own data directory,
+tokens and `PORT` (9002, say), and the same two paths in its block. The site's Content Security Policy allows
+`connect-src 'self'` and `worker-src 'self'`: the form sends to its own origin and solves its challenge in a worker.
+
 ## Moderating
 
 `hadley comments` downloads the waiting comments and shows them one at a time, on a screen of its own; when it ends,
@@ -94,3 +112,22 @@ the terminal shows again what was there before, and below it how many comments w
 Every decision is kept in the archive, with the visitor's email address; the archive is the owner's, outside the
 site's published files. Once all comments of a download are decided, `hadley comments` deletes them on the service.
 The tool speaks the language of `site.default.language` where it has a translation (English, German), else English.
+
+## In a theme of your own
+
+hems and punch take comments as they are. Another theme needs four things, which it can copy from hems and style as
+its own:
+
+- `templates/partials/comments.sort`, the approved comments: `hadley comments` renders it into the article's
+  `_comments.html`, with `comments`, `language` and the theme's texts `t`.
+- `templates/partials/comment-form.sort`, the button and the form in a dialog: it reads `site.comments.url` and the
+  page's `meta.id` and `meta.lang`.
+- `assets/js/comments.ts` and `assets/js/comments-worker.ts`, which send the form and solve the challenge.
+- The texts under `comments:` in each of the theme's `i18n/<language>.lima`.
+
+The article template writes both where the comments belong, below the text:
+
+```
+{@raw html.comments ?? ''}
+{@partial partials/comment-form.sort}
+```
