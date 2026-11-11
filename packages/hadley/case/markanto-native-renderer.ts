@@ -562,10 +562,13 @@ function renderInlineNode(node: Inline, ctx: Ctx): string {
     case 'inlineImage':
       return uncounted(ctx, () => renderInlineImage(node, ctx))
     case 'autolink': {
-      // an autolink is an absolute URL by its syntax
+      // an autolink is an absolute URL by its syntax; one on the site's own origin is a page, which a link checks
       const read = readOf(ctx, node.kind === 'email' ? `mailto:${node.value}` : node.value, 'link')
       if (read.kind !== 'external') {
-        const reason = read.kind === 'refused' ? read.reason : 'is not an absolute URL'
+        const reason =
+          read.kind === 'refused'
+            ? read.reason
+            : 'is on this site: write it as a link, [text](/path/) or [text]($id), so hadley checks it'
         return `${shown(node.value, ctx)}${refused(ctx, node, node.value, reason)}`
       }
       if (node.kind === 'email') return `${startTag('a', [['href', read.href]])}${shown(node.value, ctx)}</a>`

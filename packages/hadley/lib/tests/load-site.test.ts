@@ -88,6 +88,25 @@ describe('the front matter of a page', () => {
     assert.ok(warnings.some((warning) => warning.includes('front matter field publishFrom is not a date')))
   })
 
+  // 2026-11-11: a front matter Lima rejected also failed as "has no title", though its title: was there
+  it('fails a front matter Lima cannot read for that alone, not also for the title it could not read', async () => {
+    await site('unread', { 'articles/[a]/a.md': page("title: A\ndescription: 'it''s'\n") })
+    await assert.rejects(
+      published('unread'),
+      (error: Error) => error.message.includes('front matter: Lima:') && !error.message.includes('has no title'),
+    )
+  })
+
+  it('says how to write a date with a time when it has a space for its T', async () => {
+    await site('date-space-time', { 'articles/[a]/a.md': page('title: A\npublishFrom: 2026-11-10 09:00\n') })
+    const dev = await quietly(() => loadSite(join('sites', 'date-space-time'), false))
+    const warnings = settle(dev.problems, false)
+    assert.ok(
+      warnings.some((warning) => warning.includes('publishFrom is not a date (a time needs its T: 2026-11-10T09:00)')),
+      warnings.join('\n'),
+    )
+  })
+
   it('reads a date in quotes only in ISO form, as no host then reads another day', async () => {
     const date = async (name: string, value: string) => {
       await site(name, { 'articles/[a]/a.md': page(`publishFrom: ${value}\ntitle: A\n`) })

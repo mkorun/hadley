@@ -18,6 +18,9 @@ export interface PreparedDocument {
   /** Why the front matter is not what it says: Lima rejected it (it is then empty), or it gives a field twice; a
    * published page fails on it. */
   frontMatterErrors?: ParseErrorInfo[]
+  /** The front matter could not be read at all, so its fields are missing: what follows from that is no fault of its
+   * own (lib/front-matter.ts). */
+  frontMatterUnread?: true
   /** Where the text between the two lines of --- stands in the file, its last line end included. */
   frontMatterRange?: { start: number; end: number }
 }
@@ -114,6 +117,7 @@ export function prepareDocument(rawDoc: string, options: CaseOptions): PreparedD
     metadata,
     baseOffset,
     ...(errors.length > 0 ? { frontMatterErrors: errors } : {}),
+    ...(frontMatterError ? { frontMatterUnread: true as const } : {}),
     ...(frontMatterRange ? { frontMatterRange } : {}),
   }
 }

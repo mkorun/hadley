@@ -4,6 +4,17 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- A front matter Lima cannot read fails the page for that alone; hadley no longer adds "has no title", or a missing
+  required field, for the fields it could not read.
+- A date field with a space before its time (`publishFrom: 2026-11-10 09:00`) says how to write it:
+  `2026-11-10T09:00`.
+- An autolink on the site's own origin is refused with how to write it as a checked link, no longer as "not an
+  absolute URL".
+
 ## [0.5.0] — 2026-11-11
 
 A new site can start as a git repository, the preview of `hadley deploy` stays apart from the site to upload, a page

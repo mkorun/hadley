@@ -145,6 +145,21 @@ describe('native renderer: inline semantics', () => {
     ])
   })
 
+  // 2026-11-11: an autolink on the site's own origin was refused as "not an absolute URL", which it is
+  test('refuses an autolink on the site itself with how to write it as a checked link', () => {
+    const result = renderBuilt('See https://test.example/about/ and https://elsewhere.test/.\n', {
+      ...options,
+      origin: 'https://test.example',
+    })
+    assert.deepEqual(result.refs, [
+      {
+        kind: 'refused',
+        destination: 'https://test.example/about/',
+        reason: 'is on this site: write it as a link, [text](/path/) or [text]($id), so hadley checks it',
+      },
+    ])
+  })
+
   // review 2026-10-24: an image, a medium or a download at a site path or at $… was written as it stood, unchecked
   test('names a resource at a site path as a file of the site, one at $… as a bundle file, and refuses one at …/', () => {
     const result = render(

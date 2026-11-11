@@ -196,7 +196,7 @@ async function readPage(
     }
     for (const message of file.fromSource.problems) given.push({ message })
   }
-  const front = readFrontMatter(doc.metadata, schema, file.file)
+  const front = readFrontMatter(doc.metadata, schema, file.file, { unread: doc.frontMatterUnread === true })
   const { metadata } = front
 
   // articles → article, essays → essay, notes → note, pages → page

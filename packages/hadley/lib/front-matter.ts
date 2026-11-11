@@ -85,9 +85,15 @@ export type Fault = { message: string; field?: string }
 
 /**
  * Reads `front` (case's metadata of the page at `file`, aliases applied): takes the fields that place the page out,
- * and checks the rest (checkMetadata). A field that places the page and is not a text stops every build.
+ * and checks the rest (checkMetadata). A field that places the page and is not a text stops every build. `unread`:
+ * the front matter could not be read (case says why), so a missing title or required field is no fault of its own.
  */
-export function readFrontMatter(front: Record<string, unknown>, schema: FieldSchema, file: string): FrontMatter {
+export function readFrontMatter(
+  front: Record<string, unknown>,
+  schema: FieldSchema,
+  file: string,
+  { unread = false }: { unread?: boolean } = {},
+): FrontMatter {
   const fields = { ...front }
   const faults: Fault[] = []
   // a value config.lima does not allow (metadata.<field>.allowed), a typo such as category: hadly
@@ -121,9 +127,10 @@ export function readFrontMatter(front: Record<string, unknown>, schema: FieldSch
   if (markdown !== undefined && markdown !== null && typeof markdown !== 'boolean') {
     faults.push({ message: 'the front matter field markdown is not true or false', field: 'markdown' })
   }
-  const metadata = checkMetadata(fields, faults, schema.declared)
+  const metadata = checkMetadata(fields, faults, schema.declared, unread)
   for (const field of schema.required) {
-    if (!metadata[field]) faults.push({ message: `the front matter field ${field} is required (config.lima)` })
+    if (!metadata[field] && !unread)
+      faults.push({ message: `the front matter field ${field} is required (config.lima)` })
   }
   if (metadata.publishFrom && metadata.updatedAt && metadata.updatedAt < metadata.publishFrom) {
     faults.push({ message: 'its updatedAt is before its publishFrom', field: 'updatedAt' })
@@ -158,7 +165,12 @@ export function readFrontMatter(front: Record<string, unknown>, schema: FieldSch
  * parse), tags one text or a list of them, a flag true or false. An empty field is left out. Any other field, and a
  * field of another kind, is a problem of the page, as a parse error is, and left out.
  */
-function checkMetadata(raw: Record<string, unknown>, problems: Fault[], declared: ReadonlySet<string>): Metadata {
+function checkMetadata(
+  raw: Record<string, unknown>,
+  problems: Fault[],
+  declared: ReadonlySet<string>,
+  unread: boolean,
+): Metadata {
   const metadata: Record<string, unknown> = { ...raw }
   for (const field of Object.keys(metadata)) {
     if (RESERVED_FIELDS.has(field)) {
@@ -191,6 +203,9 @@ function checkMetadata(raw: Record<string, unknown>, problems: Fault[], declared
     if (value === undefined || value instanceof Date) continue
     const date = typeof value === 'string' ? isoDate(value) : undefined
     if (date) metadata[field] = date
+    // Lima reads a date with a time only with its T; with a space it is a text (Lima Core §6.5)
+    else if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2} +\d/u.test(value))
+      wrong(field, `a date (a time needs its T: ${value.replace(/ +/u, 'T')})`)
     else wrong(field, 'a date')
   }
   for (const field of FLAG_FIELDS) {
@@ -207,7 +222,7 @@ function checkMetadata(raw: Record<string, unknown>, problems: Fault[], declared
     wrong('author', 'a text or a person')
   else if (authorName !== undefined && typeof authorName !== 'string') wrong('author', 'a person with a name')
   if (metadata.title === undefined) {
-    problems.push({ message: 'has no title (in the front matter or as a first # heading)' })
+    if (!unread) problems.push({ message: 'has no title (in the front matter or as a first # heading)' })
     metadata.title = ''
   } else if (typeof metadata.title === 'string' && !metadata.title.trim()) {
     problems.push({ message: 'the front matter field title must not be empty', field: 'title' })

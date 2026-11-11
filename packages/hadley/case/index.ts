@@ -25,11 +25,16 @@ export interface ParsedDocument {
   // where the title and subtitle the text gives stand, and the front matter's text: the editor edits them as blocks
   heads: { title?: BlockToken; subtitle?: BlockToken; frontMatter?: BlockToken }
   parseErrors?: ParseErrorInfo[]
+  /** The front matter could not be read at all (PreparedDocument). */
+  frontMatterUnread?: true
 }
 
 /** Reads the front matter and parses the content with the Markanto reference parser; render() turns it into HTML. */
 export function parseDocument(rawDoc: string, options: CaseOptions): ParsedDocument {
-  const { md, metadata, baseOffset, frontMatterErrors, frontMatterRange } = prepareDocument(rawDoc, options)
+  const { md, metadata, baseOffset, frontMatterErrors, frontMatterUnread, frontMatterRange } = prepareDocument(
+    rawDoc,
+    options,
+  )
   const whole = parseMarkanto(md, PARSE_OPTIONS)
   const { parsed, title, subtitle, problems } = takeTitle(whole, metadata)
   // the blocks takeTitle took out of the text are its first two, in the order they stand
@@ -71,6 +76,7 @@ export function parseDocument(rawDoc: string, options: CaseOptions): ParsedDocum
     blocks: editorBlocks(parsed, baseOffset, md),
     heads,
     ...(parseErrors.length ? { parseErrors } : {}),
+    ...(frontMatterUnread ? { frontMatterUnread } : {}),
   }
 }
 
