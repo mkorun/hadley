@@ -95,8 +95,11 @@ if (dialog && button) {
   let asked = 0
   let active = -1
 
+  // the index's script, by a name the dev server's Vite does not resolve: hadley writes the index after the pages,
+  // and a page that Vite served in between failed with "Failed to resolve import" and Vite's overlay over it
+  const PAGEFIND = '/pagefind/pagefind.js'
   const load = () =>
-    (pagefind ??= import('/pagefind/pagefind.js').then(async (module) => {
+    (pagefind ??= import(/* @vite-ignore */ PAGEFIND).then(async (module) => {
       await module.init()
       return module
     }))

@@ -79,7 +79,11 @@ export function limaTable(textarea: HTMLTextAreaElement): HTMLElement {
     }
     let errors: { line: number; message: string }[] = []
     if (limaOutline) {
-      const result = limaOutline(text)
+      // a partial reference, $(persons/mko), names a file of content/meta/ that only the dev server knows: outline()
+      // reads without partials and would stop at it as unresolved, before anything after it. It reads the reference as
+      // plain text of the same length instead, so that every other line is still checked and the marks keep their
+      // columns; the build resolves the reference, and says so where it is wrong
+      const result = limaOutline(text.replace(/\$\([^)\n]*\)/g, (reference) => 'x'.repeat(reference.length)))
       for (const key of result.keys) mark(key.span, 'key')
       for (const comment of result.comments) mark(comment, 'comment')
       errors = result.diagnostics

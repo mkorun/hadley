@@ -23,6 +23,12 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
   were errors.
 - In a terminal that reports no width (0 columns), a build no longer stops with "String.prototype.repeat argument
   must be greater than or equal to 0".
+- hems and punch load Pagefind by a name Vite does not resolve: `hadley dev` writes the search index after the pages,
+  and a page served in between failed with "Failed to resolve import "/pagefind/pagefind.js"", with Vite's overlay over
+  it, which kept every click, the editor's too, from the page.
+- The editor's front matter no longer marks a partial reference such as `$(persons/mko)` as unresolved: it names a
+  file only the dev server knows. The browser checks the rest of the front matter as before; the build checks the
+  reference.
 
 ## [0.5.0] — 2026-11-11
 
