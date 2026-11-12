@@ -79,6 +79,17 @@ describe('title extraction', () => {
     assert.equal(extract('# A\n\nText[^1].\n\n[^1]: one\n', {}).parseErrors, undefined)
   })
 
+  // 2026-11-12: the parser's warnings were dropped, so an indented command became a paragraph unsaid
+  it('passes on what the parser read otherwise than the source may mean, apart from its errors', () => {
+    const doc = parseDocument('---\ntitle: T\n---\nRun:\n\n    make test\n', {})
+    assert.equal(doc.parseErrors, undefined)
+    assert.equal(doc.parseHints?.length, 1)
+    assert.match(doc.parseHints![0]!.message, /no indented code block/)
+    // file-absolute, like a block: the hint stands on the indented line
+    assert.equal(doc.parseHints![0]!.start, '---\ntitle: T\n---\nRun:\n\n'.length)
+    assert.equal(parseDocument('Run:\n\n```sh\nmake test\n```\n', {}).parseHints, undefined)
+  })
+
   it('takes no title from a setext heading, which Markanto does not have', () => {
     const result = extract('Hello World\n===========\n\nBody text.', {})
     assert.equal(result.metadata.title, undefined)

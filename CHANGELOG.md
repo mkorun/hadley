@@ -4,6 +4,14 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- A build and `hadley dev` pass on what the Markanto parser reads otherwise than the text may mean, as a hint with its
+  line: an indented block, which Markanto reads as a paragraph and not as code, says to write a fenced code block. A
+  hint leaves the build green; `hadley dev` shows it for a draft too.
+
 ## [0.5.1] — 2026-11-11
 
 Corrections to `hadley dev` and its editor, to messages that now say what is wrong, and documentation for comments

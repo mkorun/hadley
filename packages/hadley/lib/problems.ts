@@ -4,7 +4,8 @@
  *   publish build  every fault of a step stops the build, all of them listed; a hint is a warning
  *   dev build      a fault or a hint of a page it would publish is a warning, and the page is shown as it can be
  *   draft, seed    silent in either build: it is meant to be unfinished, and shows in its page what it can; but a
- *                  dev build warns of text the parser could not read, which may be missing from the page
+ *                  dev build warns of text the parser could not read, which may be missing from the page, or read
+ *                  otherwise than meant
  *
  * A fault is what makes the page wrong (a file it names and does not have, a field of the wrong kind, a URL it may not
  * have); a hint is what may well be meant (an essay without a VG Wort pixel).
@@ -16,7 +17,8 @@ export interface Problem {
   message: string
   line?: number // in the page's file, when the problem has one
   hint?: true
-  // the parser could not read the text there (2026-11-09: a mistyped `:::tldr` made blocks of a draft disappear)
+  // the parser could not read the text there (2026-11-09: a mistyped `:::tldr` made blocks of a draft disappear), or,
+  // with hint, read it otherwise than the source may mean (indented code is a paragraph)
   parse?: true
 }
 

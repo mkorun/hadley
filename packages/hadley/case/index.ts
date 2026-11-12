@@ -25,6 +25,9 @@ export interface ParsedDocument {
   // where the title and subtitle the text gives stand, and the front matter's text: the editor edits them as blocks
   heads: { title?: BlockToken; subtitle?: BlockToken; frontMatter?: BlockToken }
   parseErrors?: ParseErrorInfo[]
+  // What the parser read, but not as the source may mean it: its warnings (Markanto has no indented code block, so
+  // `    make test` is a paragraph). The page is right as Markanto defines it; the author is told (lib/load-site.ts).
+  parseHints?: ParseErrorInfo[]
   /** The front matter could not be read at all (PreparedDocument). */
   frontMatterUnread?: true
 }
@@ -69,6 +72,8 @@ export function parseDocument(rawDoc: string, options: CaseOptions): ParsedDocum
         ]
       : []),
   ]
+  const parseHints =
+    parsed.status === 'resource' ? [] : parsed.diagnostics.filter((d) => d.severity === 'warning').map(diagnostic)
   return {
     metadata,
     parsed,
@@ -76,6 +81,7 @@ export function parseDocument(rawDoc: string, options: CaseOptions): ParsedDocum
     blocks: editorBlocks(parsed, baseOffset, md),
     heads,
     ...(parseErrors.length ? { parseErrors } : {}),
+    ...(parseHints.length ? { parseHints } : {}),
     ...(frontMatterUnread ? { frontMatterUnread } : {}),
   }
 }

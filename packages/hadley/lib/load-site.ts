@@ -349,12 +349,22 @@ async function readPage(
   if (articleLike && !metadata.description && (state === 'published' || state === 'scheduled')) {
     problems.push({ message: 'has no description', hint: true })
   }
-  // what the parser found wrong, with the line it is on, before what was found here
-  const parsed = (doc.parseErrors ?? []).map((error) => {
-    const line = error.start === undefined ? undefined : source.slice(0, error.start).split('\n').length
-    return { message: error.message, ...(line !== undefined ? { line } : {}), parse: true as const }
-  })
-  return { page, problems: [...parsed, ...problems] }
+  // what the parser found wrong, with the line it is on, before what was found here; then what it read otherwise than
+  // the source may mean, a hint (2026-11-12: Markanto's advisory on indented code reached no one)
+  const lineOf = (start: number | undefined) =>
+    start === undefined ? {} : { line: source.slice(0, start).split('\n').length }
+  const parsed = (doc.parseErrors ?? []).map((error) => ({
+    message: error.message,
+    ...lineOf(error.start),
+    parse: true as const,
+  }))
+  const hinted = (doc.parseHints ?? []).map((hint) => ({
+    message: hint.message,
+    ...lineOf(hint.start),
+    hint: true as const,
+    parse: true as const,
+  }))
+  return { page, problems: [...parsed, ...hinted, ...problems] }
 }
 
 /** Links a variant and its main article, whichever of the two the folders listed first. */

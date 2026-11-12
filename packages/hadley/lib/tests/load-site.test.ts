@@ -335,3 +335,21 @@ describe('a hint for an article without a description', () => {
     await quietly(() => published('described'))
   })
 })
+
+// 2026-11-12: Markanto's advisory on indented code reached no one, so a command in a draft became prose unsaid
+describe('a hint for what the parser read otherwise than the source may mean', () => {
+  it('passes on the parser warning with its line, for a draft in a dev build too, and the site publishes', async () => {
+    const indented = 'Run:\n\n    make test\n'
+    await site('indented', {
+      'articles/[a]/a.md': `${page('title: A\npublishFrom: 2026-01-02\ndescription: D.\n')}\n${indented}`,
+      'articles/[d]/d.md': `${page('title: D\npublishFrom: 2026-01-02\nstatus: draft\n')}\n${indented}`,
+    })
+    const dev = await quietly(() => loadSite(join('sites', 'indented'), false))
+    const hints = settle(dev.problems, false).filter((warning) => warning.includes('indented code block'))
+    assert.deepEqual(hints.map((warning) => warning.split(/[\\/]/).at(-1)!.split(': ')[0]).sort(), [
+      'a.md:10',
+      'd.md:10',
+    ])
+    await quietly(() => published('indented'))
+  })
+})
