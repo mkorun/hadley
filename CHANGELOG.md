@@ -4,13 +4,38 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.5.2] — 2026-11-16
+
+Lima 0.9.0 and Markanto 0.3.0: a `#` in front matter starts a comment only after a space, lists read as writers
+indent them, and what Markanto reads otherwise than the text may mean reaches the author.
 
 ### Added
 
 - A build and `hadley dev` pass on what the Markanto parser reads otherwise than the text may mean, as a hint with its
   line: an indented block, which Markanto reads as a paragraph and not as code, says to write a fenced code block. A
   hint leaves the build green; `hadley dev` shows it for a draft too.
+
+### Changed
+
+- Lima 0.9.0 (Lima Core 1.3) reads the front matter, `config.lima` and every other Lima file of a site:
+  - A `#` starts a comment only at the start of a value or after a space: `https://example.org/x#top` and `C# and F#`
+    keep their `#`, where 0.5.1 cut the value there without a word.
+  - An unquoted value that starts with `*`, `&` or `!`, such as `title: *New* today`, stops the build with a message to
+    quote it, since YAML reads it as an alias, an anchor or a tag; 0.5.1 read it as text. A YAML block scalar header
+    such as `>` says to write Lima's `|`, with `^^` to join lines.
+  - `key: # note` is a key whose block follows on the lines below it.
+- Markanto 0.3.0 reads the content:
+  - A nested list may stand two spaces in, on its parent's content column or four spaces in; two or more spaces after a
+    list marker open an item; a block after a blank line stays in the item it is indented under.
+  - A paragraph line over `---` is an error, "setext heading not permitted", as one over `===` has been: a heading is
+    written with `#`, and a thematic break needs a blank line before it.
+  - New hints, which leave the build green: tag-like text such as `<br>`, a line without `>` right after a quote, a
+    paragraph that begins with `[label]:`, and a tab in front of a paragraph.
+
+### Fixed
+
+- A `ref` in `sources` of digits only, such as `2867773`, which Lima reads as a number, says to quote it:
+  `ref: '2867773'`. Before, the build stopped with the general message for a ref.
 
 ## [0.5.1] — 2026-11-11
 

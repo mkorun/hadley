@@ -5,7 +5,7 @@
     "": {
       "name": "crossguard",
       "devDependencies": {
-        "@markantolang/parser": "0.2.3",
+        "@markantolang/parser": "0.3.0",
         "@playwright/test": "1.64.1",
         "@types/node": "^26.5.1",
         "bun-types": "^1.4.2",
@@ -21,13 +21,13 @@
     },
     "packages/hadley": {
       "name": "@mkorun/hadley",
-      "version": "0.5.1",
+      "version": "0.5.2",
       "bin": {
         "hadley": "./hadley.ts",
       },
       "dependencies": {
-        "@limaformat/lima": "^0.8.1",
-        "@markantolang/parser": "0.2.3",
+        "@limaformat/lima": "^0.9.0",
+        "@markantolang/parser": "0.3.0",
         "@mkorun/galley": "^0.3.4",
         "@mkorun/quad": "^0.1.5",
         "esbuild": "0.28.2",
@@ -150,9 +150,9 @@
 
     "@img/sharp-win32-x64": ["@img/sharp-win32-x64@0.35.4", "", { "os": "win32", "cpu": "x64" }, "sha512-XtmnYhBcrORsJ4XJngyzr/EWP0hRZLAZRFaApdKuviyqF78+ylxh2y06ZmtULAMOnObJ3ucpN0AcwSWnMowTRg=="],
 
-    "@limaformat/lima": ["@limaformat/lima@0.8.1", "", {}, "sha512-WdRdL52Bt590/F1e3KhKcBy3wCLoCWLiYeZiVlQtbuyaBWflrvVyMHwTDNZrJOms7RdKmYYfqTFs4GytuAfUKg=="],
+    "@limaformat/lima": ["@limaformat/lima@0.9.0", "", {}, "sha512-QYHNC2aoF0jFI9LgiqzA3ozTYdb6HCp32EhCtJqgkUfqnZfFDxt6AnQaKlpHxJc7Z3WxfIgcUQ14jQ8RDlOhBg=="],
 
-    "@markantolang/parser": ["@markantolang/parser@0.2.3", "", { "peerDependencies": { "mdast-util-from-markdown": "2.0.2", "mdast-util-gfm": "3.1.0", "micromark-extension-gfm": "3.0.0" }, "optionalPeers": ["mdast-util-from-markdown", "mdast-util-gfm", "micromark-extension-gfm"], "bin": { "markanto": "dist/cli.js" } }, "sha512-gDWZ8n6ohjdD/dA8g2PLkAiUx3BqhzM8cw94LfeHSKWJ/TlJyODFaDZ91Am8BM11Ygo2fFTNCZZHLx9HeU3I2w=="],
+    "@markantolang/parser": ["@markantolang/parser@0.3.0", "", { "peerDependencies": { "mdast-util-from-markdown": "2.0.2", "mdast-util-gfm": "3.1.0", "micromark-extension-gfm": "3.0.0" }, "optionalPeers": ["mdast-util-from-markdown", "mdast-util-gfm", "micromark-extension-gfm"], "bin": { "markanto": "dist/cli.js" } }, "sha512-Wlhhe9qlxS+bYwzrkhV55WKENtW0iu5l8/+UkX9V3J2FTgswCZK5fzwstCmDmayr08RUgwIxgPtZ6BEsHQMOzA=="],
 
     "@mkorun/galley": ["@mkorun/galley@0.3.4", "", {}, "sha512-fFIdR6XpGyf5EzjDUOonFCREMqplDIpiPg6RDYUf3DOkVhrmOrYGAhOspkaOtd4keTKliUgCCABAQKs2H4usqQ=="],
 
