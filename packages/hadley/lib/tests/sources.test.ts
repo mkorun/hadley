@@ -149,6 +149,12 @@ describe('the sources of config.lima', () => {
       // review 2026-10-29: git read a ref beginning with - as one of its options
       [{ ref: '--upload-pack=touch /tmp/x', pages: { a: null } }, /ref is the commit or tag/],
       [{ ref: 'v1..v2', pages: { a: null } }, /ref is the commit or tag/],
+      // 2026-11-16: the commit 2867773 reads as a number
+      [
+        { ref: 2867773, pages: { a: null } },
+        /ref reads as a number; a commit of digits only is quoted: ref: '2867773'/,
+      ],
+      [{ ref: 1.234e59, pages: { a: null } }, /ref reads as a number; a commit of digits only is quoted: ref: '…'/],
       [{ path: '../docs', pages: { a: null } }, /path is a folder of the repository/],
       [{ frozen: 'yes', pages: { a: null } }, /frozen is true or false/],
       [{ root: 'docs', pages: { a: null } }, /root is one of articles, essays, notes, pages/],

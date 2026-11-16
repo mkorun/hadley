@@ -70,6 +70,11 @@ export function sourcesOf(config: Config, siteDir: string): Source[] {
     const { repository, ref, checkout, frozen, path, root, urlPath, pages, data } = spec as Record<string, unknown>
     if (!text(repository) || !GITHUB.test(repository))
       throw new Error(`${where}.repository is a repository on GitHub, https://github.com/<owner>/<name>`)
+    // Lima reads a commit of digits only as a number, and 1234e56 as a float, whose text is lost
+    if (typeof ref === 'number')
+      throw new Error(
+        `${where}.ref reads as a number; a commit of digits only is quoted: ref: '${Number.isSafeInteger(ref) ? ref : '…'}'`,
+      )
     if (!text(ref) || !REF.test(ref) || ref.includes('..'))
       throw new Error(`${where}.ref is the commit or tag to read it at`)
     if (checkout !== undefined && !text(checkout)) throw new Error(`${where}.checkout is the path of a clone`)
