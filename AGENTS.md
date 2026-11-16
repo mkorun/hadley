@@ -50,8 +50,8 @@ that is the design, not a phase. So:
 
 - Chat with the human is German; all repository content is English. User-facing translations (for example the German
   interface of the editor) and deliberately German test data are content, not exceptions to this rule.
-- Commits are authored as `mko`. A commit an agent prepared keeps its trailers: `Co-Authored-By` and, from Claude Code,
-  `Claude-Session`.
+- Commits are authored as `mko`. A commit an agent prepared keeps its `Co-Authored-By` trailer, and nothing else
+  of the agent's attribution.
 - Human-owned files: `.gitignore`, `package.json`, `bun.lock`, `tsconfig.json`, `AGENTS.md`, `CLAUDE.md`, `LICENSE`, and
   in `services/forms/` `go.mod`, `go.sum`, `tools.mod`, `tools.sum`. Agents never change them; they propose a diff.
 - Principle, documentation-of-record and agent-rule texts are shown to the human before they are committed.
