@@ -277,7 +277,7 @@ describe('a site with a source', () => {
     const root = await site('site-build', 'repo-build')
     await quiet(() => build(root, 'publish'))
     const a = await readFile(join(root, '.hadley', 'publish', 'docs', 'a', 'index.html'), 'utf8')
-    assert.match(a, /<title>A<\/title>A page/)
+    assert.match(a, /<title>A<\/title>\s*A page/)
     assert.match(a, /href="\/docs\/b\/#the-part"/)
     assert.match(a, /href="https:\/\/github\.com\/example\/tool\/blob\/v1\/AGENTS\.md"/)
     // the picture came with the page: the build made it into its sizes

@@ -4,6 +4,29 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.5.3] — 2026-11-24
+
+galley 0.4.0 closes ways past its check of URL attributes, and quad 0.2.0 changes whitespace only where a browser
+renders the same.
+
+### Security
+
+- galley 0.4.0 replaces 0.3.4 ([GHSA-pr8f-mr2x-p6gc]). In 0.5.2, content rendered through a template of certain
+  shapes could write a `javascript:` or `data:` URL into `href`, `src` or another URL attribute. Update if people
+  other than you write the content of your site.
+
+### Changed
+
+- galley 0.4.0 reads a template as a browser reads it and refuses markup it cannot read with certainty. A theme
+  template that 0.5.2 built may now stop with an error that names the line; galley's changelog says how to migrate
+  each case. The six sites built with hadley build byte for byte the same.
+- quad 0.2.0 formats the pages. A tag that is not regular is copied as written instead of repaired, and an element
+  outside the block list stays in the line of its text. Built with it, 112 of the 124 changed pages of the six sites
+  show the same text; the other 12 now show a space at the end of inline code (`` `: ` ``) that 0.1.5 removed, or no
+  longer show whitespace that 0.1.5 added inside `<pre>`.
+
+[GHSA-pr8f-mr2x-p6gc]: https://github.com/mkorun/galley/security/advisories/GHSA-pr8f-mr2x-p6gc
+
 ## [0.5.2] — 2026-11-16
 
 Lima 0.9.0 and Markanto 0.3.0: a `#` in front matter starts a comment only after a space, lists read as writers

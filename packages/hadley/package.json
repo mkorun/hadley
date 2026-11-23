@@ -1,6 +1,6 @@
 {
   "name": "@mkorun/hadley",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "A static site generator with an editor on the page, versions without Git and comments of its own",
   "keywords": [
     "static-site-generator",
@@ -28,7 +28,7 @@
     "@limaformat/lima": "^0.9.0",
     "@markantolang/parser": "0.3.0",
     "@mkorun/galley": "^0.4.0",
-    "@mkorun/quad": "^0.1.5",
+    "@mkorun/quad": "^0.2.0",
     "esbuild": "0.28.2",
     "pagefind": "^1.6.0",
     "sharp": "^0.35.4",

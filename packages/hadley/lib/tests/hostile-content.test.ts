@@ -666,7 +666,7 @@ describe('hostile content, through a whole publish build', () => {
     await publish('made')
     const html = await readFile(join(root, '.hadley', 'publish', 'evil', 'index.html'), 'utf8')
     assert.match(html, /<a href="\/assets\/css\/syntax-highlighting\.[0-9a-f]{8}\.css">s<\/a>/)
-    assert.match(html, /<a href="\/evil\/cover-4w\.webp">c<\/a> <a href="\/evil\/og\.jpg">o<\/a>/)
+    assert.match(html, /<a href="\/evil\/cover-4w\.webp">c<\/a>\s+<a href="\/evil\/og\.jpg">o<\/a>/)
   })
 
   for (const [name, frontMatter, body, error] of [
