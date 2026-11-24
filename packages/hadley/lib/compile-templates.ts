@@ -70,11 +70,9 @@ export function rawProblems(source: string, id = 'template', use: 'theme' | 'fie
           bind(node, node.name)
           for (const param of node.params) bind(node, param)
           visit(node.children)
-          if (node.variants) for (const variant of node.variants) visit(variant.children)
           break
+        // parse gives neither a partial's children nor a snippet's variants; checked reads each partial as it loads.
         case 'partial':
-          if (node.children) visit(node.children)
-          break
         case 'render': // arguments are expressions, with no HTML output or bindings of their own
         case 'text':
         case 'js':

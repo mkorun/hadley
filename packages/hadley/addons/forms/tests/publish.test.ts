@@ -3,8 +3,9 @@ import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { articleDirs, carriesToken } from '../index.ts'
+import { articleDirs, carriesToken, runCommentsCli } from '../index.ts'
 import { renderComments } from '../render.ts'
+import { readConfig, templateOptions } from '../../../lib/site-config.ts'
 
 // Where the comments tool publishes an approved comment, and the HTML it writes for the build
 // (services/forms/CONTRACT.md C10).
@@ -95,6 +96,7 @@ describe('renderComments', () => {
         commentsJsonPath: join(dir, 'comments.json'),
         commentsHtmlPath: join(dir, '_comments.html'),
         language: 'de',
+        templateOptions: templateOptions({}),
       })
     await file('theme/i18n/de.lima', 'comments:\n  headingPlural: Kommentare\n')
     await file('comments.json', '[]')
@@ -116,6 +118,7 @@ describe('renderComments', () => {
       commentsJsonPath: join(dir, 'comments.json'),
       commentsHtmlPath: html,
       language: 'de',
+      templateOptions: templateOptions({}),
     })
     const written = await readFile(html, 'utf8')
     assert.match(written, /<h2>1 Kommentare<\/h2>/)
@@ -134,10 +137,57 @@ describe('renderComments', () => {
         commentsJsonPath: join(dir, 'comments.json'),
         commentsHtmlPath: join(dir, '_comments.html'),
         language: 'en',
+        templateOptions: templateOptions({}),
       }),
       /i18n[\\/]en\.lima is missing/,
     )
   })
+
+  for (const [option, value, code, rendered] of [
+    ['strictBraces', '{ a + b }', /G3019/, '{ a + b }'],
+    ['strictUndefined', '{ missing }', /G5002/, ''],
+  ] as const)
+    for (const place of ['comments', 'partial'])
+      it(`${option} is off unless set, and reaches the ${place} template`, async () => {
+        const source = `<p>${value}</p>`
+        await file('theme/i18n/de.lima', 'comments:\n  headingPlural: Kommentare\n')
+        await file('comments.json', '[]')
+        await file(
+          'theme/templates/partials/comments.sort',
+          place === 'comments' ? source : '{@partial partials/inner.sort}',
+        )
+        if (place === 'partial') await file('theme/templates/partials/inner.sort', source)
+        for (const enabled of [undefined, false, true]) {
+          await file('config.lima', enabled === undefined ? '' : `${option}: ${String(enabled)}\n`)
+          const config = await readConfig(dir, {})
+          const html = join(dir, `${String(enabled)}.html`)
+          const render = () =>
+            renderComments({
+              themePath: join(dir, 'theme'),
+              commentsJsonPath: join(dir, 'comments.json'),
+              commentsHtmlPath: html,
+              language: 'de',
+              templateOptions: templateOptions(config),
+            })
+          if (enabled) {
+            await assert.rejects(render, code)
+            await assert.rejects(readFile(html), { code: 'ENOENT' })
+          } else {
+            await render()
+            assert.equal(await readFile(html, 'utf8'), `<p>${rendered}</p>`)
+          }
+        }
+      })
+})
+
+describe('the comments command configuration', () => {
+  for (const option of ['strictBraces', 'strictUndefined'])
+    it(`checks ${option} before contacting the service`, async () => {
+      await file('config.lima', `${option}:\n  enabled: true\n`)
+      await assert.rejects(runCommentsCli(dir, { dev: false }), {
+        message: `config.lima: ${option} is true or false, not {"enabled":true}`,
+      })
+    })
 })
 
 // review 2026-10-31 (before going public): the admin token went to any address, over http too

@@ -13,8 +13,8 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ### Added
 
-- `config.lima` passes `strictBraces` and `strictUndefined` to galley for theme and field templates; both stay off
-  unless set ([docs/config.md](docs/config.md#building)).
+- `config.lima` passes `strictBraces` and `strictUndefined` to galley for every theme template, including comments,
+  and for field templates; both stay off unless set ([docs/config.md](docs/config.md#building)).
 
 ## [0.5.3] — 2026-11-24
 

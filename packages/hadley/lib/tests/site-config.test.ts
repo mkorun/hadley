@@ -3,7 +3,16 @@ import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { defaultLanguageOf, fieldSchema, highlightingThemes, readConfig, readThemeSettings } from '../site-config.ts'
+import {
+  checkConfig,
+  defaultLanguageOf,
+  fieldSchema,
+  highlightingThemes,
+  readConfig,
+  readThemeSettings,
+  templateOptions,
+} from '../site-config.ts'
+import { failureText } from '../logger.ts'
 
 // The language of a site's pages is config.lima's to say; hadley does not assume one.
 
@@ -113,7 +122,7 @@ describe('the switches of config.lima', () => {
     const dir = mkdtempSync(join(tmpdir(), 'hadley-switches-'))
     dirs.push(dir)
     writeFileSync(join(dir, 'config.lima'), lima)
-    return readConfig(dir, {})
+    return readConfig(dir, {}).then(checkConfig)
   }
 
   it('are true or false', async () => {
@@ -127,10 +136,10 @@ describe('the switches of config.lima', () => {
 
   it('stop the build with any other value', async () => {
     for (const [lima, message] of [
-      ['rss:\n  enabled: yes\n', /rss\.enabled is true or false, not yes/],
+      ['rss:\n  enabled: yes\n', /rss\.enabled is true or false, not "yes"/],
       ['search:\n  enabled: 1\n', /search\.enabled is true or false, not 1/],
-      ['comments:\n  enabled: "true"\n', /comments\.enabled is true or false, not true/],
-      ['markdown:\n  enabled: yes\n', /markdown\.enabled is true or false, not yes/],
+      ['comments:\n  enabled: "true"\n', /comments\.enabled is true or false, not "true"/],
+      ['markdown:\n  enabled: yes\n', /markdown\.enabled is true or false, not "yes"/],
       ['typography: true\n', /typography is a block with enabled: true or false/],
       ['og:\n  - enabled\n', /og is a block with enabled: true or false/],
     ] as const)
@@ -139,8 +148,36 @@ describe('the switches of config.lima', () => {
 
   it('refuses a non-boolean strict template option with its config key', async () => {
     for (const name of ['strictBraces', 'strictUndefined'])
-      for (const value of ['yes', '1', '"true"', 'null', '[]'])
-        await assert.rejects(read(`${name}: ${value}\n`), /config\.lima: strict(Braces|Undefined) is true or false/)
+      for (const [value, found] of [
+        ['yes', '"yes"'],
+        ['1', '1'],
+        ['"true"', '"true"'],
+        ['null', 'null'],
+        ['[]', '[]'],
+        ['[true]', '[true]'],
+        ['{}', '{}'],
+        ['\n  enabled: true', '{"enabled":true}'],
+      ])
+        await assert.rejects(read(`${name}: ${value}\n`), {
+          message: `config.lima: ${name} is true or false, not ${found}`,
+        })
+  })
+
+  it('names a feature switch and its wrong value, including a Lima block', async () => {
+    for (const [value, found] of [
+      ['\n    a: 1', '{"a":1}'],
+      ['{}', '{}'],
+      ['[]', '[]'],
+    ])
+      await assert.rejects(read(`search:\n  enabled: ${value}\n`), {
+        message: `config.lima: search.enabled is true or false, not ${found}`,
+      })
+  })
+
+  it('passes only the two strict options, both off unless set', () => {
+    assert.deepEqual(templateOptions({ allowCode: true }), { strictBraces: false, strictUndefined: false })
+    assert.deepEqual(templateOptions({ strictBraces: true }), { strictBraces: true, strictUndefined: false })
+    assert.deepEqual(templateOptions({ strictUndefined: true }), { strictBraces: false, strictUndefined: true })
   })
 })
 
@@ -151,7 +188,7 @@ describe('robots.signal in config.lima', () => {
     const dir = mkdtempSync(join(tmpdir(), 'hadley-robots-config-'))
     dirs.push(dir)
     writeFileSync(join(dir, 'config.lima'), lima)
-    return readConfig(dir, {})
+    return readConfig(dir, {}).then(checkConfig)
   }
 
   it("keeps the owner's value and leaves the signal unset without one", async () => {
@@ -183,6 +220,22 @@ describe('robots.signal in config.lima', () => {
   it('stops for a robots value that is not a block', async () => {
     await assert.rejects(read('robots: true\n'), /config\.lima: robots is a block/)
   })
+})
+
+describe('a field template failure', () => {
+  for (const [template, code] of [
+    ['<b>{#if x}</b>', 'G2202'],
+    ['<b>{@js}return 1{@js}</b>', 'G3004'],
+  ])
+    it(`lays out ${code} under the field's source id`, async () => {
+      await assert.rejects(fieldSchema({ metadata: { badge: { template } } }), (error: Error) => {
+        const text = failureText(error)
+        assert.ok(text.includes('\n  config.lima:metadata.badge.template:1:4\n'), text)
+        assert.ok(text.includes(`(${code})\n`), text)
+        assert.doesNotMatch(text, /\[galley:|<template>/)
+        return true
+      })
+    })
 })
 
 // 2026-10-29: two fields could claim one name, and a name could be another field's, both without a word

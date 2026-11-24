@@ -6,11 +6,10 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { parse as limaparse } from '@limaformat/lima'
 import { pageFiles } from '../../lib/bundles.ts'
 import { formsDataDir } from '../../lib/forms-service.ts'
 import { lf, readableByOthers } from '../../lib/platform.ts'
-import { defaultLanguageOf } from '../../lib/site-config.ts'
+import { checkConfig, defaultLanguageOf, readConfig, readMetaFiles, templateOptions } from '../../lib/site-config.ts'
 import { userConfigDir } from '../../lib/user-config.ts'
 import { generateEml } from './eml.ts'
 import { messagesFor, type Messages } from './messages.ts'
@@ -103,12 +102,8 @@ export async function runCommentsCli(
   // dev: the comments service a dev server started, at devServiceUrl
   opts: { dev: false } | { dev: true; devServiceUrl: string },
 ): Promise<void> {
-  const configPath = join(siteDir, 'config.lima')
-  const config = limaparse(
-    await readFile(configPath, 'utf-8').catch(() => {
-      throw new Error(`${configPath} is missing`)
-    }),
-  ) as Record<string, any>
+  const config = checkConfig(await readConfig(siteDir, await readMetaFiles(siteDir)))
+  const galleyOptions = templateOptions(config)
   const serviceUrl: string = opts.dev ? opts.devServiceUrl : config.comments?.url
   if (!serviceUrl) throw new Error('config.lima: comments.url is missing')
   if (!carriesToken(serviceUrl))
@@ -176,6 +171,7 @@ export async function runCommentsCli(
           commentsJsonPath: join(dir, 'comments.json'),
           commentsHtmlPath: join(dir, '_comments.html'),
           language: lang,
+          templateOptions: galleyOptions,
         })
         console.log(m.rendered(titleOf(articleId, lang) ?? articleId))
       } catch (error) {

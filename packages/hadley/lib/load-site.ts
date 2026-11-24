@@ -11,6 +11,7 @@ import { bundleIdOf, CONTENT_ROOTS, pageFiles, type PageFile } from './bundles.t
 import { KNOWN_TYPES, STATES, readFrontMatter } from './front-matter.ts'
 import type { Problem } from './problems.ts'
 import {
+  checkConfig,
   defaultLanguageOf,
   fieldSchema,
   languageRecord,
@@ -43,9 +44,14 @@ export const localDay = (date: Date): string =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
 // localServer: built for the local server (lib/site-config.ts, languageRecord)
-const loadSite = async (siteDir: string, isPublish = false, localServer = false): Promise<Site> => {
-  const partials = await readMetaFiles(siteDir)
-  const config = await readConfig(siteDir, partials)
+const loadSite = async (
+  siteDir: string,
+  isPublish = false,
+  localServer = false,
+  input?: { config: Config; partials: Record<string, unknown> },
+): Promise<Site> => {
+  const partials = input?.partials ?? (await readMetaFiles(siteDir))
+  const config = checkConfig(input?.config ?? (await readConfig(siteDir, partials)))
   const defaultLanguage = defaultLanguageOf(config)
   const theme = await readThemeSettings(siteDir, config)
   const reading: Reading = {

@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { parse as limaparse } from '@limaformat/lima'
 import type { PublicComment } from './merge.ts'
+import type { TemplateOptions } from '../../lib/site-config.ts'
 
 // A comment's text as paragraphs of lines: the template writes each line escaped and sets <p> and <br> itself, so no
 // HTML leaves this tool (AGENTS.md, Security)
@@ -40,6 +41,7 @@ export async function renderComments(opts: {
   commentsJsonPath: string
   commentsHtmlPath: string
   language: string
+  templateOptions: TemplateOptions
 }): Promise<void> {
   const { themePath, commentsJsonPath, commentsHtmlPath, language } = opts
 
@@ -59,6 +61,7 @@ export async function renderComments(opts: {
   const tpl = await galley(
     src,
     checked({
+      ...opts.templateOptions,
       includes: {
         import: (path, enc) => readFile(path, enc as BufferEncoding),
         basedir: `${themePath}/templates`,

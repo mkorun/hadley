@@ -57,26 +57,31 @@ export async function readMetaFiles(siteDir: string): Promise<Record<string, unk
 /** The features config.lima turns on with `enabled: true` (docs/config.md). */
 const SWITCHES = ['comments', 'maintenance', 'markdown', 'og', 'rss', 'search', 'typography'] as const
 
-/**
- * config.lima, its references to meta files resolved. A switch is `enabled: true` or `false`: any other value would
- * leave its feature off without a word, so it stops.
- */
+/** config.lima, its references to meta files resolved; templateOptions and checkConfig check what their steps read. */
 export async function readConfig(siteDir: string, partials: Record<string, unknown>): Promise<Config> {
-  const config = (await limaFile(joinPath(siteDir, 'config.lima'), partials)) as Config
+  return (await limaFile(joinPath(siteDir, 'config.lima'), partials)) as Config
+}
+
+/** A switch is `enabled: true` or `false`: any other value would leave its feature off without a word, so it stops. */
+export function checkConfig(config: Config): Config {
   for (const name of SWITCHES) switchOf(config, name)
-  for (const name of ['strictBraces', 'strictUndefined']) {
-    if (config[name] !== undefined && typeof config[name] !== 'boolean')
-      throw new Error(`config.lima: ${name} is true or false, not ${String(config[name])}`)
-  }
+  templateOptions(config)
   checkRobots(config)
   return config
 }
 
-/** The galley checks config.lima opts into for both theme and field templates (docs/config.md). */
-export const templateOptions = (config: Config): Pick<GalleyOptions, 'strictBraces' | 'strictUndefined'> => ({
-  strictBraces: config.strictBraces ?? false,
-  strictUndefined: config.strictUndefined ?? false,
-})
+const TEMPLATE_OPTIONS = ['strictBraces', 'strictUndefined'] as const
+export type TemplateOptions = Required<Pick<GalleyOptions, (typeof TEMPLATE_OPTIONS)[number]>>
+
+function booleanOption(value: unknown, key: string): boolean {
+  if (value === undefined) return false
+  if (typeof value !== 'boolean') throw new Error(`config.lima: ${key} is true or false, not ${JSON.stringify(value)}`)
+  return value
+}
+
+/** The galley checks for every theme and field template, comments included (docs/config.md). */
+export const templateOptions = (config: Config): TemplateOptions =>
+  Object.fromEntries(TEMPLATE_OPTIONS.map((name) => [name, booleanOption(config[name], name)])) as TemplateOptions
 
 function checkRobots(config: Config): void {
   const block: unknown = config.robots
@@ -103,9 +108,7 @@ function switchOf(config: Config, name: (typeof SWITCHES)[number]): void {
   if (block === undefined) return
   if (block === null || typeof block !== 'object' || Array.isArray(block))
     throw new Error(`config.lima: ${name} is a block with enabled: true or false`)
-  const enabled = (block as { enabled?: unknown }).enabled
-  if (enabled !== undefined && typeof enabled !== 'boolean')
-    throw new Error(`config.lima: ${name}.enabled is true or false, not ${String(enabled)}`)
+  booleanOption((block as { enabled?: unknown }).enabled, `${name}.enabled`)
 }
 
 /** Whether config.lima puts the site under maintenance: a publish build makes only its 503 page (config.md). */
@@ -183,11 +186,12 @@ export async function fieldSchema(config: Config): Promise<FieldSchema> {
     if (Array.isArray(cfg.allowed)) schema.allowed[key] = cfg.allowed
     if (cfg.template === undefined) continue
     if (typeof cfg.template !== 'string') throw new Error(`config.lima: the template of the field ${key} is not a text`)
-    const problems = rawProblems(cfg.template, `config.lima: metadata.${key}.template`, 'field')
+    const sourceId = `config.lima:metadata.${key}.template`
+    const problems = rawProblems(cfg.template, sourceId, 'field')
     if (problems.length > 0) throw new Error(`config.lima: the template of the field ${key}: ${problems.join('; ')}`)
     schema.templates[key] = await galley(cfg.template, {
       ...templateOptions(config),
-      sourceId: `config.lima: metadata.${key}.template`,
+      sourceId,
       includes: {
         import: () => Promise.reject(new Error(`config.lima: the template of ${key} cannot include partials`)),
       },
