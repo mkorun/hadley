@@ -51,7 +51,6 @@ export async function renderComments(opts: {
 
   const src = await findTemplate(themePath)
   const { default: galley } = await import('@mkorun/galley')
-  const { default: util } = await import('@mkorun/galley/util')
   const { checked, rawProblems } = await import('../../lib/compile-templates.ts')
 
   // the rule of every template of the build (AGENTS.md, Security): here the values are what visitors wrote
@@ -67,7 +66,7 @@ export async function renderComments(opts: {
     }),
   )
   const html = await Promise.resolve(
-    tpl.render({ comments: withParagraphs(tree), language, t: await themeTexts(themePath, language) }, util),
+    tpl.render({ comments: withParagraphs(tree), language, t: await themeTexts(themePath, language) }),
   )
 
   await mkdir(dirname(commentsHtmlPath), { recursive: true })

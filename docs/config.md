@@ -68,6 +68,8 @@ navigations as `navigations.main`, `navigations.footer`, the featured articles a
 | `highlighting` | the colours of code blocks ([highlighting.md](highlighting.md)) |
 | `comments` | the comments service ([comments.md](comments.md)) |
 | `templates` | a template for every page of a root: `templates: articles: post` (site.md) |
+| `strictBraces: true` | galley refuses malformed unescaped `{` outside script/style in theme and field templates; `false` unless set |
+| `strictUndefined: true` | galley stops at undefined output, each collections, const values and initial pipe inputs outside conditions in theme and field templates; `false` unless set |
 | `sources` | pages from another git repository, at a commit ([sources.md](sources.md)) |
 | `theme` | the theme's settings (themes.md, "Settings") |
 | `dev` | the dev server: `port`, `editor` and `chat`; HTTPS is an option, the rest the user configuration's ([dev-server.md](dev-server.md)) |

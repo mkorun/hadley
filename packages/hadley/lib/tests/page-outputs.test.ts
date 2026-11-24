@@ -127,6 +127,45 @@ after(async () => {
   await rm(dir, { recursive: true, force: true, maxRetries: 10 })
 })
 
+describe('the strict template options of config.lima', () => {
+  for (const [option, value, code, rendered] of [
+    ['strictBraces', '{ a + b }', /G3019/, '{ a + b }'],
+    ['strictUndefined', '{ missing }', /G5002/, ''],
+  ] as const)
+    for (const place of ['layout', 'partial', 'heading', 'field'])
+      it(`${option} is off unless set, and reaches the ${place} template`, async () => {
+        const source = `<span class="probe">${value}</span>`
+        for (const enabled of [undefined, false, true]) {
+          const name = `${option}-${place}-${String(enabled)}`
+          const root = join(dir, 'sites', name)
+          const templates = join(root, 'theme', 'templates')
+          let template = '<!doctype html><title>{ meta.title }</title>{@raw html.markup}'
+          let config = SITE_CONFIG
+          if (enabled !== undefined) config += `${option}: ${String(enabled)}\n`
+          if (place === 'field') {
+            config += `metadata:\n  badge:\n    template: '${source}'\n`
+            template += "{@raw html.fields.badge ?? ''}"
+          } else if (place === 'layout') {
+            template += source
+          } else {
+            const file = place === 'heading' ? 'markup/heading.sort' : 'partials/probe.sort'
+            await mkdir(join(templates, file, '..'), { recursive: true })
+            await writeFile(join(templates, file), source)
+            if (place === 'partial') template += '{@partial partials/probe.sort}'
+          }
+          const frontMatter = place === 'field' ? 'title: A\nbadge: test\n' : 'title: A\n'
+          const content = { 'articles/[a]/a.md': page(frontMatter, '## Heading\n\nText.\n') }
+          if (enabled) {
+            await assert.rejects(publish(name, content, 'publish', template, config), code)
+          } else {
+            await publish(name, content, 'publish', template, config)
+            const html = await readFile(join(root, '.hadley', 'publish', 'a', 'index.html'), 'utf8')
+            assert.ok(html.includes(`<span class="probe">${rendered}</span>`), html)
+          }
+        }
+      })
+})
+
 describe('robots.txt', () => {
   const template = '<!doctype html><title>{ meta.title }</title>{@raw html.markup}'
 

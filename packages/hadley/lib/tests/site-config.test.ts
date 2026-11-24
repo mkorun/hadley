@@ -136,6 +136,12 @@ describe('the switches of config.lima', () => {
     ] as const)
       await assert.rejects(read(lima), message)
   })
+
+  it('refuses a non-boolean strict template option with its config key', async () => {
+    for (const name of ['strictBraces', 'strictUndefined'])
+      for (const value of ['yes', '1', '"true"', 'null', '[]'])
+        await assert.rejects(read(`${name}: ${value}\n`), /config\.lima: strict(Braces|Undefined) is true or false/)
+  })
 })
 
 describe('robots.signal in config.lima', () => {

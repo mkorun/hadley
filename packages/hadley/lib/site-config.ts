@@ -7,7 +7,7 @@ import { readdir, readFile } from 'node:fs/promises'
 import { join as joinPath } from 'node:path'
 import { isSystemFile, pathsBelow } from './platform.ts'
 import { LimaError, parse as limaparse } from '@limaformat/lima'
-import galley from '@mkorun/galley'
+import galley, { type GalleyOptions } from '@mkorun/galley'
 import type { Themes } from '../case/index.ts'
 import { rawProblems } from './compile-templates.ts'
 import { isHadleyField, RESERVED_FIELDS } from './front-matter.ts'
@@ -64,9 +64,19 @@ const SWITCHES = ['comments', 'maintenance', 'markdown', 'og', 'rss', 'search', 
 export async function readConfig(siteDir: string, partials: Record<string, unknown>): Promise<Config> {
   const config = (await limaFile(joinPath(siteDir, 'config.lima'), partials)) as Config
   for (const name of SWITCHES) switchOf(config, name)
+  for (const name of ['strictBraces', 'strictUndefined']) {
+    if (config[name] !== undefined && typeof config[name] !== 'boolean')
+      throw new Error(`config.lima: ${name} is true or false, not ${String(config[name])}`)
+  }
   checkRobots(config)
   return config
 }
+
+/** The galley checks config.lima opts into for both theme and field templates (docs/config.md). */
+export const templateOptions = (config: Config): Pick<GalleyOptions, 'strictBraces' | 'strictUndefined'> => ({
+  strictBraces: config.strictBraces ?? false,
+  strictUndefined: config.strictUndefined ?? false,
+})
 
 function checkRobots(config: Config): void {
   const block: unknown = config.robots
@@ -176,6 +186,8 @@ export async function fieldSchema(config: Config): Promise<FieldSchema> {
     const problems = rawProblems(cfg.template, `config.lima: metadata.${key}.template`, 'field')
     if (problems.length > 0) throw new Error(`config.lima: the template of the field ${key}: ${problems.join('; ')}`)
     schema.templates[key] = await galley(cfg.template, {
+      ...templateOptions(config),
+      sourceId: `config.lima: metadata.${key}.template`,
       includes: {
         import: () => Promise.reject(new Error(`config.lima: the template of ${key} cannot include partials`)),
       },

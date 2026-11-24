@@ -2,7 +2,6 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, join as joinPath } from 'node:path'
 import quad from '@mkorun/quad'
-import util from '@mkorun/galley/util'
 import type compileTemplates from './compile-templates.ts'
 import type { Output } from './output.ts'
 import type { Problem } from './problems.ts'
@@ -79,7 +78,7 @@ export async function writePages(
       const context = pageContext(page, { ...options, view, comments, feed, notes })
       const html = formatHtml(
         page,
-        renderWith(page, () => template.render(context, util)),
+        renderWith(page, () => template.render(context)),
       )
       const htmlFile = output.claim(page.urlPath.slice(1) + 'index.html', pageOwner(page))
       await mkdir(dirname(htmlFile), { recursive: true })

@@ -2,7 +2,6 @@
  * The content of each page, rendered once its files are built: its markup and what comes from it, the table of
  * contents, the character count and a description written from the text.
  */
-import util from '@mkorun/galley/util'
 import type { SyncTemplate } from '@mkorun/galley'
 import { render, type BlockToken, type Heading, type ParsedDocument } from '../case/index.ts'
 import type { Problem } from './problems.ts'
@@ -83,7 +82,7 @@ export const renderContent = (
       const t = site.locales[page.language] ?? {}
       const heading = headingTemplate
         ? ({ level, id, html }: Heading) =>
-            headingTemplate.render({ level, id, html: { text: html }, t, meta: { lang: page.language } }, util)
+            headingTemplate.render({ level, id, html: { text: html }, t, meta: { lang: page.language } })
         : undefined
       const r = render(page.doc, {
         ...renderOptions(site, page, isPublish),

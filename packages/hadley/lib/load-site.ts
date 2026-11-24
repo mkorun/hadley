@@ -5,7 +5,6 @@
  */
 import { readFile } from 'node:fs/promises'
 import { basename, join as joinPath } from 'node:path'
-import util from '@mkorun/galley/util'
 import { parseDocument, typographyText } from '../case/index.ts'
 import { readDestination } from '../case/destination.ts'
 import { bundleIdOf, CONTENT_ROOTS, pageFiles, type PageFile } from './bundles.ts'
@@ -275,7 +274,7 @@ async function readPage(
     }
     // a field template's fault names the page and the field, as a page template's does (lib/write-pages.ts)
     try {
-      htmlFields[key] = await fieldTemplate.render(data, util)
+      htmlFields[key] = await fieldTemplate.render(data)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       throw new Error(`${file.file}: the field ${key}: ${message}`, { cause: error })

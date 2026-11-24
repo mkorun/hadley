@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
+import { readdir, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { lint } from '@mkorun/galley'
 import compileTemplates, { compileHeading, rawProblems } from '../compile-templates.ts'
 
 let dir: string
@@ -19,6 +20,26 @@ afterEach(() => {
 
 const compile = () =>
   compileTemplates({ includes: { import: (path, enc) => readFile(path, enc as BufferEncoding), basedir: dir } })
+
+describe('the templates hadley brings', () => {
+  for (const theme of ['hems', 'punch'])
+    it(`${theme} compiles without errors or warnings, including standalone partials`, async () => {
+      const basedir = join(import.meta.dirname, '..', '..', 'themes', theme, 'templates')
+      for (const file of await readdir(basedir, { recursive: true })) {
+        if (!file.endsWith('.chase') && !file.endsWith('.sort')) continue
+        const path = join(basedir, file)
+        const diagnostics = await lint(await readFile(path, 'utf8'), {
+          sourceId: path,
+          includes: { import: (path, enc) => readFile(path, enc as BufferEncoding), basedir },
+        })
+        assert.deepEqual(
+          diagnostics.filter((diagnostic) => diagnostic.severity !== 'info'),
+          [],
+          path,
+        )
+      }
+    })
+})
 
 describe('what a template writes as HTML', () => {
   it('is what hadley made as HTML (html.*) and the theme’s own texts (t.*)', () => {
@@ -62,6 +83,29 @@ describe('what a template writes as HTML', () => {
       '<main><p>x</p></main><footer>&lt;b&gt;</footer>',
     )
   })
+
+  it('checks raw output and bindings in every each fallback, including nested snippets and branches', async () => {
+    const source =
+      '{#each items as item}{ item }{:else}' +
+      '{#snippet empty(value)}{#if value}{@raw value}{:else}{@const t = value}{/if}{/snippet}' +
+      '{@render empty(meta)}{/each}'
+    assert.deepEqual(rawProblems(source), [
+      '{@raw value} writes a value as HTML; a template writes HTML only from html.* and t.*',
+      '{@const t = value} binds t, which hadley gives',
+    ])
+    writeFileSync(join(dir, 'page.chase'), source)
+    await assert.rejects(compile(), /page\.chase: \{@raw value\} writes a value as HTML/)
+    assert.equal(rawProblems('{#each items as item}{ item }{:else}{@raw html.x}{/each}', 'field', 'field').length, 1)
+  })
+
+  for (const name of ['html', 't'])
+    it(`refuses ${name} as a snippet's second parameter`, async () => {
+      writeFileSync(join(dir, 'page.chase'), '{@partial partials/foot.sort}')
+      const source = `{#snippet s(value, ${name})}{@raw ${name}.x}{/snippet}{@render s(meta, meta)}`
+      writeFileSync(join(dir, 'partials', 'foot.sort'), source)
+      assert.deepEqual(rawProblems(source), [`{#snippet s(value, ${name})} binds ${name}, which hadley gives`])
+      await assert.rejects(compile(), /binds (html|t), which hadley gives/)
+    })
 })
 
 describe('an error in a template', () => {
@@ -118,10 +162,7 @@ describe('the heading template (templates/markup/heading.sort)', () => {
     mkdirSync(join(dir, 'markup'))
     writeFileSync(join(dir, 'markup', 'heading.sort'), '{@raw html.text}{#if id} <a href="#{ id }">¶</a>{/if}')
     const template = await heading()
-    assert.equal(
-      template?.render({ html: { text: 'A <em>b</em>' }, id: 'a-b' }, {}),
-      'A <em>b</em> <a href="#a-b">¶</a>',
-    )
+    assert.equal(template?.render({ html: { text: 'A <em>b</em>' }, id: 'a-b' }), 'A <em>b</em> <a href="#a-b">¶</a>')
   })
 
   it('writes no other value as HTML', async () => {

@@ -31,7 +31,7 @@ import { renderContent, type BlockEditorHook } from './lib/render-content.ts'
 import { robotsTxt } from './lib/robots.ts'
 import { linksJson, metaJson, siteJson, sitelinksJson } from './lib/site-data.ts'
 import { runPagefind } from './lib/search.ts'
-import { highlightingThemes, underMaintenance } from './lib/site-config.ts'
+import { highlightingThemes, templateOptions, underMaintenance } from './lib/site-config.ts'
 import { siteHost, siteRoot } from './lib/site-root.ts'
 import { sitemapXml } from './lib/sitemap.ts'
 import { assetsFor, planTheme, published, writeTheme } from './lib/theme-files.ts'
@@ -64,18 +64,29 @@ export async function build(
     await writeFile(file, text)
   }
 
+  const doneSite = logger.step('load site')
+  const localServer = outputMode === 'dev' || opts?.localServer === true
+  const site = await loadSite(siteDir, isPublish, localServer)
+  // a publish build has only the pages it writes (lib/load-site.ts)
+  const allPages = Object.values(site.content).flatMap((language) => Object.values(language.pages))
+  const unpublishedCount = allPages.filter((p) => !p.published).length
+  doneSite(
+    site.skipped > 0
+      ? `${allPages.length} pages · ${site.skipped} unpublished skipped`
+      : `${allPages.length} pages${unpublishedCount > 0 ? ` · ${unpublishedCount} unpublished` : ''}`,
+    settle(site.problems, isPublish),
+  )
+
   const doneTemplates = logger.step('compile templates', 'templates')
   const templatesDir = joinPath(siteDir, 'theme', 'templates')
   const galleyOptions = {
+    ...templateOptions(site.config),
     includes: { import: (path: string, enc: string) => readFile(path, enc as BufferEncoding), basedir: templatesDir },
   }
   const templates = await compileTemplates(galleyOptions)
   const headingTemplate = await compileHeading(galleyOptions)
   doneTemplates()
 
-  const doneSite = logger.step('load site')
-  const localServer = outputMode === 'dev' || opts?.localServer === true
-  const site = await loadSite(siteDir, isPublish, localServer)
   // under maintenance a publish build makes the 503 page alone: no feed, sitemap, llms.txt or search (config.md)
   const maintenance = isPublish && underMaintenance(site.config)
   const feeds = maintenance ? [] : feedLanguages(site)
@@ -87,8 +98,6 @@ export async function build(
   // as assets, and a site path in content names one
   const themeDir = joinPath(siteDir, 'theme')
   const themeFiles = await planTheme(themeDir, isPublish)
-  // a publish build has only the pages it writes (lib/load-site.ts)
-  const allPages = Object.values(site.content).flatMap((language) => Object.values(language.pages))
   // a page names a template of the theme, or the build stops before any work
   const untemplated = allPages.filter((page) => page.outputs.html && !Object.hasOwn(templates, page.template))
   if (untemplated.length > 0) {
@@ -138,13 +147,6 @@ export async function build(
   loadHighlightingCache(hlCache)
   await prepareHighlighter(allPages.map((page) => page.doc))
 
-  const unpublishedCount = allPages.filter((p) => !p.published).length
-  doneSite(
-    site.skipped > 0
-      ? `${allPages.length} pages · ${site.skipped} unpublished skipped`
-      : `${allPages.length} pages${unpublishedCount > 0 ? ` · ${unpublishedCount} unpublished` : ''}`,
-    settle(site.problems, isPublish),
-  )
   for (const behind of site.behind) logger.warn(behind)
   if (!isPublish && underMaintenance(site.config))
     logger.warn('maintenance is on: a publish build makes only the page @errors/[503] (hadley deploy shows it)')

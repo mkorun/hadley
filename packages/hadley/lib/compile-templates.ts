@@ -46,22 +46,42 @@ export function rawProblems(source: string, id = 'template', use: 'theme' | 'fie
   }
   const visit = (nodes: readonly TemplateNode[]): void => {
     for (const node of nodes) {
-      if (node.kind === 'output' && node.raw && use === 'field') {
-        problems.push(`${text(node)} writes a value as HTML; a field template writes none, its values are content`)
-      } else if (node.kind === 'output' && node.raw && !isHtmlValue(node.expression)) {
-        problems.push(`${text(node)} writes a value as HTML; a template writes HTML only from html.* and t.*`)
+      switch (node.kind) {
+        case 'output':
+          if (node.raw && use === 'field') {
+            problems.push(`${text(node)} writes a value as HTML; a field template writes none, its values are content`)
+          } else if (node.raw && !isHtmlValue(node.expression)) {
+            problems.push(`${text(node)} writes a value as HTML; a template writes HTML only from html.* and t.*`)
+          }
+          break
+        case 'const':
+          bind(node, node.name)
+          break
+        case 'if':
+          for (const branch of node.branches) visit(branch.children)
+          break
+        case 'each':
+          bind(node, node.item)
+          bind(node, node.index)
+          visit(node.children)
+          if (node.fallback) visit(node.fallback)
+          break
+        case 'snippet':
+          bind(node, node.name)
+          for (const param of node.params) bind(node, param)
+          visit(node.children)
+          if (node.variants) for (const variant of node.variants) visit(variant.children)
+          break
+        case 'partial':
+          if (node.children) visit(node.children)
+          break
+        case 'render': // arguments are expressions, with no HTML output or bindings of their own
+        case 'text':
+        case 'js':
+          break
+        default:
+          throw new Error(`${id}: unknown galley template node`, { cause: node satisfies never })
       }
-      if (node.kind === 'const') bind(node, node.name)
-      if (node.kind === 'each') {
-        bind(node, node.item)
-        bind(node, node.index)
-      }
-      if (node.kind === 'snippet') {
-        bind(node, node.name)
-        bind(node, node.param)
-      }
-      if (node.kind === 'if') for (const branch of node.branches) visit(branch.children)
-      if (node.kind === 'each' || node.kind === 'snippet') visit(node.children)
     }
   }
   visit(parse({ id, text: source }).children)

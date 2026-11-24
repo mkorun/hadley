@@ -4,6 +4,18 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Changed
+
+- galley 0.5.0 replaces 0.4.0. A site's own templates may need changes to bindings, attributes, script/style values,
+  paths, pipes or snippet calls; see [galley's changelog](https://github.com/mkorun/galley/blob/main/CHANGELOG.md).
+
+### Added
+
+- `config.lima` passes `strictBraces` and `strictUndefined` to galley for theme and field templates; both stay off
+  unless set ([docs/config.md](docs/config.md#building)).
+
 ## [0.5.3] — 2026-11-24
 
 galley 0.4.0 closes ways past its check of URL attributes, and quad 0.2.0 changes whitespace only where a browser
