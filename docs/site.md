@@ -55,12 +55,12 @@ whole root one (config.md). Without either, a page's template is its root's type
 ## Collections
 
 A folder named `@name` in a root holds bundles that belong together. Two or more listed articles or essays of a
-collection are a series: their templates read them as `seriesData`, in the order of their dates. `@errors` holds
-the error pages, which no list, sitemap or search shows: `[404]` for a page that is not there, and `[503]` for a
-site under maintenance (config.md, `maintenance`). An error page's address is hadley's, `/errors/404/` and
-`/de/errors/404/`, as a server finds it by its number (deploy.md); its front matter takes no `urlPath`. A server
-shows it at whatever address failed, so its images and files stay in its bundle, but its HTML names them from its
-own URL path (`/errors/503/loft-960w.webp`), never beside it.
+collection are a series: their templates read them as `seriesData`, in the order of their dates; an archived article is
+not listed, so it is part of none. `@errors` holds the error pages, which no list, sitemap or search shows: `[404]` for
+a page that is not there, and `[503]` for a site under maintenance (config.md, `maintenance`). An error page's address
+is hadley's, `/errors/404/` and `/de/errors/404/`, as a server finds it by its number (deploy.md); its front matter
+takes no `urlPath`. A server shows it at whatever address failed, so its images and files stay in its bundle, but its
+HTML names them from its own URL path (`/errors/503/loft-960w.webp`), never beside it.
 
 ## Languages
 

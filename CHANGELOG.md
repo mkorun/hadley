@@ -16,6 +16,11 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
   fails, the others are still written and the tool names the failure; the next run tries again. A comment that comes
   from the service a second time is published once.
 
+### Fixed
+
+- An archived article shows no series box: it is not part of its series, so hems and punch no longer write
+  `Part 0 of 2` on it. The listed parts count without it (docs/site.md, "Collections").
+
 ## [0.6.1] — 2026-11-25
 
 An archived page no longer stops a build with `strictUndefined`. New sites start with both strict options.
