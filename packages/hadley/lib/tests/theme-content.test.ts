@@ -57,6 +57,29 @@ describe('optional content in the bundled themes', () => {
       assert.deepEqual(await boxes(3), ['Part 2 of 2'])
     })
 
+    it(`${theme}: an undated featured article and the feed page write no empty <time>`, async () => {
+      const root = join(dir, `undated-${theme}`)
+      await init(root, ['en'], theme, 'blank')
+      const configPath = join(root, 'config.lima')
+      await writeFile(configPath, (await readFile(configPath, 'utf8')) + 'featured_articles:\n  - id: undated\n')
+      for (const [id, frontMatter] of [
+        ['undated', 'title: Undated\n'],
+        ['dated', 'title: Dated\npublishFrom: 2026-01-01\n'],
+      ]) {
+        const bundle = join(root, `content/articles/[${id}]`)
+        await mkdir(bundle, { recursive: true })
+        await writeFile(join(bundle, `${id}.md`), `---\n${frontMatter}---\nText.\n`)
+      }
+      await quietly(() => build(root, 'publish'))
+      const home = await readFile(join(root, '.hadley/publish/index.html'), 'utf8')
+      assert.match(home, /href="\/undated\/"/)
+      assert.doesNotMatch(home, /datetime=""/)
+      // the feed lists only dated articles (lib/feed.ts), so its page dates every entry
+      const feed = await readFile(join(root, '.hadley/publish/feed/index.html'), 'utf8')
+      assert.match(feed, /href="\/dated\/"/)
+      assert.doesNotMatch(feed, /href="\/undated\/"|datetime=""/)
+    })
+
     it(`${theme}: an imprint writes only present data, with no empty sections or separators`, async () => {
       const root = join(dir, `imprint-${theme}`)
       await init(root, ['en'], theme, 'blank')

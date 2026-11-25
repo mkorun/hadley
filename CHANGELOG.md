@@ -20,6 +20,7 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 - An archived article shows no series box: it is not part of its series, so hems and punch no longer write
   `Part 0 of 2` on it. The listed parts count without it (docs/site.md, "Collections").
+- hems writes no `<time>` for a featured article without a date, as its list of articles and punch already do.
 
 ## [0.6.1] — 2026-11-25
 

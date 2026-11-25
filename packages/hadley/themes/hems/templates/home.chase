@@ -13,7 +13,7 @@
     <ol class="entries">
       {#each featuredList as item}
       <li class="entry">
-        <p class="entry-meta">{#if item.label}<span>{ item.label }</span>{/if}<time datetime="{ item.displayDate | isoDate }">{ item.displayDate | dateFormat('yyyy-MM-dd') }</time></p>
+        <p class="entry-meta">{#if item.label}<span>{ item.label }</span>{/if}{#if item.displayDate}<time datetime="{ item.displayDate | isoDate }">{ item.displayDate | dateFormat('yyyy-MM-dd') }</time>{/if}</p>
         <h3 class="entry-title"><a href="{ item.urlPath }">{ item.title }</a></h3>
         {#if item.subtitle}<p class="entry-text">{ item.subtitle }</p>{:else if item.description}<p class="entry-text">{ item.description }</p>{/if}
       </li>
