@@ -36,9 +36,8 @@ const find = (tree: PublicComment[], id: string): PublicComment | undefined => {
 }
 
 /**
- * Puts `entry` into the comments.json at `commentsPath` and says so. Not added again: a comment whose id is there
- * already, approved in a run before, and an owner's reply whose text its comment holds from the owner already, under
- * any id (an older hadley gave a reply a random one).
+ * Puts `entry` into the comments.json at `commentsPath` and says so; a comment whose id is there already, approved in
+ * a run before, is not added again. Its text does not count: only ids and the tree do.
  */
 export async function mergeComment(
   commentsPath: string,
@@ -57,10 +56,6 @@ export async function mergeComment(
     tree = JSON.parse(raw)
   }
   if (find(tree, entry.id)) return false
-  if (entry.author_reply && entry.parent_comment_id !== null) {
-    const replies = find(tree, entry.parent_comment_id)?.comments ?? []
-    if (replies.some((reply) => reply.author_reply && reply.text === entry.text)) return false
-  }
 
   const comment: PublicComment = {
     id: entry.id,

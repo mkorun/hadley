@@ -589,12 +589,10 @@ Merge recursively locates parents. Ordinary siblings and roots are inserted befo
 timestamps retain insertion order. An absent parent changes the new record to top-level with null parent and appends it
 without chronological insertion.
 
-Merge checks IDs: a record whose ID is already in the tree, at any depth, is not added again. Nor is an author reply
-whose text equals that of an author reply its parent already holds, whatever that reply's ID. An approval repeated
-after a crash therefore adds the reply when only the comment is there, and no second reply of the same text, also not
-beside one an older CLI published under a random UUID; beside a reply of another ID and other text, it is added.
-Otherwise merge creates parent directories, reads the existing array when present, and rewrites the complete public
-file as two-space-indented JSON plus LF.
+Merge checks IDs: a record whose ID is already in the tree, at any depth, is not added again; text does not count. As
+an author reply's ID comes from its comment's, an approval repeated after a crash adds the reply when only the comment
+is there, and no second one. Otherwise merge creates parent directories, reads the existing array when present, and
+rewrites the complete public file as two-space-indented JSON plus LF.
 
 CLI work/archive/public writes use ordinary whole-file writes without temporary replacement or a transaction across
 files. The supplied CLI has no file-size cap or archive/mail retention cleanup.
