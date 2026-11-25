@@ -23,6 +23,8 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 - hems writes no `<time>` for a featured article without a date, as its list of articles and punch already do.
 - hems and punch write no empty line of details (`entry-meta`) above a title, on the home page, an article or a note,
   when the entry has none of its parts: no label, category, date, reading time or badge.
+- A reply drafted in `hadley comments` is no longer lost when the tool stops after it published the comment and before
+  the reply: the next run publishes the reply, once, and the comment still once.
 
 ## [0.6.1] — 2026-11-25
 

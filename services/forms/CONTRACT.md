@@ -561,8 +561,9 @@ reconstructed.
 A downloaded empty batch causes an immediate exit without DELETE. A server `resumed:true` value produces a warning but
 does not stop processing.
 
-Approval merges the first work entry into its article’s public tree, optionally adds the saved author reply with a new
-UUID and current timestamp, updates the archive, then removes the work entry.
+Approval merges the first work entry into its article’s public tree, optionally adds the saved author reply with the
+entry’s ID plus `-reply` as its ID and the current timestamp, updates the archive, then removes the work entry.
+`addons/forms/session.ts`, `approve`
 
 Editing changes only the work entry’s text. Notes and reply drafts change only archive fields. Rejection records its
 decision and removes the work entry without publication. Quit leaves remaining work for recovery.
@@ -587,9 +588,10 @@ Merge recursively locates parents. Ordinary siblings and roots are inserted befo
 timestamps retain insertion order. An absent parent changes the new record to top-level with null parent and appends it
 without chronological insertion.
 
-Merge checks IDs: a record whose ID is already in the tree, at any depth, is not added again, and neither is a reply
-drafted for it. Otherwise merge creates parent directories, reads the existing array when present, and rewrites the
-complete public file as two-space-indented JSON plus LF.
+Merge checks IDs: a record whose ID is already in the tree, at any depth, is not added again. A comment and its reply
+are so published once each, and an approval repeated after a crash adds the reply when only the comment is there.
+Otherwise merge creates parent directories, reads the existing array when present, and rewrites the complete public
+file as two-space-indented JSON plus LF.
 
 CLI work/archive/public writes use ordinary whole-file writes without temporary replacement or a transaction across
 files. The supplied CLI has no file-size cap or archive/mail retention cleanup.
@@ -804,7 +806,7 @@ made, because it changes what this text describes.
 | **p2**   | **Queue thresholds are approximate.** Concurrent checks can observe the same capacity, and the byte check excludes the incoming record. `server/index.ts:169`                                                                                                                                                                                                                                      |
 | **p2**   | **Replay consumption and comment storage can diverge.** C7’s ordering makes a storage/capacity failure require another proof, while an acknowledged append has no explicit durability synchronization. `server/index.ts:164`, `server/index.ts:193`                                                                                                                                                |
 | **p2**   | **Deletion can falsely report success.** Operational unlink failures are indistinguishable from completed deletion, undermining cleanup acknowledgement. `server/index.ts:251`                                                                                                                                                                                                                     |
-| **p2**   | **A CLI crash can lose a drafted reply.** A crash after public merge but before work removal repeats the approval on recovery; as merge checks IDs (C10), neither the record nor a reply is added, so a reply not yet merged is never published. Work deletion before failed server acknowledgement can also cause the whole frozen batch to be downloaded again. `cli/index.ts`, `cli/merge.ts`   |
+| **p2**   | **A CLI crash can download a batch again.** Work deletion before failed server acknowledgement can cause the whole frozen batch to be downloaded again; merge publishes each of its comments once. A crash between a comment's merge and its reply's no longer loses the reply, whose ID comes from the comment's (C10). `cli/index.ts`, `addons/forms/session.ts`                                 |
 | **p2**   | **CLI files can be partially rewritten.** Work, archive and public files have neither atomic replacement nor a shared transaction. Missing archives during recovery can later cause moderation operations to fail. `cli/index.ts`, `cli/merge.ts`                                                                                                                                                  |
 | **p2**   | **The widget can wait indefinitely or submit concurrently.** Failed solving leaves its polling unresolved; waiting state does not prevent another submit event. `widget/comments.ts:238`, `widget/comments.ts:247`                                                                                                                                                                                 |
 | **p2**   | **One malformed queue record blocks batch download.** There is no per-line recovery or quarantine around parsing. `server/index.ts:228`                                                                                                                                                                                                                                                            |

@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { QueueEntry } from '../screen.ts'
+import { mergeComment } from '../merge.ts'
 import { openSession } from '../session.ts'
 
 // A moderation session (session.ts): the work file, the archive, the decisions (services/forms/CONTRACT.md C10).
@@ -101,6 +102,30 @@ describe('a moderation session', () => {
         c.comments.map((r) => r.text),
       ]),
       [['1', ['Danke!']]],
+    )
+  })
+
+  it('publishes the drafted reply once after a run that stopped between the comment and its reply', async () => {
+    const commentsPath = join(dir, 'bundle', 'comments.json')
+    const opened = await openSession(work, archive, download([comment('1')]))
+    assert.equal(opened.kind, 'downloaded')
+    if (opened.kind !== 'downloaded') return
+    await opened.session.draftReply('1', 'Danke!')
+    // the run stops here: the comment is in comments.json, the work file and the archive are as they were
+    await mergeComment(commentsPath, comment('1'))
+
+    const resumed = await openSession(work, archive, download([]))
+    assert.equal(resumed.kind, 'resumed')
+    if (resumed.kind !== 'resumed') return
+    await resumed.session.approve(comment('1'), commentsPath, 'Ada')
+    // and once more, as after a run that stopped before it took the comment off the work file
+    await resumed.session.approve(comment('1'), commentsPath, 'Ada')
+    assert.deepEqual(
+      json(commentsPath).map((c: { id: string; comments: { id: string; text: string }[] }) => [
+        c.id,
+        c.comments.map((r) => [r.id, r.text]),
+      ]),
+      [['1', [['1-reply', 'Danke!']]]],
     )
   })
 
