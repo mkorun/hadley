@@ -562,8 +562,9 @@ A downloaded empty batch causes an immediate exit without DELETE. A server `resu
 does not stop processing.
 
 Approval merges the first work entry into its article’s public tree, optionally adds the saved author reply with the
-entry’s ID plus `-reply` as its ID and the current timestamp, updates the archive, then removes the work entry.
-`addons/forms/session.ts`, `approve`
+current timestamp and, as its ID, a name-based UUID (version 5) of the entry’s ID in a fixed namespace of hadley’s, so
+the same in every run and one C7 takes as a parent, updates the archive, then removes the work entry.
+`addons/forms/session.ts`, `approve`, `replyId`
 
 Editing changes only the work entry’s text. Notes and reply drafts change only archive fields. Rejection records its
 decision and removes the work entry without publication. Quit leaves remaining work for recovery.

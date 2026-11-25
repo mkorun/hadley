@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { QueueEntry } from '../screen.ts'
 import { mergeComment } from '../merge.ts'
-import { openSession } from '../session.ts'
+import { nameBasedUuid, openSession, replyId } from '../session.ts'
 
 // A moderation session (session.ts): the work file, the archive, the decisions (services/forms/CONTRACT.md C10).
 
@@ -125,7 +125,7 @@ describe('a moderation session', () => {
         c.id,
         c.comments.map((r) => [r.id, r.text]),
       ]),
-      [['1', [['1-reply', 'Danke!']]]],
+      [['1', [[replyId('1'), 'Danke!']]]],
     )
   })
 
@@ -149,5 +149,22 @@ describe('a moderation session', () => {
     const next = await openSession(work, archive, download([], true))
     assert.deepEqual(next, { kind: 'nothing', serverResumed: true })
     assert.equal(existsSync(join(work, 'comments-2026-10-01_10-00-00.json')), false, 'the empty work file is gone')
+  })
+})
+
+describe("the id of an owner's reply", () => {
+  it('is a name-based UUID, version 5, as RFC 9562 makes one', () => {
+    // RFC 9562, Appendix A.4: www.example.com in the DNS namespace
+    assert.equal(
+      nameBasedUuid('6ba7b810-9dad-11d1-80b4-00c04fd430c8', 'www.example.com'),
+      '2ed6657d-e927-568b-95e1-2665a8aea6a2',
+    )
+  })
+
+  it('is the same UUID for a comment in every run, and another for another comment', () => {
+    const id = replyId('9c25c27e-14bd-4e93-81bd-33d751bc6017')
+    assert.match(id, /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+    assert.equal(replyId('9c25c27e-14bd-4e93-81bd-33d751bc6017'), id)
+    assert.notEqual(replyId('0b8f3d4e-0000-4000-8000-000000000000'), id)
   })
 })

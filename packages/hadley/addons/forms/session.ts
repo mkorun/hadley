@@ -2,6 +2,7 @@
 // file (`<workDir>/comments-<timestamp>.json`, those not yet decided) and in the archive (`<archiveDir>/` under the
 // same name, every one with its decision), as services/forms/CONTRACT.md C10 describes them.
 
+import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { readFile, readdir, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -21,6 +22,27 @@ export type Opened =
   | { kind: 'resumed'; session: Session; file: string }
   | { kind: 'downloaded'; session: Session; serverResumed: boolean }
   | { kind: 'nothing'; serverResumed: boolean }
+
+/** A name-based UUID, version 5 (RFC 9562): the same `name` in the same `namespace` gives the same UUID. */
+export function nameBasedUuid(namespace: string, name: string): string {
+  const hash = createHash('sha1')
+    .update(Buffer.from(namespace.replaceAll('-', ''), 'hex'))
+    .update(name, 'utf8')
+    .digest()
+  hash[6] = (hash[6]! & 0x0f) | 0x50 // version 5
+  hash[8] = (hash[8]! & 0x3f) | 0x80 // the variant of RFC 9562
+  const hex = hash.subarray(0, 16).toString('hex')
+  return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-')
+}
+
+// hadley's own namespace for the ids of owners' replies; never to change, or a reply is published again
+const REPLY_NAMESPACE = 'fec870d5-7e7e-482f-a0e2-67f42c61ac1d'
+
+/**
+ * The id of the owner's reply to comment `commentId`: a UUID, which the service takes as a visitor's parent
+ * (CONTRACT.md C7), and the same in every run, which the merge's check of ids finds.
+ */
+export const replyId = (commentId: string): string => nameBasedUuid(REPLY_NAMESPACE, commentId)
 
 const nowIso = () => new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
 const timestamp = () => new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').slice(0, 19)
@@ -95,16 +117,16 @@ export class Session {
 
   /**
    * Publishes `entry` into `commentsPath` (the article's comments.json), with the reply drafted for it under
-   * `authorName`, and takes it off the work file. The reply's id is the comment's with `-reply`, so each is published
-   * once: a run that stopped between the two adds the reply when it is approved again, and a comment the service gave
-   * a second time stays as it was published, without another reply.
+   * `authorName`, and takes it off the work file. The reply's id comes from the comment's (replyId), so each is
+   * published once: a run that stopped between the two adds the reply when it is approved again, and a comment the
+   * service gave a second time stays as it was published, without another reply.
    */
   async approve(entry: QueueEntry, commentsPath: string, authorName: string): Promise<void> {
     await mergeComment(commentsPath, entry)
     const reply = (await this.archived(entry.id))?.author_reply_draft
     if (reply)
       await mergeComment(commentsPath, {
-        id: `${entry.id}-reply`,
+        id: replyId(entry.id),
         parent_comment_id: entry.id,
         name: authorName,
         submitted_at: nowIso(),
