@@ -87,6 +87,33 @@ describe('optional content in the bundled themes', () => {
       assert.doesNotMatch(feed, /href="\/undated\/"|datetime=""/)
     })
 
+    it(`${theme}: a list entry, article or note without the parts of its entry-meta writes none`, async () => {
+      const root = join(dir, `bare-${theme}`)
+      await init(root, ['en'], theme, 'blank')
+      const configPath = join(root, 'config.lima')
+      await writeFile(configPath, (await readFile(configPath, 'utf8')) + 'featured_articles:\n  - id: featured\n')
+      for (const [type, id, source] of [
+        ['articles', 'featured', '---\ntitle: Featured\n---\n'],
+        ['articles', 'listed', '---\ntitle: Listed\n---\n'],
+        // without a title, nothing counts for the reading time
+        ['articles', 'untitled', ''],
+        ['notes', 'noted', '---\ntitle: Noted\n---\n'],
+      ]) {
+        const bundle = join(root, `content/${type}/[${id}]`)
+        await mkdir(bundle, { recursive: true })
+        await writeFile(join(bundle, `${id}.md`), source)
+      }
+      // a dev build shows the article it would not publish without a title, and the note without publishFrom
+      await quietly(() => build(root, 'dev'))
+      const pages = ['index.html', 'untitled/index.html', 'notes/noted/index.html']
+      const withEmptyMeta = []
+      for (const page of pages) {
+        const html = await readFile(join(root, '.hadley/dev', page), 'utf8')
+        if (/<p class="entry-meta"[^>]*>\s*<\/p>/.test(html)) withEmptyMeta.push(page)
+      }
+      assert.deepEqual(withEmptyMeta, [])
+    })
+
     it(`${theme}: an imprint writes only present data, with no empty sections or separators`, async () => {
       const root = join(dir, `imprint-${theme}`)
       await init(root, ['en'], theme, 'blank')

@@ -19,11 +19,13 @@
 <main id="main" data-pagefind-body data-pagefind-filter="lang:{ meta.lang }">
   <article>
     <header class="title-block">
+      {#if categoryLabel || meta.publishFrom || showBadge}
       <p class="entry-meta" data-pagefind-ignore>
         {#if categoryLabel}<span data-pagefind-meta="category">{ categoryLabel }</span>{/if}
         {#if meta.publishFrom}<time datetime="{ meta.publishFrom | isoDate }" data-pagefind-meta="date[datetime]">{ meta.publishFrom | dateFormat('yyyy-MM-dd') }</time>{/if}
         {#if showBadge}<span class="badge">{#if status === 'draft'}{ t.status.draft }{:else if status === 'seed'}{ t.status.seed }{:else if status === 'scheduled'}{ t.status.scheduled }{:else}{ t.status.archived }{/if}</span>{/if}
       </p>
+      {/if}
       <h1{#if isDevBuild} data-hadley-head="title"{/if}>{ meta.title }</h1>
     </header>
     <div class="prose">

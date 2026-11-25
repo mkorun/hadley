@@ -13,7 +13,9 @@
     <ol class="entries">
       {#each featuredList as item}
       <li class="entry">
+        {#if item.label || item.displayDate}
         <p class="entry-meta">{#if item.label}<span>{ item.label }</span>{/if}{#if item.displayDate}<time datetime="{ item.displayDate | isoDate }">{ item.displayDate | dateFormat('yyyy-MM-dd') }</time>{/if}</p>
+        {/if}
         <h3 class="entry-title"><a href="{ item.urlPath }">{ item.title }</a></h3>
         {#if item.subtitle}<p class="entry-text">{ item.subtitle }</p>{:else if item.description}<p class="entry-text">{ item.description }</p>{/if}
       </li>
@@ -28,12 +30,14 @@
     <ol class="entries">
       {#each articleList as item}
       <li class="entry">
+        {#if item.categoryLabel || item.displayDate || item.isUpdated || item.showBadge}
         <p class="entry-meta">
           {#if item.categoryLabel}<span>{ item.categoryLabel }</span>{/if}
           {#if item.displayDate}<time datetime="{ item.displayDate | isoDate }">{ item.displayDate | dateFormat('yyyy-MM-dd') }</time>{/if}
           {#if item.isUpdated}<span>{ t.status.updated }</span>{/if}
           {#if item.showBadge}<span class="badge">{#if item.status === 'draft'}{ t.status.draft }{:else if item.status === 'seed'}{ t.status.seed }{:else if item.status === 'scheduled'}{ t.status.scheduled }{:else}{ t.status.archived }{/if}</span>{/if}
         </p>
+        {/if}
         <h3 class="entry-title"><a href="{ item.urlPath }">{ item.title }</a></h3>
         {#if item.subtitle}<p class="entry-text">{ item.subtitle }</p>{:else if item.description}<p class="entry-text">{ item.description }</p>{/if}
       </li>

@@ -24,12 +24,14 @@
 
 {#snippet body(item)}
   <div class="card-body">
+    {#if item.label || item.categoryLabel || item.displayDate || item.showBadge}
     <p class="entry-meta">
       {#if item.label}<span class="card-label">{ item.label }</span>{/if}
       {#if item.categoryLabel}<span>{ item.categoryLabel }</span>{/if}
       {#if item.displayDate}<time datetime="{ item.displayDate | isoDate }">{ item.displayDate | dateFormat('yyyy-MM-dd') }</time>{/if}
       {#if item.showBadge}<span class="badge">{#if item.status === 'draft'}{ t.status.draft }{:else if item.status === 'seed'}{ t.status.seed }{:else if item.status === 'scheduled'}{ t.status.scheduled }{:else}{ t.status.archived }{/if}</span>{/if}
     </p>
+    {/if}
     <h3 class="entry-title"><a href="{ item.urlPath }">{ item.title }</a></h3>
     {#if item.subtitle}<p class="entry-text">{ item.subtitle }</p>{:else if item.description}<p class="entry-text">{ item.description }</p>{/if}
   </div>
