@@ -177,8 +177,7 @@ describe('all starter content with strictUndefined', () => {
           const languages = selection === 'all' ? await starterLanguages(starter) : [selection]
           const root = join(dir, `${starter}-${theme}-${selection}`)
           await init(root, languages, theme, starter)
-          // The byte check covers page output; Pagefind does not render templates and is checked by init.test.ts.
-          const built = await quietly(() => build(root, 'publish', { deferSearch: true }))
+          const built = await quietly(() => build(root, 'publish'))
           const partials = await readMetaFiles(root)
           const config = await readConfig(root, partials)
           assert.equal(config.strictBraces, true)

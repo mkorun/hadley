@@ -30,6 +30,8 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
   when the entry has none of its parts: no label, category, date, reading time or badge.
 - A reply drafted in `hadley comments` is no longer lost when the tool stops after it published the comment and before
   the reply: the next run publishes the reply, once, and the comment still once.
+- `hadley dev` writes the search index of a rebuild before it reloads the page, so a page that loads the search at
+  that moment no longer shows Vite's error overlay. The reload waits for the index.
 
 ## [0.6.1] — 2026-11-25
 

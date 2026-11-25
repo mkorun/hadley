@@ -470,7 +470,8 @@ export async function startDevServer({
     if (lastBuildOk) clearScreen()
     devLog(`Rebuilding (${reason})...`)
     try {
-      const built = await build(siteDir, outputMode === 'dev' ? 'dev' : 'publish', {
+      // the search index too, before the reload: a page that loads search.js finds it whole
+      await build(siteDir, outputMode === 'dev' ? 'dev' : 'publish', {
         localServer: true,
         ...(editor
           ? {
@@ -478,7 +479,6 @@ export async function startDevServer({
                 editor.registerPageBlocks(blocks, rawDoc, filePath, page),
             }
           : {}),
-        deferSearch: true,
       })
       lastBuildOk = true
       pagesSettled()
@@ -489,8 +489,6 @@ export async function startDevServer({
         // its scripts while they load; a page asked for meanwhile waits for this build (pagesReady) instead.
         else if (vite.ws.clients.size) vite.ws.send({ type: 'full-reload' })
       }
-      // the page shows first; the next build waits for the search index (buildRunning)
-      await built.search?.()
     } catch (err) {
       lastBuildOk = false
       pagesSettled()

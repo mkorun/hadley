@@ -534,31 +534,6 @@ describe('the outputs of a page in a publish build', () => {
     }
   })
 
-  // Michael 2026-10-26: the dev server reloads the page first and writes the search index after it
-  it('leave the search index to the caller with deferSearch, and write it when called', async () => {
-    const config = `${CONFIG}search:\n  enabled: true\n`
-    const template =
-      '<!DOCTYPE html><html><head><title>{ meta.title }</title></head><body>{@raw html.markup}</body></html>'
-    const root = join(dir, 'sites', 'deferred')
-    for (const [file, text] of Object.entries({
-      'articles/[a]/a.md': page('title: Eins\n'),
-      'pages/[home]/home.md': page('title: Start\nurlPath: /\ntemplate: home\n'),
-    })) {
-      await mkdir(join(root, 'content', file, '..'), { recursive: true })
-      await writeFile(join(root, 'content', file), text)
-    }
-    await mkdir(join(root, 'theme', 'templates'), { recursive: true })
-    for (const name of ['article', 'home']) await writeFile(join(root, 'theme', 'templates', `${name}.chase`), template)
-    await writeFile(join(root, 'config.lima'), config)
-    await quietly(async () => {
-      const built = await build(join('sites', 'deferred'), 'dev', { deferSearch: true })
-      const entry = join(root, '.hadley', 'dev', 'pagefind', 'pagefind-entry.json')
-      assert.equal(existsSync(entry), false)
-      await built.search!()
-      assert.equal(existsSync(entry), true)
-    })
-  })
-
   it('write a page for a note', () => {
     assert.equal(existsSync(out('notes/notiz/index.html')), true)
   })

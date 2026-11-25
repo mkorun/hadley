@@ -45,16 +45,7 @@ async function startSite(theme: string) {
   )
   await init(site, ['en', 'de'], theme, 'blank')
   const config = join(site, 'config.lima')
-  const settings = await readFile(config, 'utf8')
-  // no search: hadley dev writes its index after the reload of a rebuild, and Vite's import analysis of the theme's
-  // search.js puts its overlay over the page while the index is missing (seen once in WebKit, 2026-11-08); no test here
-  // searches
-  const search = 'search:\n  enabled: true'
-  if (!settings.includes(search)) throw new Error('the blank starter no longer turns the search on')
-  await writeFile(
-    config,
-    settings.replace(search, 'search:\n  enabled: false') + '\ndev:\n  editor: true\n  chat: true\n',
-  )
+  await writeFile(config, (await readFile(config, 'utf8')) + '\ndev:\n  editor: true\n  chat: true\n')
   const bundle = join(site, 'content', 'articles', '[panel]')
   await mkdir(bundle, { recursive: true })
   await mkdir(join(bundle, 'de'))

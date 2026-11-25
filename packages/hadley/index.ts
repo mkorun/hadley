@@ -42,10 +42,8 @@ import { checkComments } from './addons/forms/render.ts'
 export async function build(
   siteDir: string,
   outputMode: 'dev' | 'publish',
-  // deferSearch: the search index is not written, but returned as `search`, for the caller to write when it suits it
-  // (the dev server, after the page reloaded); nothing else writes into the output until it is done
-  opts?: { localServer?: boolean; blockEditorHook?: BlockEditorHook; deferSearch?: boolean },
-): Promise<{ searchable: string[]; planned: string[]; search?: () => Promise<void> }> {
+  opts?: { localServer?: boolean; blockEditorHook?: BlockEditorHook },
+): Promise<{ searchable: string[]; planned: string[] }> {
   const isPublish = outputMode === 'publish'
   // a publish build for the local server is a preview, kept apart from what goes to the server (docs/deploy.md)
   const outputName = isPublish && opts?.localServer === true ? 'preview' : outputMode
@@ -303,19 +301,14 @@ export async function build(
     doneLlms()
   }
 
-  const writeSearch = async () => {
+  if (search) {
     const doneSearch = logger.step('build search index', 'search index')
     await runPagefind(outDir, pages.searchable, joinPath(cacheDir, 'search', outputName))
     doneSearch(`${pages.searchable.length} pages`)
   }
-  if (search && !opts?.deferSearch) await writeSearch()
 
   logger.footer()
-  return {
-    searchable: pages.searchable,
-    planned: output.list(),
-    ...(search && opts?.deferSearch ? { search: writeSearch } : {}),
-  }
+  return { searchable: pages.searchable, planned: output.list() }
 }
 
 // ── Script entry point (bun index.ts / bun run build) ────────────────────────
