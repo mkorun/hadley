@@ -512,8 +512,9 @@ The CLI runs as `hadley comments` against the production service, at `comments.u
 when it is missing or no URL, or has another scheme, a user or password, a query, a fragment, a backslash or white
 space. `lib/site-config.ts`, `commentsServiceUrl`
 
-`config.lima` also gives `comments.authorName` (default: the name of the site's directory) and `site.default.language`
-(default `de`). The CLI does not require `comments.enabled`. `cli/index.ts`, `runCommentsCli`
+`config.lima` also gives `comments.authorName` (default: `site.default.title`, else the host of `site.origin`) and
+`site.default.language`, without which the CLI stops. The CLI does not require `comments.enabled`. `cli/index.ts`,
+`runCommentsCli`; `lib/site-config.ts`, `defaultLanguageOf`
 
 The admin token is `HADLEY_COMMENTS_TOKEN` when it is set and not empty. Otherwise `hadley dev comments` takes
 `adminToken` from `<site>/.hadley/forms/dev-secrets.json`, which the local service made on its first start (C11), and
