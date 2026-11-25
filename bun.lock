@@ -28,7 +28,7 @@
       "dependencies": {
         "@limaformat/lima": "^0.9.0",
         "@markantolang/parser": "0.3.0",
-        "@mkorun/galley": "0.5.0-rc.1",
+        "@mkorun/galley": "0.5.0",
         "@mkorun/quad": "^0.2.0",
         "esbuild": "0.28.2",
         "pagefind": "^1.6.0",
@@ -154,7 +154,7 @@
 
     "@markantolang/parser": ["@markantolang/parser@0.3.0", "", { "peerDependencies": { "mdast-util-from-markdown": "2.0.2", "mdast-util-gfm": "3.1.0", "micromark-extension-gfm": "3.0.0" }, "optionalPeers": ["mdast-util-from-markdown", "mdast-util-gfm", "micromark-extension-gfm"], "bin": { "markanto": "dist/cli.js" } }, "sha512-Wlhhe9qlxS+bYwzrkhV55WKENtW0iu5l8/+UkX9V3J2FTgswCZK5fzwstCmDmayr08RUgwIxgPtZ6BEsHQMOzA=="],
 
-    "@mkorun/galley": ["@mkorun/galley@0.5.0-rc.1", "", {}, "sha512-dkMXZZ9QR3WLpiyecILaOWaetfMgHXKEEaqZQElwPpzrAkTHwWmENigdy6Ua2bBiLioWf7IEJsZMcOH5//69zg=="],
+    "@mkorun/galley": ["@mkorun/galley@0.5.0", "", {}, "sha512-N9W4zTipNEmbPhi3JXSChTSJXnC+UWT3hcU0bPNn6kuqDg0w+RqGJ/qXDur/piQal7TjdXg1rR7m5OFbvm9BDw=="],
 
     "@mkorun/hadley": ["@mkorun/hadley@workspace:packages/hadley"],
 
