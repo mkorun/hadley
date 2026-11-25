@@ -2,11 +2,12 @@ import { after, before, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { once } from 'node:events'
-import { existsSync, readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { appendFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 import { init } from '../init.ts'
 
 // A rebuild of `hadley dev` and its search index: a page that loads search.js after the reload finds the whole index
@@ -40,26 +41,21 @@ async function builds(count: number): Promise<void> {
   }
 }
 
-/** Whether the search index of the dev build is all there: Pagefind's script, its entry and each language's files. */
-function indexWhole(): boolean {
-  const pagefind = join(site, '.hadley', 'dev', 'pagefind')
-  try {
-    if (!existsSync(join(pagefind, 'pagefind.js'))) return false
-    const entry = JSON.parse(readFileSync(join(pagefind, 'pagefind-entry.json'), 'utf8')) as {
-      languages: Record<string, { hash: string; wasm: string }>
-    }
-    const languages = Object.values(entry.languages)
-    return (
-      languages.length > 0 &&
-      languages.every(
-        ({ hash, wasm }) =>
-          existsSync(join(pagefind, `pagefind.${hash}.pf_meta`)) && existsSync(join(pagefind, `wasm.${wasm}.pagefind`)),
-      )
-    )
-  } catch {
-    return false // missing, or written half
+/** Every file below `root`, by its path there, with the hash of its bytes; none for a directory that is not there. */
+function tree(root: string): Record<string, string> {
+  if (!existsSync(root)) return {}
+  const files: Record<string, string> = {}
+  for (const entry of readdirSync(root, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) continue
+    const path = join(entry.parentPath, entry.name)
+    files[relative(root, path)] = createHash('sha256').update(readFileSync(path)).digest('hex')
   }
+  return files
 }
+
+// the search index the page loads, and the copy lib/search.ts keeps of it as Pagefind wrote it
+const served = () => tree(join(site, '.hadley', 'dev', 'pagefind'))
+const written = () => tree(join(site, '.hadley', 'cache', 'search', 'dev', 'pagefind'))
 
 before(async () => {
   dir = await mkdtemp(join(tmpdir(), 'hadley-dev-search-'))
@@ -97,7 +93,8 @@ describe('a rebuild of hadley dev', () => {
     child.stdout!.on('data', (chunk: Buffer) => (output += chunk.toString()))
     child.stderr!.on('data', (chunk: Buffer) => (output += chunk.toString()))
     await builds(1)
-    assert.ok(indexWhole(), 'the first build writes the index')
+    assert.ok(Object.keys(served()).length > 0, 'the first build writes the index')
+    assert.deepEqual(served(), written())
 
     // a page, as Vite's client in it connects
     const socket = new WebSocket(`ws://localhost:${port}/`, 'vite-hmr')
@@ -113,18 +110,11 @@ describe('a rebuild of hadley dev', () => {
       )
       await appendFile(join(site, 'content', 'articles', '[article-1]', 'article-1.md'), '\nA new paragraph.\n')
       await reloaded
-      assert.ok(indexWhole(), 'the index is whole when the reload goes out')
-      // and stays so until the build is done, which may have said so before the reload arrived
-      let broken = 0
-      let looked = 0
-      for (let done = false; !done;) {
-        done = finished() >= 2
-        looked++
-        if (!indexWhole()) broken++
-        await new Promise((resolve) => setImmediate(resolve))
-      }
-      assert.equal(broken, 0, `the index was missing in ${broken} of ${looked} looks after the reload`)
+      const atReload = served()
       await builds(2)
+      // the index the reloaded page finds is the one the build ends with, every file of it, as Pagefind wrote it
+      assert.deepEqual(atReload, served(), 'the index changed after the reload')
+      assert.deepEqual(served(), written(), 'the index is not the one Pagefind wrote')
     } finally {
       socket.close()
     }
