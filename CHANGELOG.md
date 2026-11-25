@@ -4,19 +4,22 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## [0.6.1] — 2026-11-25
+
+An archived page no longer stops a build with `strictUndefined`. New sites start with both strict options.
 
 ### Changed
 
-- hems and punch choose the comment heading by the language's plural rules. A theme copied from either before this
-  change keeps working and can follow: `comments.heading` holds the forms by plural category (docs/comments.md).
-- A new site starts with `strictBraces: true` and `strictUndefined: true` in `config.lima`: galley stops at a
-  `{ … }` in a template that it cannot read, and at an undefined value a template would write.
+- hems and punch pick the comment heading by the language's plural rules (`comments.heading`,
+  [docs/comments.md](docs/comments.md)). Themes copied earlier keep working.
+- New sites start with `strictBraces: true` and `strictUndefined: true`: galley stops at a `{ … }` it cannot read,
+  and at an undefined output, loop collection, constant or first pipe input outside a condition.
 
 ### Fixed
 
-- hems and punch omit description metadata when neither the page nor the site gives one, and omit absent parts of
-  the imprint, including their headings and separators.
+- A page no language lists, such as an archived one, gets an empty `translations`; with `strictUndefined`,
+  `{#each translations}` stopped the build there.
+- hems and punch leave out an absent description and absent parts of the imprint, with their headings.
 
 ## [0.6.0] — 2026-11-25
 
