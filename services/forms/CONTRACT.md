@@ -508,7 +508,9 @@ the replay database schema. The CLI consumes the admin API’s JSON array, not t
 
 The CLI runs as `hadley comments` against the production service, at `comments.url` of the site's `config.lima`, or as
 `hadley dev comments` against the service a dev server started, at `http://127.0.0.1:` and the site's port plus one
-(C11). A missing URL is fatal. `cli/index.ts:163`
+(C11). `comments.url` must be an `https:` URL; a slash at its end is removed before a path is appended. The CLI stops
+when it is missing or no URL, or has another scheme, a user or password, a query, a fragment, a backslash or white
+space. `lib/site-config.ts`, `commentsServiceUrl`
 
 `config.lima` also gives `comments.authorName` (default: the name of the site's directory) and `site.default.language`
 (default `de`). The CLI does not require `comments.enabled`. `cli/index.ts:166`
@@ -585,19 +587,24 @@ Merge recursively locates parents. Ordinary siblings and roots are inserted befo
 timestamps retain insertion order. An absent parent changes the new record to top-level with null parent and appends it
 without chronological insertion.
 
-Merge does not deduplicate IDs. It creates parent directories, reads the existing array when present, and rewrites the
+Merge checks IDs: a record whose ID is already in the tree, at any depth, is not added again, and neither is a reply
+drafted for it. Otherwise merge creates parent directories, reads the existing array when present, and rewrites the
 complete public file as two-space-indented JSON plus LF.
 
 CLI work/archive/public writes use ordinary whole-file writes without temporary replacement or a transaction across
 files. The supplied CLI has no file-size cap or archive/mail retention cleanup.
 
-After the moderation loop, including a normal quit, the CLI renders each article changed during that invocation.
-Rendering errors are logged and do not prevent later session completion.
+After the moderation loop the CLI renders every article directory that holds a `comments.json`, whether or not this
+run changed it. It does so after a normal quit too, and when there was nothing to moderate. When rendering one article
+fails, the CLI logs the error with the article, still renders the others and still completes the session; it then
+exits with a failure.
 
 Rendering gives the template `comments`, the public tree with each comment's text also as `paragraphs` (split on two
-or more LFs, each paragraph a list of its lines), `language`, and `t`, the theme's texts in that language
-(`theme/i18n/<language>.lima`, which must exist). The template writes every value escaped and sets `<p>` and `<br>`
-itself; no HTML leaves the CLI. It renders through `@mkorun/galley`, then rewrites `_comments.html`. `cli/render.ts:9`
+or more LFs, each paragraph a list of its lines), `language`, and `t`, the theme's texts in that language. The CLI
+reads them as a build does (`lib/site-config.ts`, `readLocales`): an entry missing from `theme/i18n/<language>.lima`
+comes from the default language's file, and a theme without `theme/i18n/` has no texts. The template writes every
+value escaped and sets `<p>` and `<br>` itself; no HTML leaves the CLI. It renders through `@mkorun/galley`
+(`cli/render.ts`, `renderComments`), then rewrites `_comments.html` (`cli/index.ts`).
 
 When work becomes empty, the CLI deletes the work file before making DELETE. Any successful HTTP status counts as
 acknowledgement; unsuccessful responses are logged without restoring work. Nonempty remaining work causes no DELETE.
@@ -653,9 +660,10 @@ Other statuses, and unsuccessful retries, map by status to a localized message o
 JSON is not read. `widget/comments.ts:210`
 
 `site.comments` is `comments` of `config.lima` when `comments.enabled` is true. In a production build its `url` is
-`comments.url`; a local build (`hadley dev`, the preview of `hadley deploy`) sets it to the empty string, so the widget
-sends to the page's own origin, and the dev server passes the request to the service. A `comments.devUrl` stops the
-build. `lib/site-config.ts:122`
+`comments.url` as C10 reads it, without a slash at its end, and a value the CLI stops at stops the build too. A local
+build (`hadley dev`, the preview of `hadley deploy`) sets it to the empty string, so the widget sends to the page's own
+origin, and the dev server passes the request to the service. A `comments.devUrl` stops the build.
+`lib/site-config.ts`, `languageRecord`
 
 `hadley dev`, and the preview of `hadley deploy`, start the Go service (`hadley-forms`, see "The Go service") when
 `comments.enabled` is true: the program `dev.forms` of the user configuration names, else the first `hadley-forms` on
@@ -796,7 +804,7 @@ made, because it changes what this text describes.
 | **p2**   | **Queue thresholds are approximate.** Concurrent checks can observe the same capacity, and the byte check excludes the incoming record. `server/index.ts:169`                                                                                                                                                                                                                                      |
 | **p2**   | **Replay consumption and comment storage can diverge.** C7’s ordering makes a storage/capacity failure require another proof, while an acknowledged append has no explicit durability synchronization. `server/index.ts:164`, `server/index.ts:193`                                                                                                                                                |
 | **p2**   | **Deletion can falsely report success.** Operational unlink failures are indistinguishable from completed deletion, undermining cleanup acknowledgement. `server/index.ts:251`                                                                                                                                                                                                                     |
-| **p2**   | **CLI crashes can duplicate publication.** A crash after public merge but before work removal repeats a merge on recovery; the merge has no ID check. Work deletion before failed server acknowledgement can also cause the whole frozen batch to be downloaded again. `cli/index.ts`, `cli/merge.ts`                                                                                              |
+| **p2**   | **A CLI crash can lose a drafted reply.** A crash after public merge but before work removal repeats the approval on recovery; as merge checks IDs (C10), neither the record nor a reply is added, so a reply not yet merged is never published. Work deletion before failed server acknowledgement can also cause the whole frozen batch to be downloaded again. `cli/index.ts`, `cli/merge.ts`   |
 | **p2**   | **CLI files can be partially rewritten.** Work, archive and public files have neither atomic replacement nor a shared transaction. Missing archives during recovery can later cause moderation operations to fail. `cli/index.ts`, `cli/merge.ts`                                                                                                                                                  |
 | **p2**   | **The widget can wait indefinitely or submit concurrently.** Failed solving leaves its polling unresolved; waiting state does not prevent another submit event. `widget/comments.ts:238`, `widget/comments.ts:247`                                                                                                                                                                                 |
 | **p2**   | **One malformed queue record blocks batch download.** There is no per-line recovery or quarantine around parsing. `server/index.ts:228`                                                                                                                                                                                                                                                            |

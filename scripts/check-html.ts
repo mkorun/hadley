@@ -22,6 +22,8 @@ export const CHECKED = [
   'packages/hadley/index.ts',
   'packages/hadley/hadley.ts',
   'packages/hadley/addons/editor/*.ts',
+  // the build loads render.ts for its check of the comments template (packages/hadley/index.ts)
+  'packages/hadley/addons/forms/*.ts',
 ]
 const SERIALIZERS = new Set(['packages/hadley/case/html.ts', 'packages/hadley/lib/xml.ts'])
 

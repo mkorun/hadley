@@ -22,8 +22,8 @@ export interface Messages {
   nothingNew: string
   downloaded: (count: number) => string
   rendering: (count: number) => string
-  rendered: (article: string) => string
-  renderFailed: (article: string, reason: string) => string
+  renderFailed: (article: string, language: string, reason: string) => string
+  notWritten: (count: number) => string
   deletingOnService: string
   deletedOnService: string
   deleteFailed: (status: number) => string
@@ -61,8 +61,10 @@ const en: Messages = {
   nothingNew: 'No new comments.',
   downloaded: (count) => `${count} comment(s) downloaded.`,
   rendering: (count) => `Writing the comments of ${count} article(s)…`,
-  rendered: (article) => `  written: ${article}`,
-  renderFailed: (article, reason) => `  failed: ${article}: ${reason}`,
+  renderFailed: (article, language, reason) => `  failed: ${article} (${language}): ${reason}`,
+  notWritten: (count) =>
+    `The comments of ${count} article(s) were not written (above); approved comments are kept, and the next ` +
+    'hadley comments writes them.',
   deletingOnService: 'All decided: deleting them on the service…',
   deletedOnService: 'Deleted on the service, email addresses included.',
   deleteFailed: (status) => `Deleting on the service failed (${status}); the next run downloads them again.`,
@@ -100,8 +102,10 @@ const de: Messages = {
   nothingNew: 'Keine neuen Kommentare.',
   downloaded: (count) => `${count} Kommentar(e) heruntergeladen.`,
   rendering: (count) => `Schreibe die Kommentare von ${count} Artikel(n)…`,
-  rendered: (article) => `  geschrieben: ${article}`,
-  renderFailed: (article, reason) => `  fehlgeschlagen: ${article}: ${reason}`,
+  renderFailed: (article, language, reason) => `  fehlgeschlagen: ${article} (${language}): ${reason}`,
+  notWritten: (count) =>
+    `Die Kommentare von ${count} Artikel(n) wurden nicht geschrieben (oben); angenommene Kommentare bleiben ` +
+    'erhalten, und der nächste Aufruf von hadley comments schreibt sie.',
   deletingOnService: 'Alles entschieden: lösche sie beim Dienst…',
   deletedOnService: 'Beim Dienst gelöscht, samt E-Mail-Adressen.',
   deleteFailed: (status) => `Löschen beim Dienst fehlgeschlagen (${status}); der nächste Aufruf lädt sie erneut.`,

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   checkConfig,
+  commentsServiceUrl,
   defaultLanguageOf,
   fieldSchema,
   highlightingThemes,
@@ -24,6 +25,23 @@ describe('defaultLanguageOf', () => {
   it('stops with a message when config.lima does not name it', () => {
     for (const config of [{}, { site: {} }, { site: { default: {} } }, { site: { default: { language: '' } } }])
       assert.throws(() => defaultLanguageOf(config), /site\.default\.language is missing/)
+  })
+})
+
+describe('commentsServiceUrl', () => {
+  const url = (value: unknown) => commentsServiceUrl({ comments: { url: value } } as Parameters<typeof checkConfig>[0])
+
+  it('gives comments.url as written, without the slashes at its end', () => {
+    assert.equal(url('https://comments.example.org'), 'https://comments.example.org')
+    assert.equal(url('https://comments.example.org/'), 'https://comments.example.org')
+    assert.equal(url('https://comments.example.org//'), 'https://comments.example.org')
+    assert.equal(url('https://Example.org:8443/forms/'), 'https://Example.org:8443/forms')
+  })
+
+  it('stops at a value of another kind than a text', () => {
+    for (const value of [undefined, null, '']) assert.throws(() => url(value), /comments\.url is missing/)
+    for (const value of [true, 8080, { host: 'example.org' }])
+      assert.throws(() => url(value), /comments\.url is no URL/)
   })
 })
 

@@ -85,6 +85,25 @@ describe('a moderation session', () => {
     assert.deepEqual(readdirSync(work), [])
   })
 
+  it('leaves a comment as it was published when the service gives it a second time, with no second reply', async () => {
+    const commentsPath = join(dir, 'bundle', 'comments.json')
+    for (const reply of ['Danke!', 'Nochmals danke!']) {
+      const opened = await openSession(work, archive, download([comment('1')]))
+      assert.equal(opened.kind, 'downloaded')
+      if (opened.kind !== 'downloaded') return
+      await opened.session.draftReply('1', reply)
+      await opened.session.approve(comment('1'), commentsPath, 'Ada')
+      assert.equal(await opened.session.finish(), true)
+    }
+    assert.deepEqual(
+      json(commentsPath).map((c: { id: string; comments: { text: string }[] }) => [
+        c.id,
+        c.comments.map((r) => r.text),
+      ]),
+      [['1', ['Danke!']]],
+    )
+  })
+
   it('continues an interrupted session before it downloads anything, and drops an empty work file', async () => {
     writeFileSync(join(work, 'comments-2026-10-01_10-00-00.json'), '[]\n')
     writeFileSync(join(work, 'comments-2026-10-02_10-00-00.json'), JSON.stringify([comment('9')]))

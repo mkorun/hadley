@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { articleDirs, carriesToken, runCommentsCli } from '../index.ts'
@@ -92,9 +92,9 @@ describe('renderComments', () => {
   it('refuses a {@raw} of what a visitor wrote, in the template and in a partial it includes', async () => {
     const render = () =>
       renderComments({
-        themePath: join(dir, 'theme'),
+        siteDir: dir,
+        defaultLanguage: 'de',
         commentsJsonPath: join(dir, 'comments.json'),
-        commentsHtmlPath: join(dir, '_comments.html'),
         language: 'de',
         templateOptions: templateOptions({}),
       })
@@ -112,15 +112,13 @@ describe('renderComments', () => {
     await file('theme/i18n/de.lima', 'comments:\n  headingPlural: Kommentare\n')
     const tree = [comment('a', 'Hallo <script>x</script>\nzweite Zeile\n\nNeuer Absatz', [comment('b', 'Antwort')])]
     await file('comments.json', JSON.stringify(tree))
-    const html = join(dir, '_comments.html')
-    await renderComments({
-      themePath: join(dir, 'theme'),
+    const written = await renderComments({
+      siteDir: dir,
+      defaultLanguage: 'de',
       commentsJsonPath: join(dir, 'comments.json'),
-      commentsHtmlPath: html,
       language: 'de',
       templateOptions: templateOptions({}),
     })
-    const written = await readFile(html, 'utf8')
     assert.match(written, /<h2>1 Kommentare<\/h2>/)
     assert.match(written, /<p>Hallo &lt;script&gt;x&lt;\/script&gt;<br>zweite Zeile<\/p><p>Neuer Absatz<\/p>/)
     assert.match(written, /<p>Antwort<\/p>/)
@@ -128,14 +126,30 @@ describe('renderComments', () => {
     assert.doesNotMatch(written, /<script>|<b>/)
   })
 
-  it('stops when the theme has no texts in the language', async () => {
+  it('reads the texts as a build does: another language takes what its file leaves out from the default', async () => {
     await file('theme/templates/partials/comments.sort', TEMPLATE)
+    await file('theme/i18n/de.lima', 'comments:\n  headingPlural: Kommentare\n')
+    await file('theme/i18n/de-AT.lima', 'imprint:\n  address: Anschrift\n')
+    await file('comments.json', JSON.stringify([comment('a', 'Servus')]))
+    const html = await renderComments({
+      siteDir: dir,
+      defaultLanguage: 'de',
+      commentsJsonPath: join(dir, 'comments.json'),
+      language: 'de-AT',
+      templateOptions: templateOptions({ strictUndefined: true }),
+    })
+    assert.match(html, /<h2>1 Kommentare<\/h2>/)
+  })
+
+  it('stops when the theme has texts, and none in the language', async () => {
+    await file('theme/templates/partials/comments.sort', TEMPLATE)
+    await file('theme/i18n/de.lima', 'comments:\n  headingPlural: Kommentare\n')
     await file('comments.json', '[]')
     await assert.rejects(
       renderComments({
-        themePath: join(dir, 'theme'),
+        siteDir: dir,
+        defaultLanguage: 'de',
         commentsJsonPath: join(dir, 'comments.json'),
-        commentsHtmlPath: join(dir, '_comments.html'),
         language: 'en',
         templateOptions: templateOptions({}),
       }),
@@ -160,22 +174,16 @@ describe('renderComments', () => {
         for (const enabled of [undefined, false, true]) {
           await file('config.lima', enabled === undefined ? '' : `${option}: ${String(enabled)}\n`)
           const config = await readConfig(dir, {})
-          const html = join(dir, `${String(enabled)}.html`)
           const render = () =>
             renderComments({
-              themePath: join(dir, 'theme'),
+              siteDir: dir,
+              defaultLanguage: 'de',
               commentsJsonPath: join(dir, 'comments.json'),
-              commentsHtmlPath: html,
               language: 'de',
               templateOptions: templateOptions(config),
             })
-          if (enabled) {
-            await assert.rejects(render, code)
-            await assert.rejects(readFile(html), { code: 'ENOENT' })
-          } else {
-            await render()
-            assert.equal(await readFile(html, 'utf8'), `<p>${rendered}</p>`)
-          }
+          if (enabled) await assert.rejects(render, code)
+          else assert.equal(await render(), `<p>${rendered}</p>`)
         }
       })
 })

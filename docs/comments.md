@@ -32,6 +32,10 @@ the web server that passes `/api/comment/*` and `/admin/comments` to it. `hadley
 `~/.config/hadley/comments/<host>.token` (`$XDG_CONFIG_HOME/hadley/…`), `<host>` being the host of `site.origin`. The
 file holds the token alone and must be readable by its owner only (mode 600); hadley refuses it otherwise.
 
+`comments.url` is the address of your comments service, such as `https://comments.example.org`. It must start with
+`https://`. A publish build stops when it is missing or unusable, and so does `hadley comments`; the message says
+what is wrong with it.
+
 The service can tell its owner of each new comment through [ntfy](https://ntfy.sh) (`NTFY_URL`, `NTFY_TOKEN`). With
 `SITE_META`, the path of the site's `meta.json` on the server, the notification names the article by its title and
 opens it when tapped; `meta.json` is what hadley writes next to a publish build (`.hadley/meta.json`), and the deploy
@@ -101,7 +105,7 @@ the terminal shows again what was there before, and below it how many comments w
 
 | Key |  |
 | --- | --- |
-| `a` | approve: the comment, and the reply drafted for it, go into the article's `comments.json` and `_comments.html` |
+| `a` | approve: the comment, and the reply drafted for it, go into the article's `comments.json` |
 | `r` | reject, after a confirmation |
 | `e` | edit the comment's text before approving it |
 | `n` | a note for the archive, not published |
@@ -112,6 +116,10 @@ the terminal shows again what was there before, and below it how many comments w
 Every decision is kept in the archive, with the visitor's email address; the archive is the owner's, outside the
 site's published files. Once all comments of a download are decided, `hadley comments` deletes them on the service.
 The tool speaks the language of `site.default.language` where it has a translation (English, German), else English.
+
+`hadley comments` writes the comments of every article in each run, from its `comments.json`. When one article
+fails, the others are still written and the tool names the failure; the next run tries again. A comment that comes
+from the service a second time is published once.
 
 ## In a theme of your own
 
@@ -124,7 +132,26 @@ its own:
   page's `meta.id` and `meta.lang`.
 - `assets/js/comments.ts` and `assets/js/comments-worker.ts`, which send the form and solve the challenge.
 - The texts under `comments:` in each of the theme's `i18n/<language>.lima`: `comments.heading` holds the forms by
-  plural category (`one`, `other`, and any others the language uses), selected by galley's `plural` filter.
+  plural category (`one`, `other`, and any others the language uses). For English:
+
+  ```lima
+  comments:
+    heading:
+      one: comment
+      other: comments
+  ```
+
+  The template selects the word with galley's `plural` filter:
+
+  ```
+  {@const count = comments | length}
+  <h2>{ count } { count | plural(language, t.comments.heading) }</h2>
+  ```
+
+A theme may write its heading another way, from texts of its own.
+
+With comments on, each build checks that the theme can write its comments in every language of the site. When the
+template or a text is missing, the build stops and names the language and what is missing.
 
 The article template writes both where the comments belong, below the text:
 

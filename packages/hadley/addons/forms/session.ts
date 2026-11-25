@@ -95,12 +95,13 @@ export class Session {
 
   /**
    * Publishes `entry` into `commentsPath` (the article's comments.json), with the reply drafted for it under
-   * `authorName`, and takes it off the work file.
+   * `authorName`, and takes it off the work file. A comment that is published already, which the service gave a
+   * second time, stays as it was published, without another reply.
    */
   async approve(entry: QueueEntry, commentsPath: string, authorName: string): Promise<void> {
-    await mergeComment(commentsPath, entry)
+    const added = await mergeComment(commentsPath, entry)
     const reply = (await this.archived(entry.id))?.author_reply_draft
-    if (reply)
+    if (added && reply)
       await mergeComment(commentsPath, {
         id: crypto.randomUUID(),
         parent_comment_id: entry.id,

@@ -62,7 +62,8 @@ search:
 #   enabled: true
 #   url: https://example.org
 
-# galley, the template engine: strictBraces stops at a { … } it cannot read; strictUndefined stops when a template
-# would write an undefined value (docs/config.md). Set either to false to turn its check off.
+# galley, the template engine: strictBraces rejects malformed braces; strictUndefined rejects undefined outputs,
+# {#each} collections, constants and the first input of a pipe outside conditions (docs/config.md).
+# Set either to false to turn its check off.
 strictBraces: true
 strictUndefined: true

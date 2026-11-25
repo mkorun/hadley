@@ -70,6 +70,31 @@ export function checkConfig(config: Config): Config {
   return config
 }
 
+/**
+ * `comments.url` of config.lima, the address of the comments service in production (docs/comments.md), as the paths
+ * of the service are appended to it: without a slash at its end. It goes into every published page and carries the
+ * admin token, so a value that cannot be the address of a service stops here: none, no URL, no https, a user or
+ * password, a query, a fragment, and a backslash or white space, which a URL parser would mend without a word. No
+ * message shows the value: it may hold a password or a token.
+ */
+export function commentsServiceUrl(config: Config): string {
+  const value: unknown = config.comments?.url
+  const refuse = (problem: string): never => {
+    throw new Error(`config.lima: comments.url ${problem}`)
+  }
+  if (value === undefined || value === null || value === '')
+    return refuse('is missing (the address of the comments service, such as https://comments.example.org)')
+  if (typeof value !== 'string' || !URL.canParse(value)) return refuse('is no URL')
+  const url = new URL(value)
+  if (url.protocol !== 'https:') return refuse('does not start with https://')
+  if (url.username || url.password) return refuse('has a user or password in it, which every page would publish')
+  // read in the text: the parser takes white space off the ends, reads \ as / and a bare ? or # as nothing
+  if (/[\s\\]/.test(value)) return refuse('has white space or a backslash in it')
+  if (value.includes('?')) return refuse('has a query (?…) in it')
+  if (value.includes('#')) return refuse('has a fragment (#…) in it')
+  return value.replace(/\/+$/, '')
+}
+
 const TEMPLATE_OPTIONS = ['strictBraces', 'strictUndefined'] as const
 export type TemplateOptions = Required<Pick<GalleyOptions, (typeof TEMPLATE_OPTIONS)[number]>>
 
@@ -203,7 +228,8 @@ export async function fieldSchema(config: Config): Promise<FieldSchema> {
 /**
  * The values of `language` from config.lima (site.<language>, else site.default), with no pages yet. A build for
  * the local server (`localServer`: a dev build, the preview of `hadley deploy`) sends comments to the page's own
- * origin, which passes them to the comments service (lib/dev-server.ts).
+ * origin, which passes them to the comments service (lib/dev-server.ts); any other sends them to `comments.url`, and
+ * stops without a usable one.
  */
 export function languageRecord(
   config: Config,
@@ -237,7 +263,7 @@ export function languageRecord(
   if (config.comments?.enabled === true) {
     if (Object.hasOwn(config.comments, 'devUrl'))
       throw new Error('config.lima: comments.devUrl is gone; a local build sends comments to the local server')
-    record.comments = { ...config.comments, ...(localServer ? { url: '' } : {}) }
+    record.comments = { ...config.comments, url: localServer ? '' : commentsServiceUrl(config) }
   }
   if (config.search?.enabled === true) record.search = true
   if (config.rss?.enabled === true) record.rss = true

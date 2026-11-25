@@ -27,6 +27,13 @@ function insertIntoTree(tree: PublicComment[], comment: PublicComment): boolean 
   return false
 }
 
+const holds = (tree: PublicComment[], id: string): boolean =>
+  tree.some((comment) => comment.id === id || holds(comment.comments, id))
+
+/**
+ * Puts `entry` into the comments.json at `commentsPath` and says so; a comment whose id is there already, approved in
+ * a run before, is not added again.
+ */
 export async function mergeComment(
   commentsPath: string,
   entry: {
@@ -37,12 +44,13 @@ export async function mergeComment(
     text: string
     author_reply?: boolean
   },
-): Promise<void> {
+): Promise<boolean> {
   let tree: PublicComment[] = []
   if (existsSync(commentsPath)) {
     const raw = await readFile(commentsPath, 'utf-8')
     tree = JSON.parse(raw)
   }
+  if (holds(tree, entry.id)) return false
 
   const comment: PublicComment = {
     id: entry.id,
@@ -69,4 +77,5 @@ export async function mergeComment(
 
   await mkdir(dirname(commentsPath), { recursive: true })
   await writeFile(commentsPath, JSON.stringify(tree, null, 2) + '\n')
+  return true
 }

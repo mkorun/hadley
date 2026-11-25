@@ -2,14 +2,21 @@
 // session (session.ts) keeps the decisions, the screen (screen.ts) shows a comment, messages.ts holds the texts.
 
 import { spawnSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
-import { pageFiles } from '../../lib/bundles.ts'
+import { dirname, join, resolve } from 'node:path'
+import { pageFiles, type PageFile } from '../../lib/bundles.ts'
 import { formsDataDir } from '../../lib/forms-service.ts'
 import { lf, readableByOthers } from '../../lib/platform.ts'
-import { checkConfig, defaultLanguageOf, readConfig, readMetaFiles, templateOptions } from '../../lib/site-config.ts'
+import {
+  checkConfig,
+  commentsServiceUrl,
+  defaultLanguageOf,
+  readConfig,
+  readMetaFiles,
+  templateOptions,
+} from '../../lib/site-config.ts'
 import { userConfigDir } from '../../lib/user-config.ts'
 import { generateEml } from './eml.ts'
 import { messagesFor, type Messages } from './messages.ts'
@@ -30,25 +37,49 @@ export const carriesToken = (url: string): boolean => {
   return protocol === 'https:' || ['localhost', '127.0.0.1', '[::1]'].includes(hostname)
 }
 
+/** The pages under content/articles/ and content/essays/, as the build finds them (lib/bundles.ts). */
+async function articleFiles(siteDir: string, defaultLanguage: string): Promise<PageFile[]> {
+  const files: PageFile[] = []
+  for (const root of ['articles', 'essays'])
+    files.push(...(await pageFiles(join(siteDir, 'content'), root, defaultLanguage)))
+  return files
+}
+
 /**
- * The directory an article's comments belong in: its bundle under content/articles/ or content/essays/
- * (lib/bundles.ts, as the build finds it), and for another language that language's folder in it; undefined for an
- * id no article or essay bundle has, and nothing is created.
+ * The directory an article's comments belong in: its bundle under content/articles/ or content/essays/, and for
+ * another language that language's folder in it; undefined for an id no article or essay bundle has, and nothing is
+ * created.
  */
 export async function articleDirs(
   siteDir: string,
   defaultLanguage: string,
 ): Promise<(articleId: string, lang: string) => string | undefined> {
   const bundles = new Map<string, string>()
-  for (const root of ['articles', 'essays'])
-    for (const file of await pageFiles(join(siteDir, 'content'), root, defaultLanguage))
-      bundles.set(file.bundleId, file.bundleDir)
+  for (const file of await articleFiles(siteDir, defaultLanguage)) bundles.set(file.bundleId, file.bundleDir)
   return (articleId, lang) => {
     const bundle = bundles.get(articleId)
     // as the service checks it (services/forms/CONTRACT.md): the name of one folder, whatever the queue says
     if (!/^[a-z]{2}(-[a-z0-9_-]+)?$/i.test(lang)) return undefined
     return bundle && (lang === defaultLanguage ? bundle : join(bundle, lang))
   }
+}
+
+/** An article in one language whose directory holds a comments.json. */
+interface CommentedArticle {
+  articleId: string
+  language: string
+  dir: string // where its comments.json lies and the build reads its _comments.html (lib/write-pages.ts)
+}
+
+/** Every article that has a comments.json, in each of its languages that has one. */
+async function commentedArticles(siteDir: string, defaultLanguage: string): Promise<CommentedArticle[]> {
+  const found = new Map<string, CommentedArticle>() // by directory: an article's variants share it
+  for (const file of await articleFiles(siteDir, defaultLanguage)) {
+    const dir = dirname(file.file)
+    if (existsSync(join(dir, 'comments.json')))
+      found.set(dir, { articleId: file.bundleId, language: file.language, dir })
+  }
+  return [...found.values()]
 }
 
 /**
@@ -104,10 +135,9 @@ export async function runCommentsCli(
 ): Promise<void> {
   const config = checkConfig(await readConfig(siteDir, await readMetaFiles(siteDir)))
   const galleyOptions = templateOptions(config)
-  const serviceUrl: string = opts.dev ? opts.devServiceUrl : config.comments?.url
-  if (!serviceUrl) throw new Error('config.lima: comments.url is missing')
+  const serviceUrl = opts.dev ? opts.devServiceUrl : commentsServiceUrl(config)
   if (!carriesToken(serviceUrl))
-    throw new Error('config.lima: comments.url must be https: the admin token goes over it')
+    throw new Error(`the comments service at ${serviceUrl} is neither https nor this machine: no admin token for it`)
   const origin = config.site?.origin
   if (typeof origin !== 'string' || !URL.canParse(origin)) throw new Error('config.lima: site.origin is no URL')
   const host = new URL(origin).host
@@ -145,48 +175,54 @@ export async function runCommentsCli(
   })
   if (opened.kind === 'resumed') console.log(m.resumedLocal(opened.file, (await opened.session.pending()).length))
   else if (opened.serverResumed) console.log(m.resumedServer)
-  if (opened.kind === 'nothing') return console.log(m.nothingNew)
-  if (opened.kind === 'downloaded') console.log(m.downloaded(opened.session.total))
-  await pause(1200)
+  if (opened.kind === 'nothing') console.log(m.nothingNew)
+  else {
+    if (opened.kind === 'downloaded') console.log(m.downloaded(opened.session.total))
+    await pause(1200)
+    const { approved, rejected } = await moderate(opened.session, {
+      m,
+      host,
+      language: defaultLanguage,
+      authorName,
+      titleOf,
+      articleDir,
+      mailDir,
+    })
+    if (approved + rejected > 0) console.log(m.decided(approved, rejected))
+  }
 
-  const { changed, approved, rejected } = await moderate(opened.session, {
-    m,
-    host,
-    language: defaultLanguage,
-    authorName,
-    titleOf,
-    articleDir,
-    mailDir,
-  })
-  if (approved + rejected > 0) console.log(m.decided(approved, rejected))
-
-  if (changed.size > 0) {
-    console.log(m.rendering(changed.size))
-    for (const key of changed) {
-      const [articleId, lang] = key.split('::') as [string, string]
-      const dir = articleDir(articleId, lang)!
-      try {
-        await renderComments({
-          themePath: join(siteDir, 'theme'),
-          commentsJsonPath: join(dir, 'comments.json'),
-          commentsHtmlPath: join(dir, '_comments.html'),
-          language: lang,
-          templateOptions: galleyOptions,
-        })
-        console.log(m.rendered(titleOf(articleId, lang) ?? articleId))
-      } catch (error) {
-        console.error(m.renderFailed(articleId, error instanceof Error ? error.message : String(error)))
-      }
+  // Every _comments.html is written from its comments.json in every run, whatever this run approved: one that a run
+  // before could not write is written by the next, with no record of it to keep.
+  const articles = await commentedArticles(siteDir, defaultLanguage)
+  if (articles.length > 0) console.log(m.rendering(articles.length))
+  let failed = 0
+  for (const { articleId, language, dir } of articles) {
+    try {
+      const html = await renderComments({
+        siteDir,
+        defaultLanguage,
+        commentsJsonPath: join(dir, 'comments.json'),
+        language,
+        templateOptions: galleyOptions,
+      })
+      await writeFile(join(dir, '_comments.html'), html)
+    } catch (error) {
+      failed++
+      console.error(m.renderFailed(articleId, language, error instanceof Error ? error.message : String(error)))
     }
   }
 
-  if (await opened.session.finish()) {
-    console.log(m.deletingOnService)
-    const response = await service('DELETE')
-    console.log(response.ok ? m.deletedOnService : m.deleteFailed(response.status))
-  } else {
-    console.log(m.pending((await opened.session.pending()).length))
+  // an approved comment is safe in its comments.json, so the service may delete it, written or not
+  if (opened.kind !== 'nothing') {
+    if (await opened.session.finish()) {
+      console.log(m.deletingOnService)
+      const response = await service('DELETE')
+      console.log(response.ok ? m.deletedOnService : m.deleteFailed(response.status))
+    } else {
+      console.log(m.pending((await opened.session.pending()).length))
+    }
   }
+  if (failed > 0) throw new Error(m.notWritten(failed))
 }
 
 interface Moderation {
@@ -201,14 +237,10 @@ interface Moderation {
 
 /**
  * Shows the comments one at a time, on the terminal's alternate screen, until all are decided or the owner quits;
- * returns the articles changed and how many comments were approved and rejected.
+ * returns how many comments were approved and rejected.
  */
-async function moderate(
-  session: Session,
-  ctx: Moderation,
-): Promise<{ changed: Set<string>; approved: number; rejected: number }> {
+async function moderate(session: Session, ctx: Moderation): Promise<{ approved: number; rejected: number }> {
   const { m } = ctx
-  const changed = new Set<string>()
   let approved = 0
   let rejected = 0
   const say = async (text: string, ms = 900) => {
@@ -252,7 +284,6 @@ async function moderate(
           continue
         }
         await session.approve(entry, join(dir, 'comments.json'), ctx.authorName)
-        changed.add(`${entry.article_id}::${entry.language_version}`)
         approved++
         await say(m.approved(entry.name), 500)
       } else if (key === 'r') {
@@ -298,7 +329,7 @@ async function moderate(
     if (process.stdin.isTTY) process.stdin.setRawMode(false)
     process.stdin.pause()
   }
-  return { changed, approved, rejected }
+  return { approved, rejected }
 }
 
 /**

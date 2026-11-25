@@ -22,6 +22,8 @@ export const CHECKED = [
   'packages/hadley/hadley.ts',
   'packages/hadley/addons/editor/*.ts',
   'packages/hadley/addons/chat/*.ts',
+  // the build loads render.ts for its check of the comments template (packages/hadley/index.ts), which writes nothing
+  'packages/hadley/addons/forms/*.ts',
 ]
 
 /** The modules that write, and what. */
@@ -55,6 +57,10 @@ export const WRITERS: Record<string, string> = {
   'packages/hadley/addons/editor/trash.ts': "a file of a page's bundle the author takes away, into .hadley/trash/",
   'packages/hadley/addons/editor/edits.ts': 'the content file whose block the editor changes',
   'packages/hadley/addons/editor/upload.ts': "a picture the editor adds to the page's bundle",
+  'packages/hadley/addons/forms/index.ts':
+    "what hadley comments writes itself: an article's _comments.html, its directories, a notification mail, the editor's file",
+  'packages/hadley/addons/forms/session.ts': 'the work file and the archive of a moderation session of hadley comments',
+  'packages/hadley/addons/forms/merge.ts': "an article's comments.json, with the comment hadley comments approved",
 }
 
 const WRITE =

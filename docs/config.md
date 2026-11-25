@@ -69,7 +69,7 @@ navigations as `navigations.main`, `navigations.footer`, the featured articles a
 | `comments` | the comments service ([comments.md](comments.md)) |
 | `templates` | a template for every page of a root: `templates: articles: post` (site.md) |
 | `strictBraces: true` | rejects malformed braces in every theme template, including comments, and in field templates; `false` unless set; rules in [galley's README](https://github.com/mkorun/galley#compiler-options) |
-| `strictUndefined: true` | checks undefined values when rendering every theme template, including comments, and field templates; `false` unless set; rules in [galley's README](https://github.com/mkorun/galley#compiler-options) |
+| `strictUndefined: true` | rejects undefined outputs, `{#each}` collections, constants and the first input of a pipe outside conditions, in every theme template (comments included) and field template; `false` unless set; rules in [galley's README](https://github.com/mkorun/galley#compiler-options) |
 | `sources` | pages from another git repository, at a commit ([sources.md](sources.md)) |
 | `theme` | the theme's settings (themes.md, "Settings") |
 | `dev` | the dev server: `port`, `editor` and `chat`; HTTPS is an option, the rest the user configuration's ([dev-server.md](dev-server.md)) |
@@ -126,8 +126,9 @@ metadata:
     publishOnly: true                    # as text in a dev build, as HTML when publishing
 ```
 
-A field's `template` is a galley template that makes the field's HTML from its value; templates write it as
-`html.fields.<field>`. It escapes what it writes, as a theme's template does, and cannot include partials.
+A field's `template` is a galley template that makes the field's HTML from its value; a theme writes an optional field
+as `{@raw html.fields.<field> ?? ''}`. The field template escapes what it writes, as a theme's template does, and
+cannot include partials.
 
 A page may write a field by any of its names, in another language or a gendered form: `größe: 3`, `題名: …`,
 `autor:in: Noa`, `autor*in: Noa` and `autor·in: Noa` are Lima keys as they stand, and a name with a space or another

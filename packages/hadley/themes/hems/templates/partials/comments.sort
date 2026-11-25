@@ -13,9 +13,10 @@
   {/if}
 </article>
 {/snippet}
-{#if comments.length > 0}
+{@const count = comments | length}
+{#if count > 0}
 <section class="comments" aria-labelledby="comments-heading" data-pagefind-ignore>
-  <h2 class="listing-title" id="comments-heading">{ comments | length } { comments.length | plural(language, t.comments.heading) }</h2>
+  <h2 class="listing-title" id="comments-heading">{ count } { count | plural(language, t.comments.heading) }</h2>
   <ol class="comments-list">
     {#each comments as comment}
     <li>{@render commentBlock(comment)}</li>

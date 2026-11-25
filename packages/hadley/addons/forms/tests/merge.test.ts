@@ -194,6 +194,20 @@ describe('mergeComment — nested inserts', () => {
   })
 })
 
+describe('mergeComment — a comment published already', () => {
+  it('is not added again, at the top or among the replies, and says so', async () => {
+    const p = path()
+    const parent = entry({ submitted_at: '2026-01-01T10:00:00.000Z' })
+    const reply = entry({ parent_comment_id: parent.id, submitted_at: '2026-01-02T10:00:00.000Z' })
+    assert.equal(await mergeComment(p, parent), true)
+    assert.equal(await mergeComment(p, reply), true)
+    const before = await readFile(p, 'utf-8')
+    assert.equal(await mergeComment(p, parent), false)
+    assert.equal(await mergeComment(p, reply), false)
+    assert.equal(await readFile(p, 'utf-8'), before)
+  })
+})
+
 describe('mergeComment — orphan fallback', () => {
   it('appends as top-level when parent_comment_id is not found in tree', async () => {
     const p = path()

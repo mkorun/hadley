@@ -36,6 +36,7 @@ import { siteHost, siteRoot } from './lib/site-root.ts'
 import { sitemapXml } from './lib/sitemap.ts'
 import { assetsFor, planTheme, published, writeTheme } from './lib/theme-files.ts'
 import { writePages } from './lib/write-pages.ts'
+import { checkComments } from './addons/forms/render.ts'
 
 // siteDir: the site's directory (lib/site-root.ts)
 export async function build(
@@ -91,6 +92,9 @@ export async function build(
   // as assets, and a site path in content names one
   const themeDir = joinPath(siteDir, 'theme')
   const themeFiles = await planTheme(themeDir, isPublish)
+  // with comments on, the theme writes them in every language of the site, or the build stops (docs/comments.md)
+  if (site.config.comments?.enabled === true)
+    await checkComments(themeDir, templateOptions(site.config), site.locales, Object.keys(site.content))
   // a publish build has only the pages it writes (lib/load-site.ts)
   const allPages = Object.values(site.content).flatMap((language) => Object.values(language.pages))
   // a page names a template of the theme, or the build stops before any work

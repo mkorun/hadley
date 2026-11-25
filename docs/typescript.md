@@ -64,7 +64,8 @@ Chosen after the first reviews; until then the nearest existing code that follow
 `tsc --noEmit` passes; `oxlint` reports nothing; `oxfmt` finds nothing to change; `scripts/check-width.ts` finds no
 Markdown line outside tables and code blocks and no comment-only line longer than 120 characters;
 `scripts/check-html.ts` finds, in the code that writes what a build outputs or serves (in `packages/hadley`: `case`,
-`lib`, `index.ts`, `hadley.ts`, `addons/editor`; tests aside), no attribute value written by interpolation and no
+`lib`, `index.ts`, `hadley.ts`, `addons/editor`, `addons/forms`; tests aside), no attribute value written by
+interpolation and no
 template literal as a `.replace` or `.replaceAll` replacement; HTML goes through `case/html.ts`, XML and SVG (the
 sitemap, the feed, the og images) through `lib/xml.ts`; `scripts/check-regex.ts` finds every regular expression a
 literal in RE2 syntax; `scripts/check-writes.ts` finds file-system writes only in the modules on its list, each listed

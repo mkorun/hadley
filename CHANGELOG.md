@@ -4,6 +4,18 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Changed
+
+- With comments on, each build checks that the theme can write its comments in every language of the site. When the
+  template or a text is missing, the build stops and names the language and what is missing (docs/comments.md).
+- `comments.url` is the address of the comments service and must start with `https://`. A publish build stops when it
+  is missing or unusable, and so does `hadley comments`.
+- `hadley comments` writes the comments of every article in each run, from its `comments.json`. When one article
+  fails, the others are still written and the tool names the failure; the next run tries again. A comment that comes
+  from the service a second time is published once.
+
 ## [0.6.1] — 2026-11-25
 
 An archived page no longer stops a build with `strictUndefined`. New sites start with both strict options.

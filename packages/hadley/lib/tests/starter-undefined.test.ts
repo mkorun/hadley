@@ -62,6 +62,8 @@ const REQUIRED_PAGE_FIELDS = {
   title: 'a title in front matter or a first # heading',
   publishFrom: 'a note needs a date',
 }
+// No person field is intrinsically required. A config naming a profile requires that link; omission cases remove
+// the profile reference too. Likewise, changing a template need not keep the cover config of the previous template.
 const OPTIONAL_PERSON_FIELDS = [
   'name',
   'url',
@@ -79,9 +81,6 @@ const OPTIONAL_PERSON_FIELDS = [
   'linkedin',
   'github',
 ]
-// No person field is intrinsically required. A config naming a profile requires that link; omission cases remove
-// the profile reference too. Likewise, changing a template need not keep the cover config of the previous template.
-const REQUIRED_PERSON_FIELDS: string[] = []
 
 function setField(source: string, name: string, value: string | undefined): string {
   const lines = source.split('\n')
@@ -121,7 +120,6 @@ function personOmissions(
   const cases: [string, Record<string, unknown>][] = []
   for (const [key, value] of Object.entries(person)) {
     assert.ok(OPTIONAL_PERSON_FIELDS.includes(key) || languages.includes(key), `classify person.${key}`)
-    assert.ok(!REQUIRED_PERSON_FIELDS.includes(key))
     const dropped = { ...person }
     delete dropped[key]
     cases.push([key, dropped])
@@ -375,12 +373,9 @@ describe('all starter content with strictUndefined', () => {
                       const raw = parseLima(page.source.slice(4, page.source.indexOf('\n---', 4)), {
                         partials: replaced,
                       }) as { author?: string | Record<string, unknown> }
-                      const author =
-                        typeof raw.author === 'object' ? personFor(raw.author, lang, site, key) : raw.author
-                      return [
-                        id,
-                        { ...page, metadata: { ...page.metadata, ...(author !== undefined ? { author } : {}) } },
-                      ]
+                      // resolvePersons, below, reads the author for the page's language
+                      const author = raw.author === undefined ? {} : { author: raw.author }
+                      return [id, { ...page, metadata: { ...page.metadata, ...author } }]
                     }),
                   ),
                 }

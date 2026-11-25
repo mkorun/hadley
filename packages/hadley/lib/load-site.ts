@@ -30,7 +30,7 @@ import { urlPathProblem } from './site-paths.ts'
 import type { Config, Language, Page, PageState, Site } from './site.ts'
 
 /** What reading one page needs of the site. */
-interface Reading {
+export interface Reading {
   config: Config
   schema: FieldSchema
   partials: Record<string, unknown>

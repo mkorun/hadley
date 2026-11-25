@@ -123,6 +123,39 @@ after(async () => {
 })
 
 describe('the strict template options of config.lima', () => {
+  for (const [name, value, rendered] of [
+    ['collection', '{#each missing as item}{ item }{/each}', ''],
+    ['constant', "{@const value = missing}{ value ?? ''}", ''],
+    ['pipe input', '{ missing | length }', '0'],
+  ])
+    it(`strictUndefined checks an undefined ${name} outside conditions`, async () => {
+      const template = `<!doctype html><title>{ meta.title }</title><main>${value}</main>`
+      await assert.rejects(
+        publish(`undefined-${name}`, {}, 'publish', template, `${SITE_CONFIG}strictUndefined: true\n`),
+        /G5002/,
+      )
+      await publish(`lenient-${name}`, {}, 'publish', template, SITE_CONFIG)
+      const html = await readFile(join(dir, 'sites', `lenient-${name}`, '.hadley/publish/index.html'), 'utf8')
+      if (rendered) assert.ok(html.includes(rendered))
+    })
+
+  it('keeps an undefined pipe input lenient inside a condition', async () => {
+    const template =
+      '<!doctype html><title>{ meta.title }</title>' + '{#if missing | length}<p>Present</p>{:else}<p>Absent</p>{/if}'
+    await publish('undefined-condition', {}, 'publish', template, `${SITE_CONFIG}strictUndefined: true\n`)
+    const html = await readFile(join(dir, 'sites/undefined-condition/.hadley/publish/index.html'), 'utf8')
+    assert.match(html, /<p>Absent<\/p>/)
+  })
+
+  it('builds an absent optional field with the example from docs/config.md', async () => {
+    const docs = await readFile(new URL('../../../../docs/config.md', import.meta.url), 'utf8')
+    const example = /`({@raw html\.fields\.<field>[^`]*})`/.exec(docs)?.[1]
+    assert.ok(example, 'docs/config.md gives the optional field template expression')
+    const template = `<!doctype html><title>{ meta.title }</title>${example.replace('<field>', 'badge')}`
+    const config = `${SITE_CONFIG}strictUndefined: true\nmetadata:\n  badge:\n    template: '<b>{ value }</b>'\n`
+    await publish('optional-field-example', {}, 'publish', template, config)
+  })
+
   for (const [option, value, code, rendered] of [
     ['strictBraces', '{ a + b }', /G3019/, '{ a + b }'],
     ['strictUndefined', '{ missing }', /G5002/, ''],

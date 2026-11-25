@@ -1,77 +1,154 @@
-// render.ts — comments.sort → _comments.html via galley
+// How a theme writes comments: its comments template with the comments, their language and the theme's texts.
+// `hadley comments` writes an article's _comments.html from it; a build with comments on renders it with sample
+// comments, so that a template and texts that do not fit stop the build and not the moderation (docs/comments.md).
+// A build loads this module, so it writes no file (scripts/check-writes.ts).
 
-import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { parse as limaparse } from '@limaformat/lima'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import galley from '@mkorun/galley'
+import { checked } from '../../lib/compile-templates.ts'
+import { readLocales, type TemplateOptions } from '../../lib/site-config.ts'
+import type { Locale } from '../../lib/site.ts'
 import type { PublicComment } from './merge.ts'
-import type { TemplateOptions } from '../../lib/site-config.ts'
+
+/** A comment as the template gets it: with its text as paragraphs of lines, and its replies alike. */
+export interface CommentView extends Omit<PublicComment, 'comments'> {
+  paragraphs: string[][]
+  comments: CommentView[]
+}
 
 // A comment's text as paragraphs of lines: the template writes each line escaped and sets <p> and <br> itself, so no
 // HTML leaves this tool (AGENTS.md, Security)
 const paragraphs = (text: string): string[][] => text.split(/\n{2,}/).map((para) => para.split('\n'))
 
-function withParagraphs(comments: PublicComment[]): (PublicComment & { paragraphs: string[][] })[] {
-  return comments.map((c) => ({
-    ...c,
-    paragraphs: paragraphs(c.text),
-    comments: withParagraphs(c.comments) as any,
+const commentViews = (comments: PublicComment[]): CommentView[] =>
+  comments.map((comment) => ({
+    ...comment,
+    paragraphs: paragraphs(comment.text),
+    comments: commentViews(comment.comments),
   }))
+
+/** The comments template of a theme, compiled: `render` gives what it writes for comments in a language. */
+export interface CommentsTemplate {
+  path: string
+  // texts: the theme's texts in that language (t.*), as a build has them (lib/site-config.ts, readLocales)
+  render: (comments: CommentView[], language: string, texts: Locale) => Promise<string>
 }
 
-// the theme's texts in the article's language (t.*), as the build reads them
-async function themeTexts(themePath: string, language: string): Promise<unknown> {
-  const path = join(themePath, 'i18n', `${language}.lima`)
-  const text = await readFile(path, 'utf-8').catch(() => {
-    throw new Error(`${path} is missing: the theme's texts in this language`)
+/**
+ * Compiles the comments template of the theme in `themeDir` (templates/comments.sort, else
+ * templates/partials/comments.sort) with the site's template options. It and every partial it includes are read as
+ * the templates of a build are, which refuses a {@raw} of what a visitor wrote (AGENTS.md, Security).
+ */
+export async function compileComments(themeDir: string, options: TemplateOptions): Promise<CommentsTemplate> {
+  const templatesDir = join(themeDir, 'templates')
+  const candidates = [join(templatesDir, 'comments.sort'), join(templatesDir, 'partials', 'comments.sort')]
+  const path = candidates.find((candidate) => existsSync(candidate))
+  if (!path) throw new Error(`the theme has no comments template: ${candidates.join(', or ')}`)
+  const galleyOptions = checked({
+    ...options,
+    includes: { import: (file, enc) => readFile(file, enc as BufferEncoding), basedir: templatesDir },
   })
-  return limaparse(text)
+  const source = await galleyOptions.includes.import(path, 'utf-8')
+  // named, so that galley's errors name the file
+  const template = await galley(source, { ...galleyOptions, sourceId: path })
+  return { path, render: async (comments, language, texts) => template.render({ comments, language, t: texts }) }
 }
 
-async function findTemplate(themePath: string): Promise<string> {
-  const candidates = [`${themePath}/templates/comments.sort`, `${themePath}/templates/partials/comments.sort`]
-  for (const p of candidates) {
-    if (existsSync(p)) return await readFile(p, 'utf-8')
-  }
-  throw new Error(`comments.sort not found; expected in:\n  ${candidates.join('\n  ')}`)
-}
-
+/**
+ * What the theme writes for an article's comments.json, its _comments.html: in the article's language and with the
+ * texts a build of the site has for that language.
+ */
 export async function renderComments(opts: {
-  themePath: string
+  siteDir: string
+  defaultLanguage: string
   commentsJsonPath: string
-  commentsHtmlPath: string
   language: string
   templateOptions: TemplateOptions
-}): Promise<void> {
-  const { themePath, commentsJsonPath, commentsHtmlPath, language } = opts
+}): Promise<string> {
+  const { siteDir, language } = opts
+  const tree: PublicComment[] = JSON.parse(await readFile(opts.commentsJsonPath, 'utf-8'))
+  const template = await compileComments(join(siteDir, 'theme'), opts.templateOptions)
+  const locales = await readLocales(siteDir, [language], opts.defaultLanguage)
+  return template.render(commentViews(tree), language, locales[language] ?? {})
+}
 
-  let tree: PublicComment[] = []
-  if (existsSync(commentsJsonPath)) {
-    const raw = await readFile(commentsJsonPath, 'utf-8')
-    tree = JSON.parse(raw)
-  }
-
-  const src = await findTemplate(themePath)
-  const { default: galley } = await import('@mkorun/galley')
-  const { checked, rawProblems } = await import('../../lib/compile-templates.ts')
-
-  // the rule of every template of the build (AGENTS.md, Security): here the values are what visitors wrote
-  const problems = rawProblems(src, 'comments.sort')
-  if (problems.length > 0) throw new Error(`comments.sort: ${problems.join('; ')}`)
-  const tpl = await galley(
-    src,
-    checked({
-      ...opts.templateOptions,
-      includes: {
-        import: (path, enc) => readFile(path, enc as BufferEncoding),
-        basedir: `${themePath}/templates`,
-      },
+/**
+ * `count` comments for the check, as an article has them: the first, the third and so on have two paragraphs, a
+ * second line and the owner's reply below; those between are one line without a reply.
+ */
+export function sampleComments(count: number): CommentView[] {
+  const comment = (id: string, text: string, comments: PublicComment[] = []): PublicComment => ({
+    id,
+    parent_comment_id: null,
+    name: 'Sample',
+    submitted_at: '2026-01-01T12:00:00Z',
+    text,
+    author_reply: false,
+    comments,
+  })
+  return commentViews(
+    Array.from({ length: count }, (_, index) => {
+      const id = `sample-${index + 1}`
+      if (index % 2 === 1) return comment(id, 'One line.')
+      const reply = { ...comment(`${id}-reply`, 'A reply.'), parent_comment_id: id, author_reply: true }
+      return comment(id, 'A first line\nand a second.\n\nA second paragraph.', [reply])
     }),
   )
-  const html = await Promise.resolve(
-    tpl.render({ comments: withParagraphs(tree), language, t: await themeTexts(themePath, language) }),
-  )
+}
 
-  await mkdir(dirname(commentsHtmlPath), { recursive: true })
-  await writeFile(commentsHtmlPath, html)
+/**
+ * The counts of comments the check renders in `language`: none, one and two, and the smallest count from 3 to 100
+ * that selects each plural category which one and two do not. So a loop meets a second comment in every language,
+ * also in one with a single category (Japanese), and a form that only a count from 3 selects is asked for (`many` in
+ * Polish, at 5). The category of none does not count as selected: a template may write no heading for no comments. A
+ * category that only a count above 100 selects (`many` in French, at a million) is not checked.
+ */
+export function sampleCounts(language: string): number[] {
+  const counts = [0, 1, 2]
+  const rules = pluralRules(language)
+  // without rules a language has no categories, and a template that asks for one fails at any count (galley, plural)
+  if (!rules) return counts
+  const selected = new Set([rules.select(1), rules.select(2)])
+  for (let count = 3; count <= 100; count++) {
+    const category = rules.select(count)
+    if (selected.has(category)) continue
+    selected.add(category)
+    counts.push(count)
+  }
+  return counts
+}
+
+/** The plural rules the runtime has for `language` itself; none for another language's, or a name that is no tag. */
+function pluralRules(language: string): Intl.PluralRules | undefined {
+  try {
+    return Intl.PluralRules.supportedLocalesOf(language).length > 0 ? new Intl.PluralRules(language) : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * The check of a build with comments on: the comments template compiles as `hadley comments` compiles it and writes
+ * the sample comments in each of `languages`, with the texts the build has for it (`locales`), in each of
+ * sampleCounts. A failure names the template, the language and what galley said.
+ */
+export async function checkComments(
+  themeDir: string,
+  options: TemplateOptions,
+  locales: Record<string, Locale>,
+  languages: readonly string[],
+): Promise<void> {
+  const template = await compileComments(themeDir, options)
+  for (const language of languages) {
+    for (const count of sampleCounts(language)) {
+      await template.render(sampleComments(count), language, locales[language] ?? {}).catch((error: unknown) => {
+        const reason = error instanceof Error ? error.message : String(error)
+        throw new Error(`${template.path}: ${count} comment(s) in ${language} cannot be written: ${reason}`, {
+          cause: error,
+        })
+      })
+    }
+  }
 }
