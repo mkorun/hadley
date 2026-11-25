@@ -62,6 +62,7 @@ search:
 #   enabled: true
 #   url: https://example.org
 
-# galley, the template engine, stops at a { … } in a template that it cannot read, instead of writing it as text
-# (docs/config.md). Set it to false to keep such braces as text.
+# galley, the template engine: strictBraces stops at a { … } it cannot read; strictUndefined stops when a template
+# would write an undefined value (docs/config.md). Set either to false to turn its check off.
 strictBraces: true
+strictUndefined: true

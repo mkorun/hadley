@@ -12,10 +12,10 @@
     <div class="prose">
       {#snippet owner()}
       <address>
-        { site.ownerLinks.name }<br>
+        { site.ownerLinks.name ?? '' }<br>
         {#if site.ownerLinks.address.co}{ site.ownerLinks.address.co }<br>{/if}
-        { site.ownerLinks.address.street }<br>
-        { site.ownerLinks.address.postalCode } { site.ownerLinks.address.locality }{#if site.ownerLinks.address.country}<br>{ site.ownerLinks.address.country }{/if}
+        { site.ownerLinks.address.street ?? '' }<br>
+        { site.ownerLinks.address.postalCode ?? '' } { site.ownerLinks.address.locality ?? '' }{#if site.ownerLinks.address.country}<br>{ site.ownerLinks.address.country }{/if}
       </address>
       {/snippet}
 
