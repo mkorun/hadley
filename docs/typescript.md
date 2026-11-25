@@ -65,15 +65,14 @@ Chosen after the first reviews; until then the nearest existing code that follow
 Markdown line outside tables and code blocks and no comment-only line longer than 120 characters;
 `scripts/check-html.ts` finds, in the code that writes what a build outputs or serves (in `packages/hadley`: `case`,
 `lib`, `index.ts`, `hadley.ts`, `addons/editor`, `addons/forms`; tests aside), no attribute value written by
-interpolation and no
-template literal as a `.replace` or `.replaceAll` replacement; HTML goes through `case/html.ts`, XML and SVG (the
-sitemap, the feed, the og images) through `lib/xml.ts`; `scripts/check-regex.ts` finds every regular expression a
-literal in RE2 syntax; `scripts/check-writes.ts` finds file-system writes only in the modules on its list, each listed
-with what it writes (a build claims its files in `lib/output.ts` first); `scripts/check-templates.ts` compiles every
-template and partial under `sites/*/theme/templates` and finds no `{@raw}` the build would refuse (without sites, it
-checks nothing); `scripts/check-content.ts` finds the starters' content and the documentation (`docs/`, `README.md`)
-in canonical Markanto, with front matter in Lima; `scripts/check-links.ts` finds every relative link of the
-documentation leading to a file git tracks, and every anchor naming a heading as GitHub and hadley both name it; the
-tests pass under `bun test` and under `node --test` (ADR 0002), and those that use `TMPDIR` leave
-it empty (a test that writes elsewhere is not caught); `gitleaks` finds no secret in the history or in what is staged,
-but for the examples `.gitleaks.toml` names. The tools are pinned in `package.json` (ADR 0003), gitleaks in `check.sh`.
+interpolation and no template literal as a `.replace` or `.replaceAll` replacement; HTML goes through `case/html.ts`,
+XML and SVG (the sitemap, the feed, the og images) through `lib/xml.ts`; `scripts/check-regex.ts` finds every regular
+expression a literal in RE2 syntax; `scripts/check-writes.ts` finds file-system writes only in the modules on its list,
+each listed with what it writes (a build claims its files in `lib/output.ts` first); `scripts/check-templates.ts`
+compiles every template and partial under `sites/*/theme/templates` and finds no `{@raw}` the build would refuse
+(without sites, it checks nothing); `scripts/check-content.ts` finds the starters' content and the documentation
+(`docs/`, `README.md`) in canonical Markanto, with front matter in Lima; `scripts/check-links.ts` finds every relative
+link of the documentation leading to a file git tracks, and every anchor naming a heading as GitHub and hadley both name
+it; the tests pass under `bun test` and under `node --test` (ADR 0002), and those that use `TMPDIR` leave it empty (a
+test that writes elsewhere is not caught); `gitleaks` finds no secret in the history or in what is staged, but for the
+examples `.gitleaks.toml` names. The tools are pinned in `package.json` (ADR 0003), gitleaks in `check.sh`.
