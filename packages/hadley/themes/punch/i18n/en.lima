@@ -53,8 +53,9 @@ feed:
   articles:  In the feed
 
 comments:
-  headingSingular:    comment
-  headingPlural:      comments
+  heading:
+    one: comment
+    other: comments
   openButton:         Write a comment
   formTitle:          Write a comment
   fieldName:          Name

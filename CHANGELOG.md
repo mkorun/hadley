@@ -8,6 +8,8 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ### Changed
 
+- hems and punch choose the comment heading by the language's plural rules. A theme copied from either before this
+  change keeps working and can follow: `comments.heading` holds the forms by plural category (docs/comments.md).
 - A new site starts with `strictBraces: true` in `config.lima`: galley stops at a `{ … }` in a template that it
   cannot read, instead of writing it as text. `strictUndefined` stays off in new sites.
 

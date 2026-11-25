@@ -52,8 +52,9 @@ feed:
   articles:  Im Feed
 
 comments:
-  headingSingular:    Kommentar
-  headingPlural:      Kommentare
+  heading:
+    one: Kommentar
+    other: Kommentare
   openButton:         Kommentar schreiben
   formTitle:          Kommentar schreiben
   fieldName:          Name

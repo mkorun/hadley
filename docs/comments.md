@@ -123,7 +123,8 @@ its own:
 - `templates/partials/comment-form.sort`, the button and the form in a dialog: it reads `site.comments.url` and the
   page's `meta.id` and `meta.lang`.
 - `assets/js/comments.ts` and `assets/js/comments-worker.ts`, which send the form and solve the challenge.
-- The texts under `comments:` in each of the theme's `i18n/<language>.lima`.
+- The texts under `comments:` in each of the theme's `i18n/<language>.lima`: `comments.heading` holds the forms by
+  plural category (`one`, `other`, and any others the language uses), selected by galley's `plural` filter.
 
 The article template writes both where the comments belong, below the text:
 

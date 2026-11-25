@@ -52,8 +52,10 @@ feed:
   articles:  Dans le flux
 
 comments:
-  headingSingular:    commentaire
-  headingPlural:      commentaires
+  heading:
+    one: commentaire
+    many: commentaires
+    other: commentaires
   openButton:         Écrire un commentaire
   formTitle:          Écrire un commentaire
   fieldName:          Nom

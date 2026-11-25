@@ -52,8 +52,10 @@ feed:
   articles:  Nel feed
 
 comments:
-  headingSingular:    commento
-  headingPlural:      commenti
+  heading:
+    one: commento
+    many: commenti
+    other: commenti
   openButton:         Scrivi un commento
   formTitle:          Scrivi un commento
   fieldName:          Nome

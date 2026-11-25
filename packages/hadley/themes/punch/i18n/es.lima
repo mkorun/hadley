@@ -52,8 +52,10 @@ feed:
   articles:  En el feed
 
 comments:
-  headingSingular:    comentario
-  headingPlural:      comentarios
+  heading:
+    one: comentario
+    many: comentarios
+    other: comentarios
   openButton:         Escribir un comentario
   formTitle:          Escribir un comentario
   fieldName:          Nombre
