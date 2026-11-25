@@ -101,8 +101,6 @@ describe('a rebuild of hadley dev', () => {
 
     // a page, as Vite's client in it connects
     const socket = new WebSocket(`ws://localhost:${port}/`, 'vite-hmr')
-    const messages: string[] = []
-    socket.addEventListener('message', (event) => messages.push(String(event.data)))
     await new Promise((resolve, reject) => {
       socket.addEventListener('open', resolve)
       socket.addEventListener('error', reject)
@@ -115,7 +113,8 @@ describe('a rebuild of hadley dev', () => {
       )
       await appendFile(join(site, 'content', 'articles', '[article-1]', 'article-1.md'), '\nA new paragraph.\n')
       await reloaded
-      // from the reload until the build is done, the index is never missing
+      assert.ok(indexWhole(), 'the index is whole when the reload goes out')
+      // and stays so until the build is done, which may have said so before the reload arrived
       let broken = 0
       let looked = 0
       for (let done = false; !done;) {
@@ -124,7 +123,6 @@ describe('a rebuild of hadley dev', () => {
         if (!indexWhole()) broken++
         await new Promise((resolve) => setImmediate(resolve))
       }
-      assert.ok(looked > 1)
       assert.equal(broken, 0, `the index was missing in ${broken} of ${looked} looks after the reload`)
       await builds(2)
     } finally {
