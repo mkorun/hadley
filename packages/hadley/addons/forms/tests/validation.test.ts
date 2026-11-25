@@ -27,10 +27,9 @@ const config = (language: string, url: string | null = 'https://comments.example
   `site:\n  origin: https://example.org\n  default:\n    language: ${language}\n    title: Test\n` +
   `comments:\n  enabled: true\n${url === null ? '' : `  url: ${url}\n`}  archive: archive\nstrictUndefined: true\n`
 
-// the heading as hems and punch write it, and as they wrote it before the plural filter
-const HEADING =
-  '{@const count = comments | length}' +
-  '{#if count > 0}<h2>{ count } { count | plural(language, t.comments.heading) }</h2>{/if}'
+// the heading as hems and punch write it, as they wrote it before hadley gave them count, and before the plural filter
+const HEADING = '{#if count > 0}<h2>{ count } { count | plural(language, t.comments.heading) }</h2>{/if}'
+const OWN_COUNT_HEADING = '{@const count = comments | length}' + HEADING
 const OLD_HEADING =
   '{#if comments.length > 0}<h2>{ comments | length } ' +
   '{#if comments.length === 1}{ t.comments.headingSingular }{:else}{ t.comments.headingPlural }{/if}</h2>{/if}'
@@ -124,7 +123,7 @@ describe('a build with comments on renders the comments template once', () => {
   it('and names the template, the language and what galley said when a plural form is missing', async () => {
     await site('pl', HEADING + COMMENTS, POLISH)
     await stops(
-      /partials[\\/]comments\.sort: 2 comment\(s\) in pl cannot be written: G5003: .*no form "few" for 2 in pl/,
+      /partials[\\/]comments\.sort: 1 comment\(s\) with the owner's replies in pl cannot be written: G5003: .*no form "few" for 2 in pl/,
     )
     await file('theme/i18n/pl.lima', `${POLISH}    few: komentarze\n`)
     await builds()
@@ -132,12 +131,21 @@ describe('a build with comments on renders the comments template once', () => {
 
   it('in every count from 3 that selects a plural form which one and two do not', async () => {
     await site('pl', HEADING + COMMENTS, POLISH.replace('    many: komentarzy\n', '    few: komentarze\n'))
-    await stops(/comments\.sort: 5 comment\(s\) in pl cannot be written: G5003: .*no form "many" for 5 in pl/)
+    await stops(/comments\.sort: 5 comment\(s\) without replies in pl cannot be written: G5003: .*no form "many" for 5/)
+  })
+
+  it('in every count also for a theme that counts its comments itself, without their replies', async () => {
+    await site('pl', OWN_COUNT_HEADING + COMMENTS, POLISH.replace('    many: komentarzy\n', '    few: komentarze\n'))
+    await stops(/comments\.sort: 5 comment\(s\) without replies in pl cannot be written: G5003: .*no form "many" for 5/)
+    await file('theme/i18n/pl.lima', `${POLISH}    few: komentarze\n`)
+    await builds()
   })
 
   it('with two comments also in a language of one plural form', async () => {
     await site('ja', OLD_HEADING + COMMENTS, 'comments:\n  headingSingular: comment\n')
-    await stops(/comments\.sort: 2 comment\(s\) in ja cannot be written: G5002: .*t\.comments\.headingPlural/)
+    await stops(
+      /comments\.sort: 2 comment\(s\) without replies in ja cannot be written: G5002: .*t\.comments\.headingPlural/,
+    )
   })
 
   it('and not at all with comments off', async () => {
@@ -151,26 +159,26 @@ describe('a build with comments on renders the comments template once', () => {
       'the plural heading with the texts of the old one',
       HEADING,
       'comments:\n  headingSingular: comment\n  headingPlural: comments\n',
-      /1 comment\(s\) in en cannot be written: G5003: .*no form "one"/,
+      /1 comment\(s\) without replies in en cannot be written: G5003: .*no form "one"/,
     ],
     ['the old heading with the texts of the plural one', OLD_HEADING, ENGLISH, /G5002: .*t\.comments\.headingSingular/],
     [
       'the old heading with one of its two texts',
       OLD_HEADING,
       'comments:\n  headingSingular: comment\n',
-      /2 comment\(s\) in en cannot be written: G5002: .*t\.comments\.headingPlural/,
+      /2 comment\(s\) without replies in en cannot be written: G5002: .*t\.comments\.headingPlural/,
     ],
     [
       'a heading from texts the theme does not have',
       HEADING,
       undefined,
-      /comments\.sort: 1 comment\(s\) in en .*G5003/,
+      /comments\.sort: 1 comment\(s\) without replies in en .*G5003/,
     ],
     [
       'a text that only a second comment asks for',
       HEADING + '{#each comments as comment}{#if !isFirst}{ t.comments.between }{/if}{ comment.name }{/each}',
       ENGLISH,
-      /2 comment\(s\) in en cannot be written: G5002: .*t\.comments\.between/,
+      /2 comment\(s\) without replies in en cannot be written: G5002: .*t\.comments\.between/,
     ],
     [
       "a text that only an owner's reply asks for",
@@ -178,7 +186,7 @@ describe('a build with comments on renders the comments template once', () => {
         '{#each comments as comment}{#each comment.comments as reply}' +
         '{#if reply.author_reply}{ t.comments.owner }{/if}{/each}{/each}',
       ENGLISH,
-      /1 comment\(s\) in en cannot be written: G5002: .*t\.comments\.owner/,
+      /1 comment\(s\) with the owner's replies in en cannot be written: G5002: .*t\.comments\.owner/,
     ],
   ] as const)
     it(`and stops for ${name}`, async () => {

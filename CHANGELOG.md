@@ -15,6 +15,9 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 - `hadley comments` writes the comments of every article in each run, from its `comments.json`. When one article
   fails, the others are still written and the tool names the failure; the next run tries again. A comment that comes
   from the service a second time is published once.
+- The comment heading of hems and punch counts the replies too: three comments with two replies read "5 comments".
+  `hadley comments` gives a theme's comments template this number as `count`, and the build checks the template with
+  it; a theme copied earlier keeps its own count (docs/comments.md, "In a theme of your own").
 
 ### Fixed
 

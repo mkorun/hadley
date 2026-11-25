@@ -1,6 +1,6 @@
 import { after, before, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { THEMES, namesOf } from '../../../lib/init.ts'
@@ -78,7 +78,8 @@ describe('the comment headings of the bundled themes', () => {
         assert.deepEqual({ ...(texts.comments as { heading: object }).heading }, forms)
         const rules = new Intl.PluralRules(language)
         for (const count of sampleCounts(language)) {
-          const html = await template.render(sampleComments(count), language, texts)
+          const comments = sampleComments(count).map((comment) => ({ ...comment, comments: [] }))
+          const html = await template.render(comments, language, texts)
           if (count === 0) assert.doesNotMatch(html, /<h2/)
           else assert.ok(html.includes(`>${count} ${forms[rules.select(count)]}</h2>`), `${language}/${count}: ${html}`)
         }
@@ -97,8 +98,9 @@ describe('the comment headings of the bundled themes', () => {
             language,
             templateOptions: STRICT,
           })
-          const category = new Intl.PluralRules(language).select(count)
-          assert.ok(html.includes(`>${count} ${forms[category]}</h2>`), html)
+          // the heading counts the reply too
+          const category = new Intl.PluralRules(language).select(count + 1)
+          assert.ok(html.includes(`>${count + 1} ${forms[category]}</h2>`), html)
           assert.match(html, /id="comment-reply"/)
           assert.match(html, /&lt;b&gt;Nora&lt;\/b&gt;/)
           assert.match(html, /A &lt;script&gt;/)
@@ -107,4 +109,34 @@ describe('the comment headings of the bundled themes', () => {
       })
     }
   }
+})
+
+describe('the count of comments a theme gets', () => {
+  // three comments, the first and the third with a reply
+  const tree = () => {
+    const comments = ['1', '2', '3'].map(comment)
+    comments[0]!.comments.push(comment('1-reply'))
+    comments[2]!.comments.push(comment('3-reply'))
+    return comments
+  }
+  const render = async (siteDir: string) => {
+    const commentsJsonPath = join(siteDir, 'comments.json')
+    await writeFile(commentsJsonPath, JSON.stringify(tree()))
+    return renderComments({ siteDir, defaultLanguage: 'en', commentsJsonPath, language: 'en', templateOptions: STRICT })
+  }
+
+  for (const theme of themes)
+    it(`${theme}: counts the comments and their replies in the heading`, async () => {
+      assert.match(await render(join(dir, theme)), />5 comments<\/h2>/)
+    })
+
+  it('leaves a theme copied earlier its own count', async () => {
+    const siteDir = join(dir, 'copied-earlier')
+    await mkdir(join(siteDir, 'theme/templates/partials'), { recursive: true })
+    await writeFile(
+      join(siteDir, 'theme/templates/partials/comments.sort'),
+      '{@const count = comments | length}\n<h2>{ count }</h2>\n',
+    )
+    assert.match(await render(siteDir), /<h2>3<\/h2>/)
+  })
 })

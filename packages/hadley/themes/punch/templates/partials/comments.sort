@@ -13,7 +13,6 @@
   {/if}
 </article>
 {/snippet}
-{@const count = comments | length}
 {#if count > 0}
 <section class="comments" aria-labelledby="comments-heading" data-pagefind-ignore>
   <h2 class="listing-title" id="comments-heading">{ count } { count | plural(language, t.comments.heading) }</h2>

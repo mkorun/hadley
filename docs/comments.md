@@ -127,7 +127,8 @@ hems and punch take comments as they are. Another theme needs four things, which
 its own:
 
 - `templates/partials/comments.sort`, the approved comments: `hadley comments` renders it into the article's
-  `_comments.html`, with `comments`, `language` and the theme's texts `t`.
+  `_comments.html`, with `comments`, `count`, the number of the comments and their replies, `language` and the theme's
+  texts `t`.
 - `templates/partials/comment-form.sort`, the button and the form in a dialog: it reads `site.comments.url` and the
   page's `meta.id` and `meta.lang`.
 - `assets/js/comments.ts` and `assets/js/comments-worker.ts`, which send the form and solve the challenge.
@@ -144,11 +145,12 @@ its own:
   The template selects the word with galley's `plural` filter:
 
   ```
-  {@const count = comments | length}
   <h2>{ count } { count | plural(language, t.comments.heading) }</h2>
   ```
 
-A theme may write its heading another way, from texts of its own.
+A theme may write its heading another way, from texts of its own, and count as it likes: a theme copied before
+`count` came counts the comments without their replies with `{@const count = comments | length}`, which takes the
+place of hadley's `count` and keeps working.
 
 With comments on, each build checks that the theme can write its comments in every language of the site. When the
 template or a text is missing, the build stops and names the language and what is missing.

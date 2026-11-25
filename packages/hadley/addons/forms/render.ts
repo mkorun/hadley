@@ -29,7 +29,14 @@ const commentViews = (comments: PublicComment[]): CommentView[] =>
     comments: commentViews(comment.comments),
   }))
 
-/** The comments template of a theme, compiled: `render` gives what it writes for comments in a language. */
+// what the comment heading counts: the comments and their replies
+const countAll = (comments: CommentView[]): number =>
+  comments.reduce((count, comment) => count + 1 + countAll(comment.comments), 0)
+
+/**
+ * The comments template of a theme, compiled: `render` gives what it writes for comments in a language, with
+ * `comments`, `count` (of the comments and their replies), `language` and the theme's texts `t`.
+ */
 export interface CommentsTemplate {
   path: string
   // texts: the theme's texts in that language (t.*), as a build has them (lib/site-config.ts, readLocales)
@@ -53,7 +60,11 @@ export async function compileComments(themeDir: string, options: TemplateOptions
   const source = await galleyOptions.includes.import(path, 'utf-8')
   // named, so that galley's errors name the file
   const template = await galley(source, { ...galleyOptions, sourceId: path })
-  return { path, render: async (comments, language, texts) => template.render({ comments, language, t: texts }) }
+  return {
+    path,
+    render: async (comments, language, texts) =>
+      template.render({ comments, count: countAll(comments), language, t: texts }),
+  }
 }
 
 /**
@@ -132,7 +143,9 @@ function pluralRules(language: string): Intl.PluralRules | undefined {
 /**
  * The check of a build with comments on: the comments template compiles as `hadley comments` compiles it and writes
  * the sample comments in each of `languages`, with the texts the build has for it (`locales`), in each of
- * sampleCounts. A failure names the template, the language and what galley said.
+ * sampleCounts, first without their replies and then with them. Without, `count` is the number of comments, so a
+ * heading that counts the replies and one that does not (a theme copied before `count`) both meet every count. A
+ * failure names the template, the comments, the language and what galley said.
  */
 export async function checkComments(
   themeDir: string,
@@ -143,12 +156,16 @@ export async function checkComments(
   const template = await compileComments(themeDir, options)
   for (const language of languages) {
     for (const count of sampleCounts(language)) {
-      await template.render(sampleComments(count), language, locales[language] ?? {}).catch((error: unknown) => {
-        const reason = error instanceof Error ? error.message : String(error)
-        throw new Error(`${template.path}: ${count} comment(s) in ${language} cannot be written: ${reason}`, {
-          cause: error,
+      const withReplies = sampleComments(count)
+      const withoutReplies = withReplies.map((comment) => ({ ...comment, comments: [] }))
+      for (const [comments, which] of [
+        [withoutReplies, `${count} comment(s) without replies`],
+        [withReplies, `${count} comment(s) with the owner's replies`],
+      ] as const)
+        await template.render(comments, language, locales[language] ?? {}).catch((error: unknown) => {
+          const reason = error instanceof Error ? error.message : String(error)
+          throw new Error(`${template.path}: ${which} in ${language} cannot be written: ${reason}`, { cause: error })
         })
-      })
     }
   }
 }

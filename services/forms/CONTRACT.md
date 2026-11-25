@@ -602,11 +602,12 @@ fails, the CLI logs the error with the article, still renders the others and sti
 exits with a failure.
 
 Rendering gives the template `comments`, the public tree with each comment's text also as `paragraphs` (split on two
-or more LFs, each paragraph a list of its lines), `language`, and `t`, the theme's texts in that language. The CLI
-reads them as a build does (`lib/site-config.ts`, `readLocales`): an entry missing from `theme/i18n/<language>.lima`
-comes from the default language's file, and a theme without `theme/i18n/` has no texts. The template writes every
-value escaped and sets `<p>` and `<br>` itself; no HTML leaves the CLI. It renders through `@mkorun/galley`
-(`cli/render.ts`, `renderComments`), then rewrites `_comments.html` (`cli/index.ts`).
+or more LFs, each paragraph a list of its lines), `count`, the number of records in the tree, replies included,
+`language`, and `t`, the theme's texts in that language. The CLI reads them as a build does (`lib/site-config.ts`,
+`readLocales`): an entry missing from `theme/i18n/<language>.lima` comes from the default language's file, and a theme
+without `theme/i18n/` has no texts. The template writes every value escaped and sets `<p>` and `<br>` itself; no HTML
+leaves the CLI. It renders through `@mkorun/galley` (`cli/render.ts`, `renderComments`), then rewrites
+`_comments.html` (`cli/index.ts`).
 
 When work becomes empty, the CLI deletes the work file before making DELETE. Any successful HTTP status counts as
 acknowledgement; unsuccessful responses are logged without restoring work. Nonempty remaining work causes no DELETE.
