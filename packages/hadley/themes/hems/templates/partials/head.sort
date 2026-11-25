@@ -4,7 +4,7 @@
   <meta name="generator" content="hadley">
   <title>{ htmlTitle }</title>
   <link rel="icon" href="{ assets['/favicon.svg'] }" type="image/svg+xml">
-  {#if meta.description}<meta name="description" content="{ meta.description }">{:else if urlPath === '/'}<meta name="description" content="{ site.description }">{/if}
+  {#if meta.description}<meta name="description" content="{ meta.description }">{:else if urlPath === '/' && site.description}<meta name="description" content="{ site.description }">{/if}
   {#if meta.noindex}<meta name="robots" content="noindex">{/if}
   <link rel="canonical" href="{ canonicalUrl }">
   {#each translations as url, lang}<link rel="alternate" hreflang="{ lang }" href="{ site.origin }{ url }">
@@ -28,7 +28,7 @@
   {:else}
   <meta property="og:type" content="website">
   {/if}
-  {#if meta.description}<meta property="og:description" content="{ meta.description }">{:else if urlPath === '/'}<meta property="og:description" content="{ site.description }">{/if}
+  {#if meta.description}<meta property="og:description" content="{ meta.description }">{:else if urlPath === '/' && site.description}<meta property="og:description" content="{ site.description }">{/if}
   {#if ogImage}<meta property="og:image" content="{ ogImage }">{/if}
 
   {@raw html.jsonLd}

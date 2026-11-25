@@ -10,26 +10,39 @@
       <h1{#if isDevBuild} data-hadley-head="title"{/if}>{ meta.title }</h1>
     </header>
     <div class="prose">
+      {@const hasName = !!site.ownerLinks.name}
+      {@const hasCo = !!site.ownerLinks.address.co}
+      {@const hasStreet = !!site.ownerLinks.address.street}
+      {@const hasPostalCode = !!site.ownerLinks.address.postalCode}
+      {@const hasLocality = !!site.ownerLinks.address.locality}
+      {@const hasCountry = !!site.ownerLinks.address.country}
+      {@const hasAddress = hasCo || hasStreet || hasPostalCode || hasLocality || hasCountry}
       {#snippet owner()}
       <address>
-        { site.ownerLinks.name ?? '' }<br>
-        {#if site.ownerLinks.address.co}{ site.ownerLinks.address.co }<br>{/if}
-        { site.ownerLinks.address.street ?? '' }<br>
-        { site.ownerLinks.address.postalCode ?? '' } { site.ownerLinks.address.locality ?? '' }{#if site.ownerLinks.address.country}<br>{ site.ownerLinks.address.country }{/if}
+        {#if hasName}{ site.ownerLinks.name }{#if hasAddress}<br>{/if}{/if}
+        {#if hasCo}{ site.ownerLinks.address.co }{#if hasStreet || hasPostalCode || hasLocality || hasCountry}<br>{/if}{/if}
+        {#if hasStreet}{ site.ownerLinks.address.street }{#if hasPostalCode || hasLocality || hasCountry}<br>{/if}{/if}
+        {#if hasPostalCode}{ site.ownerLinks.address.postalCode }{/if}{#if hasPostalCode && hasLocality} {/if}{#if hasLocality}{ site.ownerLinks.address.locality }{/if}{#if hasCountry}{#if hasPostalCode || hasLocality}<br>{/if}{ site.ownerLinks.address.country }{/if}
       </address>
       {/snippet}
 
+      {#if hasAddress}
       <h2>{ t.imprint.address }</h2>
       {@render owner()}
+      {/if}
 
+      {#if site.ownerLinks.email || site.ownerLinks.mobile}
       <h2>{ t.imprint.contact }</h2>
       <p>
         {#if site.ownerLinks.email}{ t.imprint.email }: <a href="{ site.ownerLinks.emailMailto }">{ site.ownerLinks.email }</a>{/if}
-        {#if site.ownerLinks.mobile}<br>{ t.imprint.phone }: <a href="{ site.ownerLinks.mobileHref }">{ site.ownerLinks.mobile }</a>{/if}
+        {#if site.ownerLinks.mobile}{#if site.ownerLinks.email}<br>{/if}{ t.imprint.phone }: <a href="{ site.ownerLinks.mobileHref }">{ site.ownerLinks.mobile }</a>{/if}
       </p>
+      {/if}
 
+      {#if hasName}
       <h2>{ t.imprint.responsible }</h2>
       {@render owner()}
+      {/if}
 
       {@raw html.markup}
     </div>

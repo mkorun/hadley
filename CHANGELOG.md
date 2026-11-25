@@ -13,6 +13,11 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 - A new site starts with `strictBraces: true` and `strictUndefined: true` in `config.lima`: galley stops at a
   `{ … }` in a template that it cannot read, and at an undefined value a template would write.
 
+### Fixed
+
+- hems and punch omit description metadata when neither the page nor the site gives one, and omit absent parts of
+  the imprint, including their headings and separators.
+
 ## [0.6.0] — 2026-11-25
 
 galley 0.5.0 brings `{:else}` for loops, snippets with several parameters, `oneOf` and `plural`, and two strict
