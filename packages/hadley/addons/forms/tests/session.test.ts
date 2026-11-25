@@ -129,6 +129,36 @@ describe('a moderation session', () => {
     )
   })
 
+  it('publishes a reply once after a run of an older hadley, which gave it a random id, stopped', async () => {
+    const commentsPath = join(dir, 'bundle', 'comments.json')
+    const opened = await openSession(work, archive, download([comment('1')]))
+    assert.equal(opened.kind, 'downloaded')
+    if (opened.kind !== 'downloaded') return
+    await opened.session.draftReply('1', 'Danke!')
+    // the older run published the comment and its reply, and stopped before it took the comment off the work file
+    await mergeComment(commentsPath, comment('1'))
+    await mergeComment(commentsPath, {
+      id: crypto.randomUUID(),
+      parent_comment_id: '1',
+      name: 'Ada',
+      submitted_at: '2026-10-27T11:00:00Z',
+      text: 'Danke!',
+      author_reply: true,
+    })
+
+    const resumed = await openSession(work, archive, download([]))
+    assert.equal(resumed.kind, 'resumed')
+    if (resumed.kind !== 'resumed') return
+    await resumed.session.approve(comment('1'), commentsPath, 'Ada')
+    assert.deepEqual(
+      json(commentsPath).map((c: { id: string; comments: { text: string }[] }) => [
+        c.id,
+        c.comments.map((r) => r.text),
+      ]),
+      [['1', ['Danke!']]],
+    )
+  })
+
   it('continues an interrupted session before it downloads anything, and drops an empty work file', async () => {
     writeFileSync(join(work, 'comments-2026-10-01_10-00-00.json'), '[]\n')
     writeFileSync(join(work, 'comments-2026-10-02_10-00-00.json'), JSON.stringify([comment('9')]))

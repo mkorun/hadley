@@ -208,6 +208,28 @@ describe('mergeComment — a comment published already', () => {
   })
 })
 
+describe("mergeComment — an owner's reply published already", () => {
+  it('is not added again under another id, but a reply of other text or from a visitor is', async () => {
+    const p = path()
+    const parent = entry({ submitted_at: '2026-01-01T10:00:00.000Z' })
+    const reply = (overrides: Parameters<typeof entry>[0]) =>
+      entry({ parent_comment_id: parent.id, author_reply: true, text: 'Thanks!', ...overrides })
+    await mergeComment(p, parent)
+    assert.equal(await mergeComment(p, reply({})), true)
+    assert.equal(await mergeComment(p, reply({})), false, 'the same text, another id')
+    assert.equal(await mergeComment(p, reply({ text: 'Thanks again!' })), true)
+    assert.equal(await mergeComment(p, reply({ author_reply: false })), true, "a visitor's words, the same")
+    assert.deepEqual(
+      (await read())[0]!.comments.map((c) => [c.text, c.author_reply]),
+      [
+        ['Thanks!', true],
+        ['Thanks again!', true],
+        ['Thanks!', false],
+      ],
+    )
+  })
+})
+
 describe('mergeComment — orphan fallback', () => {
   it('appends as top-level when parent_comment_id is not found in tree', async () => {
     const p = path()
