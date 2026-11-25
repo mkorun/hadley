@@ -71,7 +71,7 @@ The page:
 | `showBadge` | whether it is not published, which a dev build shows |
 | `isArticle`, `isUpdated` | an article or essay; one with an `updatedAt` |
 | `htmlTitle`, `canonicalUrl`, `markdownUrl`, `ogImage` | its title for the tab, its full URL, the full URL of its Markdown twin (or empty), the URL of its og image |
-| `translations`, `hasTranslations` | its URL path by language, its own too; whether there is another |
+| `translations`, `hasTranslations` | its listed URL paths by language, or an empty object when none is listed; whether there is another |
 | `categoryLabel` | its category as the theme names it in the page's language |
 | `collections`, `seriesData` | its collections; each series it is part of: `items` (`title`, `urlPath`, `publishFrom`, `num`, `isCurrent`, `unpublished`), `currentNum`, `total` |
 | `toc`, `hasToc` | its `##` headings (`id`, `text`), and whether there are more than two |

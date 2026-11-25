@@ -231,6 +231,7 @@ export function pageContext(page: Page, options: ContextOptions): Record<string,
   const home = page.template === 'home' ? featured(language, lang, site.config, locale) : null
   const ogImage = ogImageUrl(page, language, options.og)
   const toc = (page.result?.toc ?? []).filter((e) => e.level === 2)
+  const translations = site.translationMappings[page.id] ?? {}
   const context: Record<string, unknown> = {
     meta: {
       ...page.metadata,
@@ -265,8 +266,8 @@ export function pageContext(page: Page, options: ContextOptions): Record<string,
     site: options.view,
     categoryLabel: categoryLabel(locale, page.metadata.category),
     urlPath: page.urlPath,
-    translations: site.translationMappings[page.id], // by language, this page's URL path, its own language too
-    hasTranslations: Object.keys(site.translationMappings[page.id] ?? {}).length > 1,
+    translations,
+    hasTranslations: Object.keys(translations).length > 1,
     template: page.template,
     type: page.type,
     collections: page.collections,
