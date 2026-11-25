@@ -34,27 +34,34 @@ describe('optional content in the bundled themes', () => {
       assert.doesNotMatch(html, /(?:name="description"|property="og:description")/)
     })
 
-    it(`${theme}: an archived article shows no series box, and the listed parts count without it`, async () => {
+    it(`${theme}: an archived article shows no series box in any build, and the other parts count without it`, async () => {
       const root = join(dir, `series-${theme}`)
       await init(root, ['en'], theme, 'blank')
       for (const [n, status] of [
         [1, 'published'],
         [2, 'archived'],
         [3, 'published'],
+        [4, 'draft'],
       ] as const) {
         const bundle = join(root, `content/articles/@series/[part-${n}]`)
         await mkdir(bundle, { recursive: true })
         const frontMatter = `title: Part ${n}\npublishFrom: 2026-01-0${n}\nstatus: ${status}\n`
         await writeFile(join(bundle, `part-${n}.md`), `---\n${frontMatter}---\nText.\n`)
       }
-      await quietly(() => build(root, 'publish'))
-      const boxes = async (n: number) => {
-        const html = await readFile(join(root, `.hadley/publish/part-${n}/index.html`), 'utf8')
+      const boxes = async (mode: 'dev' | 'publish', n: number) => {
+        const html = await readFile(join(root, `.hadley/${mode}/part-${n}/index.html`), 'utf8')
         return [...html.matchAll(/<summary>(Part \d+ of \d+)<\/summary>/g)].map((match) => match[1])
       }
-      assert.deepEqual(await boxes(1), ['Part 1 of 2'])
-      assert.deepEqual(await boxes(2), [])
-      assert.deepEqual(await boxes(3), ['Part 2 of 2'])
+      await quietly(() => build(root, 'publish'))
+      assert.deepEqual(await boxes('publish', 1), ['Part 1 of 2'])
+      assert.deepEqual(await boxes('publish', 2), [])
+      assert.deepEqual(await boxes('publish', 3), ['Part 2 of 2'])
+      // a dev build counts the draft, which will join the series
+      await quietly(() => build(root, 'dev'))
+      assert.deepEqual(await boxes('dev', 1), ['Part 1 of 3'])
+      assert.deepEqual(await boxes('dev', 2), [])
+      assert.deepEqual(await boxes('dev', 3), ['Part 2 of 3'])
+      assert.deepEqual(await boxes('dev', 4), ['Part 3 of 3'])
     })
 
     it(`${theme}: an undated featured article and the feed page write no empty <time>`, async () => {

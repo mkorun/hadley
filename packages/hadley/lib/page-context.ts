@@ -35,7 +35,7 @@ const seriesData = (page: Page, language: Language) => {
     const items = ids
       .flatMap((id) => {
         const p = language.listed[id]
-        if (!p?.articleLike) return []
+        if (!p?.articleLike || p.state === 'archived') return []
         return [
           {
             title: p.metadata.title,
@@ -49,7 +49,6 @@ const seriesData = (page: Page, language: Language) => {
       .sort((a, b) => (a.publishFrom?.getTime() ?? 0) - (b.publishFrom?.getTime() ?? 0))
       .map((item, i) => ({ ...item, num: i + 1 }))
     const currentNum = items.findIndex((item) => item.isCurrent) + 1
-    // a page that is no item of the series, an archived one, is not part of it (docs/site.md)
     if (items.length < 2 || currentNum === 0) continue
     result.push({ items, currentNum, total: items.length })
   }
