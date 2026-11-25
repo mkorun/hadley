@@ -4,12 +4,16 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## [0.6.0] — 2026-11-25
+
+galley 0.5.0 brings `{:else}` for loops, snippets with several parameters, `oneOf` and `plural`, and two strict
+options that a site turns on in `config.lima`.
 
 ### Changed
 
 - galley 0.5.0 replaces 0.4.0. A site's own templates may need changes to bindings, attributes, script/style values,
-  paths, pipes or snippet calls; see [galley's changelog](https://github.com/mkorun/galley/blob/main/CHANGELOG.md).
+  paths, pipes or snippet calls; [galley's changelog](https://github.com/mkorun/galley/blob/v0.5.0/CHANGELOG.md)
+  says how to migrate each case. The six sites built with hadley build byte for byte the same.
 
 ### Added
 
