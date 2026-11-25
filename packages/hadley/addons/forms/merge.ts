@@ -27,9 +27,6 @@ function insertIntoTree(tree: PublicComment[], comment: PublicComment): boolean 
   return false
 }
 
-const holds = (tree: PublicComment[], id: string): boolean =>
-  tree.some((comment) => comment.id === id || holds(comment.comments, id))
-
 const find = (tree: PublicComment[], id: string): PublicComment | undefined => {
   for (const comment of tree) {
     const found = comment.id === id ? comment : find(comment.comments, id)
@@ -59,7 +56,7 @@ export async function mergeComment(
     const raw = await readFile(commentsPath, 'utf-8')
     tree = JSON.parse(raw)
   }
-  if (holds(tree, entry.id)) return false
+  if (find(tree, entry.id)) return false
   if (entry.author_reply && entry.parent_comment_id !== null) {
     const replies = find(tree, entry.parent_comment_id)?.comments ?? []
     if (replies.some((reply) => reply.author_reply && reply.text === entry.text)) return false
