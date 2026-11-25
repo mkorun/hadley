@@ -32,7 +32,7 @@ author: $(persons/ada)
 | `title`, `subtitle` | the title and subtitle, where the text does not give them (above) |
 | `linktext` | the shorter name navigations show, and `llms.txt` for a page that is no article or essay |
 | `htmlTitle` | the title of the browser's tab, where it is not the page's title |
-| `description` | one or two sentences on the page: lists, search engines, the feed |
+| `description` | one or two sentences on the page: lists, search engines, the feed; without it, the first words of the text stand in, and `hadley dev` warns of an article or essay without one, a draft too |
 | `publishFrom` | the day the page is published; an article without one is undated |
 | `updatedAt` | the day it was last changed, not before `publishFrom` |
 | `status` | `published` (default), `draft`, `seed` or `archived` (site.md, "The states of a page") |

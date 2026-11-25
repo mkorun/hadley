@@ -600,7 +600,8 @@ describe('hostile content, through a whole publish build', () => {
     await writeFile(join(bundle, 'bad.png'), 'not an image')
     await assert.rejects(publish('bad-cover'), /evil\.md: cover bad\.png could not be built: /)
     await writeFile(join(bundle, 'evil.md'), page('title: Cover\nstatus: draft\ncover: bad.png\n', 'Text.\n'))
-    assert.doesNotMatch(await quietly('bad-cover', 'dev'), /· \d+ !/)
+    // the drafts warn of their missing description (lib/load-site.ts), not of the cover
+    assert.doesNotMatch(await quietly('bad-cover', 'dev'), /generate cover images .*· \d+ !/)
     // review 2026-10-26 (href): no warning alone passed with the draft left out of the build
     const html = await readFile(join(root, '.hadley', 'dev', 'evil', 'index.html'), 'utf8')
     assert.match(html, /<h1>Cover<\/h1>/)

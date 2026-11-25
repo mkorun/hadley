@@ -320,19 +320,33 @@ describe('the day a build decides scheduling on', () => {
 })
 
 describe('a hint for an article without a description', () => {
-  it('says so of a published article or essay, not of a draft, a page or one with a description', async () => {
+  it('says so in a dev build of an article, an essay and a draft, not of a page or note; a publish build does not', async () => {
     await site('described', {
       'articles/[a]/a.md': page('title: A\npublishFrom: 2026-01-02\n'),
       'articles/[b]/b.md': page('title: B\npublishFrom: 2026-01-02\ndescription: A line of its own.\n'),
       'articles/[c]/c.md': page('title: C\npublishFrom: 2026-01-02\nstatus: draft\n'),
+      'articles/[x]/x.md': page('title: X\npublishFrom: 2026-01-02\nstatus: archived\n'),
       'essays/[e]/e.md': page('title: E\npublishFrom: 2026-01-02\nvgwort_pixel: 1234\n'),
-      'pages/[p]/p.md': page('title: P\n'),
+      'notes/[n]/n.md': page('title: N\npublishFrom: 2026-01-02\n'),
+      'pages/[home]/home.md': page('title: Home\nurlPath: /\ntemplate: home\n'),
+      'pages/[imprint]/imprint.md': page('title: Imprint\n'),
     })
+    const hinted = (warnings: string[]) =>
+      warnings
+        .filter((warning) => warning.includes(': has no description'))
+        .map((warning) => warning.split(': ')[0]!.split(/[\\/]/).at(-1))
+        .sort()
     const dev = await quietly(() => loadSite(join('sites', 'described'), false))
-    const hints = settle(dev.problems, false).filter((warning) => warning.endsWith(': has no description'))
-    assert.deepEqual(hints.map((warning) => warning.split(': ')[0]!.split(/[\\/]/).at(-1)).sort(), ['a.md', 'e.md'])
-    // a hint, not a fault: the site publishes
-    await quietly(() => published('described'))
+    const warnings = settle(dev.problems, false)
+    assert.deepEqual(hinted(warnings), ['a.md', 'c.md', 'e.md'])
+    // it says what stands in for the description, and how to give one
+    assert.match(
+      warnings.find((warning) => warning.includes('a.md'))!,
+      /first words of its text.*description:/,
+    )
+    // a hint, not a fault: the site publishes, and says nothing of it
+    const publish = await quietly(() => loadSite(join('sites', 'described'), true))
+    assert.deepEqual(hinted(settle(publish.problems, true)), [])
   })
 })
 

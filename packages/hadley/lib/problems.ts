@@ -6,6 +6,8 @@
  *   draft, seed    silent in either build: it is meant to be unfinished, and shows in its page what it can; but a
  *                  dev build warns of text the parser could not read, which may be missing from the page, or read
  *                  otherwise than meant
+ *   while writing  a hint for the page as it is written (an article without a description) is a warning of a dev
+ *                  build alone, drafts included; a publish build says nothing of it
  *
  * A fault is what makes the page wrong (a file it names and does not have, a field of the wrong kind, a URL it may not
  * have); a hint is what may well be meant (an essay without a VG Wort pixel).
@@ -20,6 +22,8 @@ export interface Problem {
   // the parser could not read the text there (2026-11-09: a mistyped `:::tldr` made blocks of a draft disappear), or,
   // with hint, read it otherwise than the source may mean (indented code is a paragraph)
   parse?: true
+  // with hint, for the page as it is written (lib/load-site.ts, a missing description)
+  whileWriting?: true
 }
 
 const shown = (problem: Problem) =>
@@ -27,10 +31,11 @@ const shown = (problem: Problem) =>
 
 /** The warnings of a step's problems; throws, for a publish build, with every fault among them. */
 export function settle(problems: readonly Problem[], isPublish: boolean): string[] {
-  const told = problems.filter(
-    (problem) =>
-      (problem.page.state !== 'draft' && problem.page.state !== 'seed') || (!isPublish && problem.parse === true),
-  )
+  const told = problems.filter((problem) => {
+    if (problem.whileWriting) return !isPublish
+    const unfinished = problem.page.state === 'draft' || problem.page.state === 'seed'
+    return !unfinished || (!isPublish && problem.parse === true)
+  })
   const faults = isPublish ? told.filter((problem) => !problem.hint) : []
   if (faults.length > 0) throw new Error(`cannot publish:\n${faults.map(shown).join('\n')}`)
   return told.map(shown)

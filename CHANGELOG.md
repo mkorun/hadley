@@ -18,6 +18,8 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 - The comment heading of hems and punch counts the replies too: three comments with two replies read "5 comments".
   `hadley comments` gives a theme's comments template this number as `count`, and the build checks the template with
   it; a theme copied earlier keeps its own count (docs/comments.md, "In a theme of your own").
+- `hadley dev` warns of every article and essay without a `description`, drafts too, and says that the first words of
+  its text stand in for it and how to give it one. A publish build no longer warns of it; pages are left alone.
 
 ### Fixed
 
