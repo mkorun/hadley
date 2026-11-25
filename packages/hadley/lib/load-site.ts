@@ -111,7 +111,13 @@ const loadSite = async (
     for (const file of files) {
       claimId(file.bundleId, file)
       const language = languageOf(file.language)
-      const { page, problems } = await readPage(file, root, reading, language.origin)
+      const { page, problems } = await parsePage(
+        String(await readFile(file.file)),
+        file,
+        root,
+        reading,
+        language.origin,
+      )
       claimId(page.id, file)
       if (language.pages[page.id]) {
         throw new Error(`${file.file}: the id ${page.id} is ${language.pages[page.id]!.file}'s already`)
@@ -170,15 +176,15 @@ const loadSite = async (
   return site
 }
 
-/** One page: its document, its front matter read, and what it is and where it appears, decided once. */
-async function readPage(
+/** One page's source: its document, front matter and placement, independent of how the source was read. */
+export async function parsePage(
+  source: string,
   file: PageFile,
   root: (typeof CONTENT_ROOTS)[number],
   { config, schema, partials, defaultLanguage, isPublish, today }: Reading,
   siteOrigin: string,
 ): Promise<{ page: Page; problems: Omit<Problem, 'page'>[] }> {
   const { language, variant, bundleId, collectionId } = file
-  const source = String(await readFile(file.file))
   // parsed once here; rendered once every page's metadata is known (lib/render-content.ts)
   const doc = parseDocument(source, {
     partials,

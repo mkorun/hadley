@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { build } from '../../index.ts'
 import { slashed } from '../platform.ts'
+import { quietly } from './helpers.ts'
 
 // Maintenance (config.md, deploy.md): a publish build makes the 503 page alone, at / too, with a mark for the server.
 
@@ -54,19 +55,6 @@ async function site(name: string, maintenance: boolean, without503 = false) {
   return root
 }
 
-const quiet = async <T>(work: () => Promise<T>): Promise<T> => {
-  const write = process.stdout.write.bind(process.stdout)
-  const error = process.stderr.write.bind(process.stderr)
-  process.stdout.write = () => true
-  process.stderr.write = () => true
-  try {
-    return await work()
-  } finally {
-    process.stdout.write = write
-    process.stderr.write = error
-  }
-}
-
 const published = async (root: string) =>
   (await readdir(join(root, '.hadley', 'publish'), { recursive: true, withFileTypes: true }))
     .filter((entry) => entry.isFile())
@@ -84,7 +72,7 @@ after(async () => {
 describe('a site under maintenance', () => {
   it('publishes its 503 page alone, in each language, at / too, with the mark for the server', async () => {
     const root = await site('on', true)
-    await quiet(() => build(root, 'publish'))
+    await quietly(() => build(root, 'publish'))
     const out = await published(root)
     assert.deepEqual(
       out.filter((file) => !file.startsWith('assets/') && !file.endsWith('.webp')),
@@ -112,7 +100,7 @@ describe('a site under maintenance', () => {
 
   it('names the files of an error page by absolute path, as the server shows it at any address', async () => {
     const root = await site('paths', true)
-    await quiet(() => build(root, 'publish'))
+    await quietly(() => build(root, 'publish'))
     const html = await readFile(join(root, '.hadley', 'publish', 'index.html'), 'utf8')
     const sources = [...html.matchAll(/(?:src|srcset)="([^"]+)"/g)].flatMap((m) => m[1].split(', '))
     assert.ok(sources.length > 0, html)
@@ -121,7 +109,7 @@ describe('a site under maintenance', () => {
 
   it('builds the whole site for the dev server, as ever', async () => {
     const root = await site('dev', true)
-    await quiet(() => build(root, 'dev'))
+    await quietly(() => build(root, 'dev'))
     const dev = join(root, '.hadley', 'dev')
     for (const file of ['index.html', 'first/index.html', 'errors/404/index.html', 'errors/503/index.html', 'feed.xml'])
       assert.ok(existsSync(join(dev, file)), file)
@@ -132,14 +120,14 @@ describe('a site under maintenance', () => {
   it('stops a publish build without a 503 page to show', async () => {
     const root = await site('none', true, true)
     await assert.rejects(
-      quiet(() => build(root, 'publish')),
+      quietly(() => build(root, 'publish')),
       /maintenance is on, but the site has no page @errors\/\[503\]/,
     )
   })
 
   it('publishes the whole site, its 503 page among the others, once maintenance is off', async () => {
     const root = await site('off', false)
-    await quiet(() => build(root, 'publish'))
+    await quietly(() => build(root, 'publish'))
     const out = await published(root)
     for (const file of [
       'index.html',
@@ -167,7 +155,7 @@ describe('a site under maintenance', () => {
       page('title: Not found\nurlPath: /404/\n', 'Gone.\n'),
     )
     await assert.rejects(
-      quiet(() => build(root, 'publish')),
+      quietly(() => build(root, 'publish')),
       /an error page takes no urlPath; its address is \/errors\/404\//,
     )
   })
@@ -179,7 +167,7 @@ describe('a site under maintenance', () => {
       (await readFile(join(root, 'config.lima'), 'utf8')) + 'maintenance: true\n',
     )
     await assert.rejects(
-      quiet(() => build(root, 'publish')),
+      quietly(() => build(root, 'publish')),
       /maintenance is a block with enabled: true or false/,
     )
   })
@@ -190,7 +178,7 @@ describe('a site under maintenance', () => {
       join(root, 'content/articles/[first]/first.md'),
       page('title: First\npublishFrom: 2026-01-01\nsitemap: maybe\n', 'Text.\n'),
     )
-    await quiet(() => build(root, 'publish'))
+    await quietly(() => build(root, 'publish'))
     assert.ok((await published(root)).includes('errors/503/index.html'))
   })
 
@@ -203,7 +191,7 @@ describe('a site under maintenance', () => {
         '</galley:config><!doctype html><title>{ meta.title }</title>' +
         '{#if feed}<link rel="alternate" href="{ feed.url }">{/if}{@raw html.markup}',
     )
-    await quiet(() => build(root, 'publish'))
+    await quietly(() => build(root, 'publish'))
     assert.doesNotMatch(await readFile(join(root, '.hadley/publish/errors/503/index.html'), 'utf8'), /rel="?alternate/)
   })
 
@@ -215,7 +203,7 @@ describe('a site under maintenance', () => {
       'content/pages/@errors/[503]/share.png': PNG,
       'theme/templates/page.chase': '<!doctype html><title>{ meta.title }</title><i data-og="{ ogImage }"></i>',
     })
-    await quiet(() => build(root, 'publish'))
+    await quietly(() => build(root, 'publish'))
     assert.match(
       await readFile(join(root, '.hadley/publish/errors/503/index.html'), 'utf8'),
       /data-og="?https:\/\/test\.example\/errors\/503\/share\.png/,

@@ -9,6 +9,7 @@ import { stop as stopEsbuild } from 'esbuild'
 import { close as closePagefind } from 'pagefind'
 import sharp from 'sharp'
 import { build } from '../../index.ts'
+import { quietly } from './helpers.ts'
 import { runPagefind } from '../search.ts'
 
 // What a publish build writes and lists for a page (page.outputs in lib/load-site.ts): an archived page keeps its URL
@@ -87,13 +88,7 @@ async function publish(
   await writeFile(join(root, 'theme', 'templates', 'home.chase'), template)
   await writeFile(join(root, 'theme', 'templates', 'note.chase'), template)
   await writeFile(join(root, 'config.lima'), config)
-  const write = process.stdout.write.bind(process.stdout)
-  process.stdout.write = () => true
-  try {
-    return await build(join('sites', name), mode)
-  } finally {
-    process.stdout.write = write
-  }
+  return quietly(() => build(join('sites', name), mode))
 }
 
 const png = (path: string) =>
@@ -270,13 +265,7 @@ describe('the outputs of a page in a publish build', () => {
     ]
     assert.deepEqual(searchable.sort(), pages)
     // review 2026-10-24 (follow-up): the test held only the plan; the index Pagefind writes holds those pages alone
-    const write = process.stdout.write.bind(process.stdout)
-    process.stdout.write = () => true
-    try {
-      await runPagefind(out(''), searchable, join(dir, 'search-cache'))
-    } finally {
-      process.stdout.write = write
-    }
+    await quietly(() => runPagefind(out(''), searchable, join(dir, 'search-cache')))
     // review 2026-10-24 (final): the count alone let another page of the same number through
     assert.deepEqual(await indexed(), ['/', '/aktuell/', '/knapp/', '/notes/notiz/', '/teil1/', '/teil3/'])
   })
@@ -528,17 +517,13 @@ describe('the outputs of a page in a publish build', () => {
     await mkdir(join(root, 'theme', 'templates'), { recursive: true })
     for (const name of ['article', 'home']) await writeFile(join(root, 'theme', 'templates', `${name}.chase`), template)
     await writeFile(join(root, 'config.lima'), config)
-    const write = process.stdout.write.bind(process.stdout)
-    process.stdout.write = () => true
-    try {
+    await quietly(async () => {
       const built = await build(join('sites', 'deferred'), 'dev', { deferSearch: true })
       const entry = join(root, '.hadley', 'dev', 'pagefind', 'pagefind-entry.json')
       assert.equal(existsSync(entry), false)
       await built.search!()
       assert.equal(existsSync(entry), true)
-    } finally {
-      process.stdout.write = write
-    }
+    })
   })
 
   it('write a page for a note', () => {

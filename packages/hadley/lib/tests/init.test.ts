@@ -5,6 +5,7 @@ import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { build } from '../../index.ts'
+import { quietly } from './helpers.ts'
 import {
   AGENTS,
   BLANK,
@@ -235,13 +236,7 @@ describe('a site hadley init makes', () => {
         for (const theme of starter === BLANK ? themes : [starter]) {
           const site = join(dir, `${starter}-${theme}-${languages.join('-')}`)
           await init(site, languages, theme, starter)
-          const write = process.stdout.write.bind(process.stdout)
-          process.stdout.write = () => true
-          try {
-            await build(site, 'publish')
-          } finally {
-            process.stdout.write = write
-          }
+          await quietly(() => build(site, 'publish'))
           const home = await readFile(join(site, '.hadley', 'publish', 'index.html'), 'utf-8')
           assert.ok(home.includes(`© ${new Date().getFullYear()} `), 'the copyright line starts in the year of init')
           assert.ok(home.includes(`<html lang="${languages[0]}"`), `the home page is in ${languages[0]}`)
@@ -257,17 +252,13 @@ describe('the preview of hadley deploy', () => {
   it('builds into .hadley/preview/ and leaves .hadley/publish/, what goes to the server, as it was', async () => {
     const site = join(dir, 'preview')
     await init(site, ['en'], 'hems', BLANK)
-    const write = process.stdout.write.bind(process.stdout)
-    process.stdout.write = () => true
-    try {
+    await quietly(async () => {
       await build(site, 'publish')
       const published = await readFile(join(site, '.hadley', 'publish', 'index.html'), 'utf-8')
       await build(site, 'publish', { localServer: true })
       assert.equal(await readFile(join(site, '.hadley', 'publish', 'index.html'), 'utf-8'), published)
       assert.ok((await readdir(join(site, '.hadley', 'preview'))).includes('index.html'))
-    } finally {
-      process.stdout.write = write
-    }
+    })
   })
 })
 
@@ -278,13 +269,7 @@ describe('the themes hadley brings', () => {
       await init(site, ['en'], theme, BLANK)
       const config = await readFile(join(site, 'config.lima'), 'utf-8')
       await writeFile(join(site, 'config.lima'), `${config}\nmarkdown:\n  enabled: true\n`)
-      const write = process.stdout.write.bind(process.stdout)
-      process.stdout.write = () => true
-      try {
-        await build(site, 'publish')
-      } finally {
-        process.stdout.write = write
-      }
+      await quietly(() => build(site, 'publish'))
       const publish = join(site, '.hadley', 'publish')
       const twins = (await readdir(publish, { recursive: true })).filter((path) => path.endsWith('index.html.md'))
       assert.ok(twins.length > 0, 'the site has twins')
@@ -302,16 +287,12 @@ describe('a page of a site', () => {
     await init(site, ['en'], 'hems', 'hems')
     const page = join(site, 'content', 'pages', '[about]', 'about.md')
     await writeFile(page, (await readFile(page, 'utf-8')).replace('title: About', 'title: About\ntemplate: nope'))
-    const write = process.stdout.write.bind(process.stdout)
-    process.stdout.write = () => true
-    try {
+    await quietly(async () => {
       await assert.rejects(
         build(site, 'publish'),
         /about\.md: the theme has no template nope \(templates\/nope\.chase\)/,
       )
-    } finally {
-      process.stdout.write = write
-    }
+    })
   })
 
   // read-whole runs 2026-11-10: a note in hems or punch stopped the build, as neither theme had a note template
@@ -323,13 +304,7 @@ describe('a page of a site', () => {
       const note =
         '---\npublishFrom: 2026-11-10\ndescription: Where hadley lives.\nlink: https://github.com/mkorun/hadley\n---\n'
       await writeFile(join(site, 'content', 'notes', 'source.md'), `${note}# The source\n\nAll of it, in one place.\n`)
-      const write = process.stdout.write.bind(process.stdout)
-      process.stdout.write = () => true
-      try {
-        await build(site, 'publish')
-      } finally {
-        process.stdout.write = write
-      }
+      await quietly(() => build(site, 'publish'))
       const html = await readFile(join(site, '.hadley', 'publish', 'notes', 'source', 'index.html'), 'utf-8')
       assert.ok(html.includes('<time datetime="2026-11-10'), 'the note shows its date')
       assert.ok(
