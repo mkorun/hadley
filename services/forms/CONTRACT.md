@@ -9,10 +9,10 @@ Code locations name these sources:
 
 - `server/…`: the first production service (Bun, Hono 4.13.7, altcha-lib 2.5.0), which is not part of this repository.
 - `cli/…`: the moderation CLI, `packages/hadley/addons/forms/` in this repository.
-- `lib/…`: hadley's own code, `packages/hadley/lib/` in this repository.
+- `lib/…`: hadley's own code, `packages/hadley/lib/` in this repository, for what `hadley dev` and a local build do
+  with the service.
 - `widget/…`: the browser widget in the theme of teblo.de: `theme/assets/js/comments.ts`, `comments-worker.ts` and
   `theme/templates/partials/comments-form.sort`.
-- `lib/…`: hadley, for what `hadley dev` and a local build do with the service.
 
 `tests/contract.test.ts` checks this contract from outside, against the service `FORMS_SERVICE` names, started with
 test values in a data directory of its own: the path of the Go binary.
@@ -502,7 +502,7 @@ database-close or recovery handler. `server/replay-store.ts:9`
 
 Switching implementations while preserving existing state requires continued understanding of both queue filenames and
 the replay database schema. The CLI consumes the admin API’s JSON array, not the server’s raw NDJSON file.
-`cli/index.ts:237`
+`cli/index.ts`, `runCommentsCli`
 
 **C10. Moderation CLI and its files**
 
@@ -513,7 +513,7 @@ when it is missing or no URL, or has another scheme, a user or password, a query
 space. `lib/site-config.ts`, `commentsServiceUrl`
 
 `config.lima` also gives `comments.authorName` (default: the name of the site's directory) and `site.default.language`
-(default `de`). The CLI does not require `comments.enabled`. `cli/index.ts:166`
+(default `de`). The CLI does not require `comments.enabled`. `cli/index.ts`, `runCommentsCli`
 
 The admin token is `HADLEY_COMMENTS_TOKEN` when it is set and not empty. Otherwise `hadley dev comments` takes
 `adminToken` from `<site>/.hadley/forms/dev-secrets.json`, which the local service made on its first start (C11), and
@@ -543,7 +543,7 @@ Its files, with `<site>` the site's directory and `<repo>` this repository's:
 An article's directory is its bundle, `[<article_id>]/` wherever it lies under `content/` (in any content root and
 series directory, as the build finds bundles), and for a language other than the site's default that language's
 folder in it; the build reads `_comments.html` from the same directory. Approving a comment whose `article_id` no
-bundle has stops with a message and leaves the comment in the work queue. `cli/index.ts:157`
+bundle has stops with a message and leaves the comment in the work queue. `cli/index.ts`, `articleDirs` and `moderate`
 
 The filename timestamp is UTC to whole seconds, shaped like `2026-10-23_12-00-00`. Fresh downloads write the work file
 first, then the archive file.
@@ -564,7 +564,7 @@ does not stop processing.
 Approval merges the first work entry into its article’s public tree, optionally adds the saved author reply with the
 current timestamp and, as its ID, a name-based UUID (version 5) of the entry’s ID in a fixed namespace of hadley’s, so
 the same in every run and one C7 takes as a parent, updates the archive, then removes the work entry.
-`addons/forms/session.ts`, `approve`, `replyId`
+`cli/session.ts`, `Session.approve` and `replyId`
 
 Editing changes only the work entry’s text. Notes and reply drafts change only archive fields. Rejection records its
 decision and removes the work entry without publication. Quit leaves remaining work for recovery.
@@ -608,7 +608,7 @@ or more LFs, each paragraph a list of its lines), `count`, the number of records
 `readLocales`): an entry missing from `theme/i18n/<language>.lima` comes from the default language's file, and a theme
 without `theme/i18n/` has no texts. The template writes every value escaped and sets `<p>` and `<br>` itself; no HTML
 leaves the CLI. It renders through `@mkorun/galley` (`cli/render.ts`, `renderComments`), then rewrites
-`_comments.html` (`cli/index.ts`).
+`_comments.html` (`cli/index.ts`, `runCommentsCli`).
 
 When work becomes empty, the CLI deletes the work file before making DELETE. Any successful HTTP status counts as
 acknowledgement; unsuccessful responses are logged without restoring work. Nonempty remaining work causes no DELETE.
@@ -671,26 +671,27 @@ origin, and the dev server passes the request to the service. A `comments.devUrl
 
 `hadley dev`, and the preview of `hadley deploy`, start the Go service (`hadley-forms`, see "The Go service") when
 `comments.enabled` is true: the program `dev.forms` of the user configuration names, else the first `hadley-forms` on
-the `PATH`. Without one, comments are off and the dev server says so. `lib/dev-server.ts:80`, `lib/forms-service.ts`
+the `PATH`. Without one, comments are off and the dev server says so. `lib/dev-server.ts`, `startDevServer`;
+`lib/forms-service.ts`, `formsProgram`
 
 Before anything starts, the dev server checks its port and, with the service, the next one; a port something already
-answers on stops it with a message. `lib/dev-server.ts:85`
+answers on stops it with a message. `lib/dev-server.ts`, `startDevServer`; `lib/dev-options.ts`, `portInUse`
 
 The service runs as `hadley-forms -dev` in the site's directory, with stdin ignored and each line of its output
 prefixed `[forms]`. It inherits hadley's environment without `ADMIN_TOKEN` and `HMAC_SECRET`, and four variables are
 set: `DATA_DIR`, the site's `.hadley/forms/`; `PORT`, the dev server's port plus one; `SITE_ORIGINS`, `site.origin` of
 `config.lima` when it is set; and `DEV_ORIGIN`, the dev server's origin and, with `--host`, its network addresses,
-separated by commas. `lib/dev-server.ts:100`
+separated by commas. `lib/dev-server.ts`, `startDevServer`
 
 Readiness is a GET of the token route at `127.0.0.1` on that port, every 300 milliseconds, at most thirty times; any
 HTTP response counts. When the service exits before it is ready, the dev server stops; a later exit is reported and
-not restarted. `lib/dev-server.ts:126`
+not restarted. `lib/dev-server.ts`, `startDevServer`
 
 The dev server passes every request whose path begins with `/api/comment/` or `/admin/` to `http://127.0.0.1:` and
-that port, after its own guard (`lib/dev-guard.ts`) has accepted it. `lib/dev-server.ts:185`
+that port, after its own guard (`lib/dev-guard.ts`, `refusal`) has accepted it. `lib/dev-server.ts`, `startDevServer`
 
 The watcher ignores files ending in `comments.json`; a changed `_comments.html` rebuilds the site. On shutdown the dev
-server sends the service the default termination signal. `lib/dev-server.ts:373`
+server sends the service the default termination signal. `lib/dev-server.ts`, `startDevServer`
 
 **C12. Operation, logging and notifications**
 
@@ -808,16 +809,16 @@ made, because it changes what this text describes.
 | **p2**   | **Queue thresholds are approximate.** Concurrent checks can observe the same capacity, and the byte check excludes the incoming record. `server/index.ts:169`                                                                                                                                                                                                                                      |
 | **p2**   | **Replay consumption and comment storage can diverge.** C7’s ordering makes a storage/capacity failure require another proof, while an acknowledged append has no explicit durability synchronization. `server/index.ts:164`, `server/index.ts:193`                                                                                                                                                |
 | **p2**   | **Deletion can falsely report success.** Operational unlink failures are indistinguishable from completed deletion, undermining cleanup acknowledgement. `server/index.ts:251`                                                                                                                                                                                                                     |
-| **p2**   | **A CLI crash can download a batch again.** Work deletion before failed server acknowledgement can cause the whole frozen batch to be downloaded again; merge publishes each of its comments once. A crash between a comment's merge and its reply's no longer loses the reply, whose ID comes from the comment's (C10). `cli/index.ts`, `addons/forms/session.ts`                                 |
-| **p2**   | **CLI files can be partially rewritten.** Work, archive and public files have neither atomic replacement nor a shared transaction. Missing archives during recovery can later cause moderation operations to fail. `cli/index.ts`, `cli/merge.ts`                                                                                                                                                  |
+| **p2**   | **A CLI crash can download a batch again.** Work deletion before failed server acknowledgement can cause the whole frozen batch to be downloaded again; merge publishes each of its comments once. A crash between a comment's merge and its reply's no longer loses the reply, whose ID comes from the comment's (C10). `cli/index.ts`, `runCommentsCli`; `cli/session.ts`, `Session.approve`     |
+| **p2**   | **CLI files can be partially rewritten.** Work, archive and public files have neither atomic replacement nor a shared transaction. Missing archives during recovery can later cause moderation operations to fail. `cli/session.ts`, `Session`; `cli/merge.ts`, `mergeComment`                                                                                                                     |
 | **p2**   | **The widget can wait indefinitely or submit concurrently.** Failed solving leaves its polling unresolved; waiting state does not prevent another submit event. `widget/comments.ts:238`, `widget/comments.ts:247`                                                                                                                                                                                 |
 | **p2**   | **One malformed queue record blocks batch download.** There is no per-line recovery or quarantine around parsing. `server/index.ts:228`                                                                                                                                                                                                                                                            |
-| **p2**   | **A shared service is not site-isolated.** The global queue lacks site identity, while the CLI publishes every downloaded record beneath the selected site. Distinct sites sharing one data directory can be mixed. `server/index.ts:177`, `cli/index.ts`                                                                                                                                          |
+| **p2**   | **A shared service is not site-isolated.** The global queue lacks site identity, while the CLI publishes every downloaded record beneath the selected site. Distinct sites sharing one data directory can be mixed. `server/index.ts:177`; `cli/index.ts`, `moderate`                                                                                                                              |
 | **p3**   | **IPv6 rate buckets can split equivalent addresses.** Textual spelling differences undermine the intended subnet grouping. `server/rate-limit.ts:27`                                                                                                                                                                                                                                               |
 | **p3**   | **Configuration accepts unusable values.** C3’s limited validation can produce ineffective limits, impossible browser work or downstream startup/request failures. `server/env.ts:9`                                                                                                                                                                                                               |
 | **p3**   | **Moderation/display sanitation is incomplete.** Remaining format/control characters can mislead terminal or notification display; newline removal also loses author formatting. `server/index.ts:28`                                                                                                                                                                                              |
 | **p3**   | **Admin comparison is not timing-safe, and secret strength is unchecked.** `server/index.ts:216`, `server/env.ts:3`                                                                                                                                                                                                                                                                                |
-| **p3**   | **Notification delivery is unobservable, and `mail_sent` overstates CLI behavior.** Neither notification delivery nor mail-draft generation establishes successful recipient delivery. `server/index.ts:206`, `cli/index.ts`                                                                                                                                                                       |
+| **p3**   | **Notification delivery is unobservable, and `mail_sent` overstates CLI behavior.** Neither notification delivery nor mail-draft generation establishes successful recipient delivery. `server/index.ts:206`; `cli/index.ts`, `moderate`                                                                                                                                                           |
 
 ## Not verified
 
