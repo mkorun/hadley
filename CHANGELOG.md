@@ -4,6 +4,13 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Changed
+
+- A new site starts with `strictBraces: true` in `config.lima`: galley stops at a `{ … }` in a template that it
+  cannot read, instead of writing it as text. `strictUndefined` stays off in new sites.
+
 ## [0.6.0] — 2026-11-25
 
 galley 0.5.0 brings `{:else}` for loops, snippets with several parameters, `oneOf` and `plural`, and two strict
