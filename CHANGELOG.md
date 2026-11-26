@@ -4,7 +4,10 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and hadley's versions follow
 [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## [0.7.0] — 2026-11-26
+
+galley 0.6.0 reads every `{` in a template as a tag. Each build checks the comments templates, the comment
+heading counts replies, and a crash of `hadley comments` no longer loses a reply.
 
 ### Changed
 
