@@ -1,9 +1,27 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+  type FSWatcher,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { changedSince, existsExactly, isSystemFile, lf, pathsBelow, readableByOthers, slashed } from '../platform.ts'
+import {
+  changedSince,
+  existsExactly,
+  isSystemFile,
+  lf,
+  pathsBelow,
+  readableByOthers,
+  slashed,
+  watchByLongName,
+} from '../platform.ts'
 
 describe('platform', () => {
   it('tells a file written since a time from one that was not, and counts a file that is gone as changed', () => {
@@ -70,6 +88,28 @@ describe('platform', () => {
       for (const at of ['theme', 'link'])
         assert.deepEqual((await pathsBelow(join(dir, at))).sort(), ['assets', 'assets/css', 'assets/css/a.css'], at)
     } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  // CI on Windows 2026-11-26: hadley dev in a site under C:\Users\RUNNER~1 stopped in libuv at its first change
+  it('watches a directory by its long name and reports a change below it', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'hadley-platform-test-'))
+    // Linux has no short names: one that is not there, which only its long name reaches
+    const short = join(dir, 'RUNNER~1')
+    const long = join(dir, 'runneradmin')
+    mkdirSync(join(long, 'content'), { recursive: true })
+    const longName = (path: string) => (path === short ? long : assert.fail(`asked for the long name of ${path}`))
+    let watcher: FSWatcher | undefined
+    try {
+      const reported = new Promise<string | null>((resolve, reject) => {
+        watcher = watchByLongName(short, { recursive: true }, (_event, filename) => resolve(filename), longName)
+        setTimeout(() => reject(new Error('no change reported')), 5000).unref()
+      })
+      writeFileSync(join(long, 'content', 'a.md'), '')
+      assert.equal(await reported, join('content', 'a.md'))
+    } finally {
+      watcher?.close()
       rmSync(dir, { recursive: true, force: true })
     }
   })

@@ -18,7 +18,8 @@ building on one system but not on another:
 
 - **Paths** are written with `/`, in URLs and in the output directory alike. A path in the output with a backslash,
   or with a segment in the form of a Windows short name (`PROGRA~1`), stops the build. A page of another repository
-  (`sources`) that links a path with a backslash has a problem ([sources.md](sources.md), "Links").
+  (`sources`) that links a path with a backslash has a problem ([sources.md](sources.md), "Links"). `hadley dev`
+  serves and watches a site opened under a short name (`C:\Users\RUNNER~1`) by its long name.
 - **Links:** a theme, the files of `content/meta` and a starter are read below their real paths, so one reached
   through a link, a junction on Windows among them, is read like any other.
 - **Line ends:** content, front matter and `hadley init` read `\r\n` as `\n`; a template's `\r` stays only inside

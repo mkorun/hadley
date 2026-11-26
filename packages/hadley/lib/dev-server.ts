@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
 import { access, constants, mkdir, readFile, readdir, realpath } from 'node:fs/promises'
-import { realpathSync, watch } from 'node:fs'
+import { realpathSync, type FSWatcher } from 'node:fs'
 import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import http from 'node:http'
 import { createServer as createViteServer, createLogger, type InlineConfig } from 'vite'
@@ -11,7 +11,7 @@ import { commentsPort, localOrigin, portInUse, siteChat, siteEditor, type DevOpt
 import { refusal } from './dev-guard.ts'
 import { devCertificate } from './dev-https.ts'
 import { clearScreen, logger } from './logger.ts'
-import { changedSince, isSystemFile } from './platform.ts'
+import { changedSince, isSystemFile, watchByLongName } from './platform.ts'
 import { devServiceEnv, formsDataDir, formsProgram } from './forms-service.ts'
 import { formsHome, formsOnRequest, installedForms } from './forms-install.ts'
 import { siteLabel } from './site-root.ts'
@@ -505,12 +505,14 @@ export async function startDevServer({
     }
   }
 
-  const watchers: ReturnType<typeof watch>[] = []
+  // each by its long name (lib/platform.ts); the name a watcher reports is joined to `dir` as given, the form of
+  // contentDirs and of the editor's own writes
+  const watchers: FSWatcher[] = []
   if (!noWatch) {
     const watchDirs = [`${siteDir}/content`, `${siteDir}/theme`]
 
     // config.lima lies in the site's root: a watcher of its own, not recursive
-    const configWatcher = watch(siteDir, (_event, filename) => {
+    const configWatcher = watchByLongName(siteDir, { recursive: false }, (_event, filename) => {
       if (filename === 'config.lima') {
         devLog('config.lima')
         triggerBuild('config.lima')
@@ -529,7 +531,7 @@ export async function startDevServer({
       }
     } catch {}
     for (const dir of watchDirs) {
-      const watcher = watch(dir, { recursive: true }, (_event, filename) => {
+      const watcher = watchByLongName(dir, { recursive: true }, (_event, filename) => {
         if (!filename) {
           triggerBuild(dir)
           return

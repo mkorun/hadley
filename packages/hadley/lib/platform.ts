@@ -1,10 +1,20 @@
 /**
  * What differs between Linux, macOS and Windows, in one place (docs/platforms.md): the separator of a path the file
  * system gives, the files an operating system leaves, names that macOS and Windows find in any case, how a program
- * is found on the PATH, and whether a file's mode can say who may read it. Everything else in hadley names paths
- * with `/`, as URLs and the output directory do.
+ * is found on the PATH, whether a file's mode can say who may read it, and the name a directory is watched by.
+ * Everything else in hadley names paths with `/`, as URLs and the output directory do.
  */
-import { accessSync, constants, existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
+import {
+  accessSync,
+  constants,
+  existsSync,
+  readdirSync,
+  realpathSync,
+  statSync,
+  watch,
+  type FSWatcher,
+  type WatchListener,
+} from 'node:fs'
 import { readdir } from 'node:fs/promises'
 import { delimiter, isAbsolute, join, sep } from 'node:path'
 
@@ -88,3 +98,15 @@ export function onPath(name: string, path: string = process.env.PATH ?? ''): str
  */
 export const readableByOthers = (mode: number, { onWindows = windows }: { onWindows?: boolean } = {}): boolean =>
   !onWindows && (mode & 0o077) !== 0
+
+/**
+ * Watches `dir` by its long name, as `realpathSync.native` gives it (`longName`, replaced by a test): under a Windows
+ * short name (`C:\Users\RUNNER~1`) libuv stops the process at the first change, which it reports under the long name.
+ * The listener gets the file's name relative to `dir`, as `fs.watch` gives it.
+ */
+export const watchByLongName = (
+  dir: string,
+  options: { recursive: boolean },
+  listener: WatchListener<string>,
+  longName: (path: string) => string = realpathSync.native,
+): FSWatcher => watch(longName(dir), options, listener)

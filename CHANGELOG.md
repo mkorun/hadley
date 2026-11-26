@@ -40,6 +40,7 @@ heading counts replies, and a crash of `hadley comments` no longer loses a reply
   the reply: the next run publishes the reply, once, and the comment still once.
 - `hadley dev` writes the search index of a rebuild before it reloads the page, so a page that loads the search at
   that moment no longer shows Vite's error overlay. The reload waits for the index.
+- `hadley dev` no longer crashes on Windows in a site opened under a short name, such as `C:\Users\RUNNER~1`.
 
 ## [0.6.1] — 2026-11-25
 
