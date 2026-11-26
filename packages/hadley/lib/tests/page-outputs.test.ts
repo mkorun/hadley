@@ -67,14 +67,13 @@ const indexed = async () => {
   return urls.sort()
 }
 
-/** A site `name` with the pages `content` (paths in content/), built for publishing without its log. */
-async function publish(
+/** Writes a site `name` with the pages `content` (paths in content/); its path, as build() takes it. */
+async function writeSite(
   name: string,
   content: Record<string, string>,
-  mode: 'publish' | 'dev' = 'publish',
-  template = TEMPLATE,
-  config = CONFIG,
-): Promise<{ searchable: string[] }> {
+  template: string,
+  config: string,
+): Promise<string> {
   const root = join(dir, 'sites', name)
   for (const [file, text] of Object.entries({
     'pages/[home]/home.md': page('title: Start\nurlPath: /\ntemplate: home\n'),
@@ -88,7 +87,19 @@ async function publish(
   await writeFile(join(root, 'theme', 'templates', 'home.chase'), template)
   await writeFile(join(root, 'theme', 'templates', 'note.chase'), template)
   await writeFile(join(root, 'config.lima'), config)
-  return quietly(() => build(join('sites', name), mode))
+  return join('sites', name)
+}
+
+/** A site `name` with the pages `content` (paths in content/), built for publishing without its log. */
+async function publish(
+  name: string,
+  content: Record<string, string>,
+  mode: 'publish' | 'dev' = 'publish',
+  template = TEMPLATE,
+  config = CONFIG,
+): Promise<{ searchable: string[] }> {
+  const site = await writeSite(name, content, template, config)
+  return quietly(() => build(site, mode))
 }
 
 const png = (path: string) =>
@@ -222,9 +233,8 @@ describe('the strict template options of config.lima', () => {
     // hadley reads only the keys of config.lima it knows, so not even a value galley never took stops it
     for (const value of ['true', 'yes']) {
       const name = `strict-braces-${value}`
-      await publish(name, content, 'publish', template, `${SITE_CONFIG}strictBraces: ${value}\n`)
-      // built again for its log, which publish() leaves out
-      const log = await logOf(() => build(join('sites', name), 'publish'))
+      const site = await writeSite(name, content, template, `${SITE_CONFIG}strictBraces: ${value}\n`)
+      const log = await logOf(() => build(site, 'publish'))
       assert.doesNotMatch(log.stdout, /strictBraces/)
       assert.equal(log.stderr, '')
       for (const file of ['index.html', 'a/index.html']) {
@@ -272,18 +282,9 @@ describe('robots.txt', () => {
         source === 'site'
           ? { 'pages/[home]/home.md': page('title: Start\nurlPath: /\ntemplate: home\n', '[Robots](robots.txt)\n') }
           : {}
-      const error = process.stderr.write.bind(process.stderr)
-      let warnings = ''
-      process.stderr.write = (text) => {
-        warnings += String(text)
-        return true
-      }
-      try {
-        await publish(name, content, 'publish', template, `${SITE_CONFIG}robots:\n  signal: ai-train=no\n`)
-      } finally {
-        process.stderr.write = error
-      }
-      assert.equal(warnings, '')
+      const site = await writeSite(name, content, template, `${SITE_CONFIG}robots:\n  signal: ai-train=no\n`)
+      const log = await logOf(() => build(site, 'publish'))
+      assert.equal(log.stderr, '')
       assert.deepEqual(await readFile(join(root, '.hadley', 'publish', 'robots.txt')), text)
     })
 

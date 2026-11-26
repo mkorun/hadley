@@ -10,7 +10,7 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 - galley 0.6.0 replaces 0.5.0. Every `{` in a theme template or a field template begins a template tag, also inside
   `<script>` and `<style>`, so a brace that galley 0.5.0 kept as text now stops the build. Write `\{` for a literal
-  brace. A partial's path may now hold spaces.
+  brace. A partial's path may not hold quotes.
   [galley's changelog](https://github.com/mkorun/galley/blob/v0.6.0/CHANGELOG.md) says what else changed.
 - `strictBraces` in `config.lima` has no effect any more; remove it. A `config.lima` that still sets it builds as
   before.
