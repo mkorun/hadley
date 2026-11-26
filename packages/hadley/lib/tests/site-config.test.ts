@@ -195,13 +195,6 @@ describe('the switches of config.lima', () => {
     assert.deepEqual(templateOptions({ allowCode: true }), { strictUndefined: false })
     assert.deepEqual(templateOptions({ strictUndefined: true }), { strictUndefined: true })
   })
-
-  it('reads strictBraces no more, whatever its value, as galley 0.6.0 has no use for it', async () => {
-    for (const value of ['true', 'false', 'yes', '\n  enabled: true']) {
-      const config = await read(`strictBraces: ${value}\n`)
-      assert.deepEqual(templateOptions(config), { strictUndefined: false })
-    }
-  })
 })
 
 describe('robots.signal in config.lima', () => {

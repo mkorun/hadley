@@ -208,11 +208,15 @@ describe('the strict template options of config.lima', () => {
       await assert.rejects(buildProbe(`strictUndefined-${place}-true`, place, source, config), /G5002/)
     })
 
-    it(`a malformed brace stops the build in the ${place} template`, async () => {
-      await assert.rejects(
-        buildProbe(`brace-${place}`, place, '<span class="probe">{ a + b }</span>', SITE_CONFIG),
-        /G3019/,
-      )
+    it(`a malformed brace stops the build in the ${place} template, whatever strictBraces says`, async () => {
+      for (const [setting, config] of [
+        ['unset', SITE_CONFIG],
+        ['false', `${SITE_CONFIG}strictBraces: false\n`],
+        ['true', `${SITE_CONFIG}strictBraces: true\n`],
+      ]) {
+        const source = '<span class="probe">{ a + b }</span>'
+        await assert.rejects(buildProbe(`brace-${place}-${setting}`, place, source, config), /G3019/, setting)
+      }
     })
   }
 

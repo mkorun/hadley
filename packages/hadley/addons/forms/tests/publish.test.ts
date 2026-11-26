@@ -183,8 +183,9 @@ describe('renderComments', () => {
       await assert.rejects(renderProbe(place, '<p>{ missing }</p>', 'strictUndefined: true\n'), /G5002/)
     })
 
-    it(`a malformed brace stops at the ${place} template`, async () => {
-      await assert.rejects(renderProbe(place, '<p>{ a + b }</p>', ''), /G3019/)
+    it(`a malformed brace stops at the ${place} template, whatever strictBraces says`, async () => {
+      for (const config of ['', 'strictBraces: false\n', 'strictBraces: true\n'])
+        await assert.rejects(renderProbe(place, '<p>{ a + b }</p>', config), /G3019/, config)
     })
   }
 })

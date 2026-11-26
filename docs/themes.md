@@ -61,6 +61,9 @@ A page's template (`templates/<name>.chase`) and its partials read these values;
 HTML only from `html.*` and `t.*`. A name hadley does not give is empty; `site.pages` and `assets` stop the build at a
 page or file they do not have.
 
+In a template's text, inline scripts and styles included, a `{` begins a tag and `\{` writes a literal one; a `{` that
+begins no tag galley can read stops the build ([galley's brace rules](https://github.com/mkorun/galley#brace-rules)).
+
 The page:
 
 | Value |  |

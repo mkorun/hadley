@@ -194,6 +194,13 @@ describe('a build with comments on renders the comments template once', () => {
       await stops(message)
     })
 
+  for (const setting of ['', 'strictBraces: false\n', 'strictBraces: true\n'])
+    it(`and stops for a malformed brace, ${setting === '' ? 'without strictBraces' : setting.trim()}`, async () => {
+      await site('en', HEADING + '<p>{ a + b }</p>' + COMMENTS, ENGLISH)
+      await file('config.lima', config('en') + setting)
+      await stops(/G3019\] .*comments\.sort/)
+    })
+
   it('and stops for a theme without a comments template', async () => {
     await site('en', HEADING, ENGLISH)
     await rm(join(dir, 'theme/templates/partials/comments.sort'))

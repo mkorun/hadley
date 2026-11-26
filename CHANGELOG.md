@@ -8,12 +8,10 @@ All notable changes to `@mkorun/hadley` are documented in this file. The format 
 
 ### Changed
 
-- galley 0.6.0 replaces 0.5.0. Every `{` in a theme template or a field template begins a template tag, also inside
-  `<script>` and `<style>`, so a brace that galley 0.5.0 kept as text now stops the build. Write `\{` for a literal
-  brace. A partial's path may not hold quotes.
+- galley 0.6.0 replaces 0.5.0. In template text, inline scripts and styles included, write `\{` for a literal opening
+  brace; a `{` that begins no tag galley can read stops the build. A partial's path may not hold quotes.
   [galley's changelog](https://github.com/mkorun/galley/blob/v0.6.0/CHANGELOG.md) says what else changed.
-- `strictBraces` in `config.lima` has no effect any more; remove it. A `config.lima` that still sets it builds as
-  before.
+- hadley ignores `strictBraces` in `config.lima`, so remove it.
 - With comments on, each build checks that the theme can write its comments in every language of the site. When the
   template or a text is missing, the build stops and names the language and what is missing (docs/comments.md).
 - `comments.url` is the address of the comments service and must start with `https://`. A publish build stops when it

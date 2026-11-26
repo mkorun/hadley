@@ -126,8 +126,8 @@ metadata:
 ```
 
 A field's `template` is a galley template that makes the field's HTML from its value; a theme writes an optional field
-as `{@raw html.fields.<field> ?? ''}`. The field template escapes what it writes, as a theme's template does, and
-cannot include partials.
+as `{@raw html.fields.<field> ?? ''}`. The field template escapes what it writes and reads braces as a theme's template
+does (themes.md, "What a template reads"), and cannot include partials.
 
 A page may write a field by any of its names, in another language or a gendered form: `größe: 3`, `題名: …`,
 `autor:in: Noa`, `autor*in: Noa` and `autor·in: Noa` are Lima keys as they stand, and a name with a space or another
