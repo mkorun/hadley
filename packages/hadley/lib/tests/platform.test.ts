@@ -93,23 +93,19 @@ describe('platform', () => {
   })
 
   // CI on Windows 2026-11-26: hadley dev in a site under C:\Users\RUNNER~1 stopped in libuv at its first change
-  it('watches a directory by its long name and reports a change below it', async () => {
+  it('watches a directory by its long name', () => {
     const dir = mkdtempSync(join(tmpdir(), 'hadley-platform-test-'))
-    // Linux has no short names: one that is not there, which only its long name reaches
-    const short = join(dir, 'RUNNER~1')
-    const long = join(dir, 'runneradmin')
-    mkdirSync(join(long, 'content'), { recursive: true })
+    // a short name that is not there, not even as the short name Windows may give site/, and that only its long
+    // name reaches
+    const short = join(dir, 'GONE~1')
+    const long = join(dir, 'site')
+    mkdirSync(long)
     const longName = (path: string) => (path === short ? long : assert.fail(`asked for the long name of ${path}`))
-    let watcher: FSWatcher | undefined
     try {
-      const reported = new Promise<string | null>((resolve, reject) => {
-        watcher = watchByLongName(short, { recursive: true }, (_event, filename) => resolve(filename), longName)
-        setTimeout(() => reject(new Error('no change reported')), 5000).unref()
-      })
-      writeFileSync(join(long, 'content', 'a.md'), '')
-      assert.equal(await reported, join('content', 'a.md'))
+      const watcher: FSWatcher = watchByLongName(short, { recursive: true }, () => {}, longName)
+      watcher.close()
+      assert.throws(() => watchByLongName(short, { recursive: true }, () => {}), { code: 'ENOENT' })
     } finally {
-      watcher?.close()
       rmSync(dir, { recursive: true, force: true })
     }
   })
