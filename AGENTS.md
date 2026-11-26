@@ -25,10 +25,20 @@ that is the design, not a phase. So:
 - **Never guess.** An unknown format, a missing field or a failed call stops with a clear message; no silent fallback,
   no default that hides a fault.
 - **Verify before you report.** A statement about code, a build or a site is checked live before it is passed on.
-- **When fixes keep growing in one place, the design is wrong.** Stop patching, step back, and prefer the redesign that
-  deletes code.
+- **When fixes keep growing in one place, the design is wrong.** A second round of findings in the same place, or a fix
+  that only works around a cause (a compatibility promise kept by a workaround is one), means stop, step back, and
+  prefer the redesign that deletes code.
 - **What a tool can check belongs in the gate**, not in prose. Every review also asks what can go.
 - **Readable code before line count.** A budget cuts scope, never clarity.
+- **Look at how established tools solve it.** Before building a mechanism of your own, name the class of problem and
+  how two or three leading tools of the same domain solve it; follow the proven pattern unless the difference is the
+  point, and say which.
+- **The gate guards against mistakes, not against circumvention.** `./check.sh` runs every check, the same in CI; it
+  changes no tracked file.
+- **This repository is public and holds nothing private:** no names, paths or texts from outside it, from the material
+  a task brings along, or from the sites hadley builds.
+- **Every platform counts:** Linux, macOS and Windows (docs/platforms.md). Tests do not rely on timing (no tight time
+  limits, no waiting for file-system events) or on how a system spells a path.
 
 ## Production stays untouched
 
@@ -60,6 +70,7 @@ that is the design, not a phase. So:
   (the comments service, URL handling, the editor's write path) and before a milestone. A review is by a different
   provider than the author; workers report what they could not verify.
 - `./check.sh` passes before every commit. Run it on its own and check its exit status; never pipe or chain it.
+- After a push to `main`, the CI's result on every system is read; a tag waits until all of them pass.
 
 ## Security
 
