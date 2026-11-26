@@ -9,7 +9,7 @@ import { compileComments, renderComments, sampleComments, sampleCounts } from '.
 import type { PublicComment } from '../merge.ts'
 
 const themes = await namesOf(THEMES)
-const STRICT = templateOptions({ strictBraces: true, strictUndefined: true })
+const STRICT = templateOptions({ strictUndefined: true })
 const words: Record<string, Partial<Record<Intl.LDMLPluralRule, string>>> = {
   en: { one: 'comment', other: 'comments' },
   de: { one: 'Kommentar', other: 'Kommentare' },
@@ -85,7 +85,7 @@ describe('the comment headings of the bundled themes', () => {
         }
       })
 
-      it(`${theme}: renders the real comments partial in ${language} with strict options`, async () => {
+      it(`${theme}: renders the real comments partial in ${language} with strictUndefined`, async () => {
         for (const count of [1, 2]) {
           const tree = Array.from({ length: count }, (_, i) => comment(String(i)))
           tree[0]!.comments.push(comment('reply'))

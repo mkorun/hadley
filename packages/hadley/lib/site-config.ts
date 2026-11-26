@@ -95,7 +95,7 @@ export function commentsServiceUrl(config: Config): string {
   return value.replace(/\/+$/, '')
 }
 
-const TEMPLATE_OPTIONS = ['strictBraces', 'strictUndefined'] as const
+const TEMPLATE_OPTIONS = ['strictUndefined'] as const
 export type TemplateOptions = Required<Pick<GalleyOptions, (typeof TEMPLATE_OPTIONS)[number]>>
 
 function booleanOption(value: unknown, key: string): boolean {

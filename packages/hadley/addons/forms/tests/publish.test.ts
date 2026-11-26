@@ -157,45 +157,45 @@ describe('renderComments', () => {
     )
   })
 
-  for (const [option, value, code, rendered] of [
-    ['strictBraces', '{ a + b }', /G3019/, '{ a + b }'],
-    ['strictUndefined', '{ missing }', /G5002/, ''],
-  ] as const)
-    for (const place of ['comments', 'partial'])
-      it(`${option} is off unless set, and reaches the ${place} template`, async () => {
-        const source = `<p>${value}</p>`
-        await file('theme/i18n/de.lima', 'comments:\n  headingPlural: Kommentare\n')
-        await file('comments.json', '[]')
-        await file(
-          'theme/templates/partials/comments.sort',
-          place === 'comments' ? source : '{@partial partials/inner.sort}',
-        )
-        if (place === 'partial') await file('theme/templates/partials/inner.sort', source)
-        for (const enabled of [undefined, false, true]) {
-          await file('config.lima', enabled === undefined ? '' : `${option}: ${String(enabled)}\n`)
-          const config = await readConfig(dir, {})
-          const render = () =>
-            renderComments({
-              siteDir: dir,
-              defaultLanguage: 'de',
-              commentsJsonPath: join(dir, 'comments.json'),
-              language: 'de',
-              templateOptions: templateOptions(config),
-            })
-          if (enabled) await assert.rejects(render, code)
-          else assert.equal(await render(), `<p>${rendered}</p>`)
-        }
-      })
+  /** The comments of a site whose comments template, or a partial it includes (`place`), writes `source`. */
+  async function renderProbe(place: 'comments' | 'partial', source: string, config: string): Promise<string> {
+    await file('theme/i18n/de.lima', 'comments:\n  headingPlural: Kommentare\n')
+    await file('comments.json', '[]')
+    await file(
+      'theme/templates/partials/comments.sort',
+      place === 'comments' ? source : '{@partial partials/inner.sort}',
+    )
+    if (place === 'partial') await file('theme/templates/partials/inner.sort', source)
+    await file('config.lima', config)
+    return renderComments({
+      siteDir: dir,
+      defaultLanguage: 'de',
+      commentsJsonPath: join(dir, 'comments.json'),
+      language: 'de',
+      templateOptions: templateOptions(await readConfig(dir, {})),
+    })
+  }
+
+  for (const place of ['comments', 'partial'] as const) {
+    it(`strictUndefined is off unless set, and reaches the ${place} template`, async () => {
+      for (const config of ['', 'strictUndefined: false\n'])
+        assert.equal(await renderProbe(place, '<p>{ missing }</p>', config), '<p></p>')
+      await assert.rejects(renderProbe(place, '<p>{ missing }</p>', 'strictUndefined: true\n'), /G5002/)
+    })
+
+    it(`a malformed brace stops at the ${place} template`, async () => {
+      await assert.rejects(renderProbe(place, '<p>{ a + b }</p>', ''), /G3019/)
+    })
+  }
 })
 
 describe('the comments command configuration', () => {
-  for (const option of ['strictBraces', 'strictUndefined'])
-    it(`checks ${option} before contacting the service`, async () => {
-      await file('config.lima', `${option}:\n  enabled: true\n`)
-      await assert.rejects(runCommentsCli(dir, { dev: false }), {
-        message: `config.lima: ${option} is true or false, not {"enabled":true}`,
-      })
+  it('checks strictUndefined before contacting the service', async () => {
+    await file('config.lima', 'strictUndefined:\n  enabled: true\n')
+    await assert.rejects(runCommentsCli(dir, { dev: false }), {
+      message: 'config.lima: strictUndefined is true or false, not {"enabled":true}',
     })
+  })
 })
 
 // review 2026-10-31 (before going public): the admin token went to any address, over http too

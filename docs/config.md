@@ -68,7 +68,6 @@ navigations as `navigations.main`, `navigations.footer`, the featured articles a
 | `highlighting` | the colours of code blocks ([highlighting.md](highlighting.md)) |
 | `comments` | the comments service ([comments.md](comments.md)) |
 | `templates` | a template for every page of a root: `templates: articles: post` (site.md) |
-| `strictBraces: true` | rejects malformed braces in every theme template, including comments, and in field templates; `false` unless set; rules in [galley's README](https://github.com/mkorun/galley#compiler-options) |
 | `strictUndefined: true` | rejects undefined outputs, `{#each}` collections, constants and the first input of a pipe outside conditions, in every theme template (comments included) and field template; `false` unless set; rules in [galley's README](https://github.com/mkorun/galley#compiler-options) |
 | `sources` | pages from another git repository, at a commit ([sources.md](sources.md)) |
 | `theme` | the theme's settings (themes.md, "Settings") |

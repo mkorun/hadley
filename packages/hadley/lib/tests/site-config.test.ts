@@ -164,21 +164,20 @@ describe('the switches of config.lima', () => {
       await assert.rejects(read(lima), message)
   })
 
-  it('refuses a non-boolean strict template option with its config key', async () => {
-    for (const name of ['strictBraces', 'strictUndefined'])
-      for (const [value, found] of [
-        ['yes', '"yes"'],
-        ['1', '1'],
-        ['"true"', '"true"'],
-        ['null', 'null'],
-        ['[]', '[]'],
-        ['[true]', '[true]'],
-        ['{}', '{}'],
-        ['\n  enabled: true', '{"enabled":true}'],
-      ])
-        await assert.rejects(read(`${name}: ${value}\n`), {
-          message: `config.lima: ${name} is true or false, not ${found}`,
-        })
+  it('refuses a non-boolean strictUndefined with its config key', async () => {
+    for (const [value, found] of [
+      ['yes', '"yes"'],
+      ['1', '1'],
+      ['"true"', '"true"'],
+      ['null', 'null'],
+      ['[]', '[]'],
+      ['[true]', '[true]'],
+      ['{}', '{}'],
+      ['\n  enabled: true', '{"enabled":true}'],
+    ])
+      await assert.rejects(read(`strictUndefined: ${value}\n`), {
+        message: `config.lima: strictUndefined is true or false, not ${found}`,
+      })
   })
 
   it('names a feature switch and its wrong value, including a Lima block', async () => {
@@ -192,10 +191,16 @@ describe('the switches of config.lima', () => {
       })
   })
 
-  it('passes only the two strict options, both off unless set', () => {
-    assert.deepEqual(templateOptions({ allowCode: true }), { strictBraces: false, strictUndefined: false })
-    assert.deepEqual(templateOptions({ strictBraces: true }), { strictBraces: true, strictUndefined: false })
-    assert.deepEqual(templateOptions({ strictUndefined: true }), { strictBraces: false, strictUndefined: true })
+  it('passes only strictUndefined, off unless set', () => {
+    assert.deepEqual(templateOptions({ allowCode: true }), { strictUndefined: false })
+    assert.deepEqual(templateOptions({ strictUndefined: true }), { strictUndefined: true })
+  })
+
+  it('reads strictBraces no more, whatever its value, as galley 0.6.0 has no use for it', async () => {
+    for (const value of ['true', 'false', 'yes', '\n  enabled: true']) {
+      const config = await read(`strictBraces: ${value}\n`)
+      assert.deepEqual(templateOptions(config), { strictUndefined: false })
+    }
   })
 })
 

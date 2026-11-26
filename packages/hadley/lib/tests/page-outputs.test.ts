@@ -9,7 +9,7 @@ import { stop as stopEsbuild } from 'esbuild'
 import { close as closePagefind } from 'pagefind'
 import sharp from 'sharp'
 import { build } from '../../index.ts'
-import { quietly } from './helpers.ts'
+import { logOf, quietly } from './helpers.ts'
 import { runPagefind } from '../search.ts'
 
 // What a publish build writes and lists for a page (page.outputs in lib/load-site.ts): an archived page keeps its URL
@@ -156,42 +156,83 @@ describe('the strict template options of config.lima', () => {
     await publish('optional-field-example', {}, 'publish', template, config)
   })
 
-  for (const [option, value, code, rendered] of [
-    ['strictBraces', '{ a + b }', /G3019/, '{ a + b }'],
-    ['strictUndefined', '{ missing }', /G5002/, ''],
-  ] as const)
-    for (const place of ['layout', 'partial', 'heading', 'field'])
-      it(`${option} is off unless set, and reaches the ${place} template`, async () => {
-        const source = `<span class="probe">${value}</span>`
-        for (const enabled of [undefined, false, true]) {
-          const name = `${option}-${place}-${String(enabled)}`
-          const root = join(dir, 'sites', name)
-          const templates = join(root, 'theme', 'templates')
-          let template = '<!doctype html><title>{ meta.title }</title>{@raw html.markup}'
-          let config = SITE_CONFIG
-          if (enabled !== undefined) config += `${option}: ${String(enabled)}\n`
-          if (place === 'field') {
-            config += `metadata:\n  badge:\n    template: '${source}'\n`
-            template += "{@raw html.fields.badge ?? ''}"
-          } else if (place === 'layout') {
-            template += source
-          } else {
-            const file = place === 'heading' ? 'markup/heading.sort' : 'partials/probe.sort'
-            await mkdir(join(templates, file, '..'), { recursive: true })
-            await writeFile(join(templates, file), source)
-            if (place === 'partial') template += '{@partial partials/probe.sort}'
-          }
-          const frontMatter = place === 'field' ? 'title: A\nbadge: test\n' : 'title: A\n'
-          const content = { 'articles/[a]/a.md': page(frontMatter, '## Heading\n\nText.\n') }
-          if (enabled) {
-            await assert.rejects(publish(name, content, 'publish', template, config), code)
-          } else {
-            await publish(name, content, 'publish', template, config)
-            const html = await readFile(join(root, '.hadley', 'publish', 'a', 'index.html'), 'utf8')
-            assert.ok(html.includes(`<span class="probe">${rendered}</span>`), html)
-          }
-        }
-      })
+  /** Builds site `name`, whose layout, a partial of it, the heading or a field template writes `source`; its HTML. */
+  async function buildProbe(
+    name: string,
+    place: 'layout' | 'partial' | 'heading' | 'field',
+    source: string,
+    config: string,
+  ): Promise<string> {
+    const root = join(dir, 'sites', name)
+    const templates = join(root, 'theme', 'templates')
+    let template = '<!doctype html><title>{ meta.title }</title>{@raw html.markup}'
+    if (place === 'field') {
+      config += `metadata:\n  badge:\n    template: '${source}'\n`
+      template += "{@raw html.fields.badge ?? ''}"
+    } else if (place === 'layout') {
+      template += source
+    } else {
+      const file = place === 'heading' ? 'markup/heading.sort' : 'partials/probe.sort'
+      await mkdir(join(templates, file, '..'), { recursive: true })
+      await writeFile(join(templates, file), source)
+      if (place === 'partial') template += '{@partial partials/probe.sort}'
+    }
+    const frontMatter = place === 'field' ? 'title: A\nbadge: test\n' : 'title: A\n'
+    const content = { 'articles/[a]/a.md': page(frontMatter, '## Heading\n\nText.\n') }
+    await publish(name, content, 'publish', template, config)
+    return readFile(join(root, '.hadley', 'publish', 'a', 'index.html'), 'utf8')
+  }
+
+  for (const place of ['layout', 'partial', 'heading', 'field'] as const) {
+    it(`strictUndefined is off unless set, and reaches the ${place} template`, async () => {
+      const source = '<span class="probe">{ missing }</span>'
+      for (const [enabled, config] of [
+        ['unset', SITE_CONFIG],
+        ['false', `${SITE_CONFIG}strictUndefined: false\n`],
+      ]) {
+        const html = await buildProbe(`strictUndefined-${place}-${enabled}`, place, source, config)
+        assert.ok(html.includes('<span class="probe"></span>'), html)
+      }
+      const config = `${SITE_CONFIG}strictUndefined: true\n`
+      await assert.rejects(buildProbe(`strictUndefined-${place}-true`, place, source, config), /G5002/)
+    })
+
+    it(`a malformed brace stops the build in the ${place} template`, async () => {
+      await assert.rejects(
+        buildProbe(`brace-${place}`, place, '<span class="probe">{ a + b }</span>', SITE_CONFIG),
+        /G3019/,
+      )
+    })
+  }
+
+  it('includes a partial whose path has a space', async () => {
+    const template = '<!doctype html><title>{ meta.title }</title>{@partial partials/my card.sort}'
+    const partials = join(dir, 'sites', 'partial-space', 'theme', 'templates', 'partials')
+    await mkdir(partials, { recursive: true })
+    await writeFile(join(partials, 'my card.sort'), '<p class="card">{ meta.title }</p>')
+    await publish('partial-space', { 'articles/[a]/a.md': page('title: A\n') }, 'publish', template, SITE_CONFIG)
+    const html = await readFile(join(dir, 'sites', 'partial-space', '.hadley', 'publish', 'a', 'index.html'), 'utf8')
+    assert.ok(html.includes('<p class="card">A</p>'), html)
+  })
+
+  it('builds a site whose config.lima still sets strictBraces as one without it, with no message', async () => {
+    const template = '<!doctype html><title>{ meta.title }</title>{@raw html.markup}'
+    const content = { 'articles/[a]/a.md': page('title: A\n') }
+    await publish('without-strict-braces', content, 'publish', template, SITE_CONFIG)
+    // hadley reads only the keys of config.lima it knows, so not even a value galley never took stops it
+    for (const value of ['true', 'yes']) {
+      const name = `strict-braces-${value}`
+      await publish(name, content, 'publish', template, `${SITE_CONFIG}strictBraces: ${value}\n`)
+      // built again for its log, which publish() leaves out
+      const log = await logOf(() => build(join('sites', name), 'publish'))
+      assert.doesNotMatch(log.stdout, /strictBraces/)
+      assert.equal(log.stderr, '')
+      for (const file of ['index.html', 'a/index.html']) {
+        const built = (site: string) => readFile(join(dir, 'sites', site, '.hadley', 'publish', file), 'utf8')
+        assert.equal(await built(name), await built('without-strict-braces'))
+      }
+    }
+  })
 })
 
 describe('robots.txt', () => {

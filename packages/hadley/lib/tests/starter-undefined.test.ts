@@ -156,8 +156,8 @@ const compiled = new Map(
       return [
         theme,
         {
-          templates: await compileTemplates({ ...options, strictBraces: true, strictUndefined: true }),
-          relaxed: await compileTemplates({ ...options, strictBraces: true, strictUndefined: false }),
+          templates: await compileTemplates({ ...options, strictUndefined: true }),
+          relaxed: await compileTemplates({ ...options, strictUndefined: false }),
           heading: await compileHeading(options),
           themeFiles: await planTheme(join(THEMES, theme), true),
         },
@@ -180,7 +180,7 @@ describe('all starter content with strictUndefined', () => {
           const built = await quietly(() => build(root, 'publish'))
           const partials = await readMetaFiles(root)
           const config = await readConfig(root, partials)
-          assert.equal(config.strictBraces, true)
+          assert.equal(Object.hasOwn(config, 'strictBraces'), false)
           assert.equal(config.strictUndefined, true)
           const schema = await fieldSchema(config)
           const site = await loadSite(root, true)

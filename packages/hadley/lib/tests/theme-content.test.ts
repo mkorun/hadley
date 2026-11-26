@@ -119,7 +119,6 @@ describe('optional content in the bundled themes', () => {
       await init(root, ['en'], theme, 'blank')
       const basedir = join(root, 'theme/templates')
       const templates = await compileTemplates({
-        strictBraces: true,
         strictUndefined: true,
         includes: { basedir, import: (path, enc) => readFile(path, enc as BufferEncoding) },
       })

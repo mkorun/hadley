@@ -59,8 +59,6 @@ search:
 #   enabled: true
 #   url: https://example.org
 
-# galley, the template engine: strictBraces rejects malformed braces; strictUndefined rejects undefined outputs,
-# {#each} collections, constants and the first input of a pipe outside conditions (docs/config.md).
-# Set either to false to turn its check off.
-strictBraces: true
+# galley, the template engine: strictUndefined rejects undefined outputs, {#each} collections, constants and the
+# first input of a pipe outside conditions (docs/config.md). Set it to false to turn its check off.
 strictUndefined: true
