@@ -5,6 +5,31 @@ set -euo pipefail
 cd "$(dirname "$0")"
 bin=node_modules/.bin
 
+node_test_globs=('packages/hadley/**/tests/*.test.ts' 'scripts/tests/*.test.ts')
+
+# Test files follow the Node globs above, e2e/*.spec.ts for Playwright, services/forms/tests/*.test.ts for the forms
+# contract suite, or *_test.go at either Go service root.
+find . \( -name node_modules -o -name .git \) -prune -o -type f -print0 |
+  node --input-type=module -e '
+    import { globSync, readFileSync } from "node:fs";
+    import { posix, sep } from "node:path";
+
+    const allowed = new Set();
+    for (const glob of process.argv.slice(1)) {
+      const suffix = posix.basename(glob).slice(1);
+      for (const path of globSync(glob, { exclude: ["**/node_modules", "**/.git"] })) {
+        if (path.endsWith(suffix)) allowed.add(path.split(sep).join("/"));
+      }
+    }
+
+    for (const path of readFileSync(0, "utf8").split("\0")) {
+      if (/[._](test|spec)\./i.test(posix.basename(path)) && !allowed.has(path.slice(2))) {
+        console.error("check.sh: test file outside the naming convention:", JSON.stringify(path));
+        process.exitCode = 1;
+      }
+    }
+  ' "${node_test_globs[@]}" 'e2e/*.spec.ts' 'services/forms/tests/*.test.ts' 'services/{forms,launcher}/*_test.go'
+
 # The tools come through mise, pinned here. A worker's VM has no mise: it takes Go and shellcheck from its PATH, and
 # leaves out what needs what it lacks (gitleaks, the network of govulncheck); the host's gate and hook check its work.
 if command -v mise >/dev/null; then has_mise=1; else has_mise=; fi
@@ -58,7 +83,7 @@ trap 'rm -rf "$test_tmp"' EXIT
 # The first build of a test file takes up to 5 s on a CI runner with Windows, the default limit of a test.
 TMPDIR="$test_tmp" bun run test --timeout 30000
 # The same tests on Node.js (ADR 0002).
-TMPDIR="$test_tmp" node --test 'packages/hadley/**/tests/*.test.ts' 'scripts/tests/*.test.ts'
+TMPDIR="$test_tmp" node --test "${node_test_globs[@]}"
 
 # The comments service (docs/go.md, "Gate"); its contract tests run against the binary built
 # here, which lies outside TMPDIR. govulncheck reads the vulnerability database from the network.
