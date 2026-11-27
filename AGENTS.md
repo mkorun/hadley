@@ -70,6 +70,9 @@ that is the design, not a phase. So:
   (the comments service, URL handling, the editor's write path) and before a milestone. A review is by a different
   provider than the author; workers report what they could not verify.
 - `./check.sh` passes before every commit. Run it on its own and check its exit status; never pipe or chain it.
+- Test files follow the Node globs of ADR 0002 (`packages/hadley/**/tests/*.test.ts`, `scripts/tests/*.test.ts`),
+  `e2e/*.spec.ts` for Playwright, `services/forms/tests/*.test.ts` and the Go services' `*_test.go`; the gate stops at
+  any other file named like a test, ignored directories included.
 - After a push to `main`, the CI's result on every system is read; a tag waits until all of them pass.
 
 ## Security
